@@ -1,6 +1,14 @@
 name: custom-skirmish-trails
 author: gynt
 type: module
-version: 1.2.6
+version: 1.2.7
 dependencies:
-  textResourceModifier: ">= 0.3.0" 
+  textResourceModifier: ">= 0.3.0"
+tags:
+- scenarios
+- maps
+capabilities:
+  files: true
+  code: true
+  configuration: false
+  options: true
