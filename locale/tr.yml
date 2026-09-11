@@ -1,0 +1,12 @@
+ui.custom-skirmish-trails: Özel çarpışma seferleri
+ui.first-edition-trail: İlk sürüm seferi
+ui.customize-the-first-trail-with-a-csv-file: İlk seferi bir .csv dosyasıyla özelleştir
+ui.warchest-trail: Warchest seferi
+ui.customize-the-warchest-trail-with-a-csv-file: Warchest seferini bir .csv dosyasıyla özelleştir
+ui.extreme-trail: Extreme seferi
+ui.customize-the-extreme-trail-with-a-csv-file: Extreme seferini bir .csv dosyasıyla özelleştir
+ui.developer: Geliştirici
+ui.enable-strict-mode-to-check-for-csv-errors: CSV hatalarını denetlemek için katı modu etkinleştir
+ui.which-may-result-in-error-message-boxes-at-game-start: Oyun başlangıcında hata ileti kutuları gösterilebilir.
+tags.scenarios: Senaryolar
+tags.maps: Haritalar

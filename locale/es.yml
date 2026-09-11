@@ -1,0 +1,12 @@
+ui.custom-skirmish-trails: Campañas de escaramuza personalizadas
+ui.first-edition-trail: Campaña de la primera edición
+ui.customize-the-first-trail-with-a-csv-file: Personalizar la primera campaña con un archivo .csv
+ui.warchest-trail: Campaña Warchest
+ui.customize-the-warchest-trail-with-a-csv-file: Personalizar la campaña Warchest con un archivo .csv
+ui.extreme-trail: Campaña Extreme
+ui.customize-the-extreme-trail-with-a-csv-file: Personalizar la campaña Extreme con un archivo .csv
+ui.developer: Desarrollador
+ui.enable-strict-mode-to-check-for-csv-errors: Activar el modo estricto para comprobar errores CSV
+ui.which-may-result-in-error-message-boxes-at-game-start: Puede mostrar mensajes de error al iniciar el juego.
+tags.scenarios: Escenarios
+tags.maps: Mapas

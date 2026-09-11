@@ -7,8 +7,3 @@ dependencies:
 tags:
 - scenarios
 - maps
-capabilities:
-  files: true
-  code: true
-  configuration: false
-  options: true

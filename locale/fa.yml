@@ -1,0 +1,13 @@
+ui.custom-skirmish-trails: مسیرهای نبرد سفارشی
+ui.first-edition-trail: مسیر نسخهٔ نخست
+ui.customize-the-first-trail-with-a-csv-file: سفارشی‌سازی مسیر نخست با فایل .csv
+ui.warchest-trail: مسیر Warchest
+ui.customize-the-warchest-trail-with-a-csv-file: سفارشی‌سازی مسیر Warchest با فایل .csv
+ui.extreme-trail: مسیر Extreme
+ui.customize-the-extreme-trail-with-a-csv-file: سفارشی‌سازی مسیر Extreme با فایل .csv
+ui.developer: توسعه‌دهنده
+ui.enable-strict-mode-to-check-for-csv-errors: فعال‌کردن حالت سخت‌گیرانه برای بررسی خطاهای CSV
+ui.which-may-result-in-error-message-boxes-at-game-start: ممکن است هنگام شروع بازی پنجره‌های پیام خطا نمایش داده
+  شوند.
+tags.scenarios: سناریوها
+tags.maps: نقشه‌ها

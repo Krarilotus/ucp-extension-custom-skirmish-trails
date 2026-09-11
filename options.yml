@@ -2,10 +2,10 @@ meta:
   version: 1.0.0
 options:
 - category:
-  - Custom Skirmish Trails
+  - '{{ui.custom-skirmish-trails}}'
   name: extreme
-  header: "First Edition Trail" # '{{extreme}}'
-  text: "Customize the first trail with a .csv file" # '{{extreme_descr}}'
+  header: '{{ui.first-edition-trail}}' # '{{extreme}}'
+  text: '{{ui.customize-the-first-trail-with-a-csv-file}}' # '{{extreme_descr}}'
   display: FileInput
   url: custom-skirmish-trails.firstedition.csv.path
   contents:
@@ -14,10 +14,10 @@ options:
     type: string
     value: ''
 - category:
-  - Custom Skirmish Trails
+  - '{{ui.custom-skirmish-trails}}'
   name: extreme
-  header: "Warchest Trail" # '{{extreme}}'
-  text: "Customize the Warchest trail with a .csv file" # '{{extreme_descr}}'
+  header: '{{ui.warchest-trail}}' # '{{extreme}}'
+  text: '{{ui.customize-the-warchest-trail-with-a-csv-file}}' # '{{extreme_descr}}'
   display: FileInput
   url: custom-skirmish-trails.warchest.csv.path
   contents:
@@ -26,10 +26,10 @@ options:
     type: string
     value: ''
 - category:
-  - Custom Skirmish Trails
+  - '{{ui.custom-skirmish-trails}}'
   name: extreme
-  header: "Extreme Trail" # '{{extreme}}'
-  text: "Customize the extreme trail with a .csv file" # '{{extreme_descr}}'
+  header: '{{ui.extreme-trail}}' # '{{extreme}}'
+  text: '{{ui.customize-the-extreme-trail-with-a-csv-file}}' # '{{extreme_descr}}'
   display: FileInput
   url: custom-skirmish-trails.extremetrail.csv.path
   contents:
@@ -38,12 +38,12 @@ options:
     type: string
     value: ''
 - category:
-  - Developer
-  - Custom Skirmish Trails
+  - '{{ui.developer}}'
+  - '{{ui.custom-skirmish-trails}}'
   name: extreme
   hasHeader: false
-  header: "Enable strict mode to check for csv errors" # '{{extreme}}'
-  text: "Which may result in error message boxes at game start" # '{{extreme_descr}}'
+  header: '{{ui.enable-strict-mode-to-check-for-csv-errors}}' # '{{extreme}}'
+  text: '{{ui.which-may-result-in-error-message-boxes-at-game-start}}' # '{{extreme_descr}}'
   display: UCP2Switch
   url: custom-skirmish-trails.csv.strict_format
   contents:

@@ -1,0 +1,12 @@
+ui.custom-skirmish-trails: Custom Skirmish Trails
+ui.first-edition-trail: First Edition Trail
+ui.customize-the-first-trail-with-a-csv-file: Customize the first trail with a .csv file
+ui.warchest-trail: Warchest Trail
+ui.customize-the-warchest-trail-with-a-csv-file: Customize the Warchest trail with a .csv file
+ui.extreme-trail: Extreme Trail
+ui.customize-the-extreme-trail-with-a-csv-file: Customize the extreme trail with a .csv file
+ui.developer: Developer
+ui.enable-strict-mode-to-check-for-csv-errors: Enable strict mode to check for csv errors
+ui.which-may-result-in-error-message-boxes-at-game-start: Which may result in error message boxes at game start
+tags.scenarios: Scenarios
+tags.maps: Maps

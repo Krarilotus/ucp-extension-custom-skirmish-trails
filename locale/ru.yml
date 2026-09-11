@@ -1,0 +1,13 @@
+ui.custom-skirmish-trails: Собственные цепочки схваток
+ui.first-edition-trail: Цепочка первого издания
+ui.customize-the-first-trail-with-a-csv-file: Настроить первую цепочку с помощью файла .csv
+ui.warchest-trail: Цепочка Warchest
+ui.customize-the-warchest-trail-with-a-csv-file: Настроить цепочку Warchest с помощью файла .csv
+ui.extreme-trail: Цепочка Extreme
+ui.customize-the-extreme-trail-with-a-csv-file: Настроить цепочку Extreme с помощью файла .csv
+ui.developer: Разработчик
+ui.enable-strict-mode-to-check-for-csv-errors: Включить строгую проверку ошибок CSV
+ui.which-may-result-in-error-message-boxes-at-game-start: При запуске игры могут появляться окна с сообщениями об
+  ошибках.
+tags.scenarios: Сценарии
+tags.maps: Карты

@@ -1,0 +1,12 @@
+ui.custom-skirmish-trails: Eigene Kreuzzüge
+ui.first-edition-trail: Kreuzzug der Erstveröffentlichung
+ui.customize-the-first-trail-with-a-csv-file: Den ersten Kreuzzug mit einer .csv-Datei anpassen
+ui.warchest-trail: Warchest-Kreuzzug
+ui.customize-the-warchest-trail-with-a-csv-file: Den Warchest-Kreuzzug mit einer .csv-Datei anpassen
+ui.extreme-trail: Extreme-Kreuzzug
+ui.customize-the-extreme-trail-with-a-csv-file: Den Extreme-Kreuzzug mit einer .csv-Datei anpassen
+ui.developer: Entwickler
+ui.enable-strict-mode-to-check-for-csv-errors: Strengen Modus zur Prüfung auf CSV-Fehler aktivieren
+ui.which-may-result-in-error-message-boxes-at-game-start: Dies kann beim Spielstart Fehlermeldungen anzeigen.
+tags.scenarios: Szenarien
+tags.maps: Karten

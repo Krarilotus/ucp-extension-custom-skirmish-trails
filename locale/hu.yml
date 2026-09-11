@@ -1,0 +1,12 @@
+ui.custom-skirmish-trails: Egyéni hadjáratok
+ui.first-edition-trail: Az első kiadás hadjárata
+ui.customize-the-first-trail-with-a-csv-file: Az első hadjárat testreszabása .csv fájllal
+ui.warchest-trail: Warchest hadjárat
+ui.customize-the-warchest-trail-with-a-csv-file: A Warchest hadjárat testreszabása .csv fájllal
+ui.extreme-trail: Extreme hadjárat
+ui.customize-the-extreme-trail-with-a-csv-file: Az Extreme hadjárat testreszabása .csv fájllal
+ui.developer: Fejlesztő
+ui.enable-strict-mode-to-check-for-csv-errors: Szigorú mód bekapcsolása a CSV-hibák ellenőrzéséhez
+ui.which-may-result-in-error-message-boxes-at-game-start: Hibaüzenetek jelenhetnek meg a játék indításakor.
+tags.scenarios: Forgatókönyvek
+tags.maps: Térképek

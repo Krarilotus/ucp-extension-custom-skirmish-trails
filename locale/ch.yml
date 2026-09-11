@@ -1,0 +1,12 @@
+ui.custom-skirmish-trails: 自定义遭遇战征途
+ui.first-edition-trail: 初版征途
+ui.customize-the-first-trail-with-a-csv-file: 使用 .csv 文件自定义第一个征途
+ui.warchest-trail: Warchest 征途
+ui.customize-the-warchest-trail-with-a-csv-file: 使用 .csv 文件自定义 Warchest 征途
+ui.extreme-trail: Extreme 征途
+ui.customize-the-extreme-trail-with-a-csv-file: 使用 .csv 文件自定义 Extreme 征途
+ui.developer: 开发者
+ui.enable-strict-mode-to-check-for-csv-errors: 启用严格模式以检查 CSV 错误
+ui.which-may-result-in-error-message-boxes-at-game-start: 可能在游戏启动时显示错误消息框。
+tags.scenarios: 场景
+tags.maps: 地图
