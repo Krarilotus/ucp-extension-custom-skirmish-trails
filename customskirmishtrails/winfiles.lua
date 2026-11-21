@@ -20,12 +20,14 @@ local INVALID_HANDLE = 0xFFFFFFFF
 local GENERIC_WRITE = 0x40000000
 local CREATE_ALWAYS = 2
 local FILE_ATTRIBUTE_NORMAL = 0x80
+local MOVEFILE_REPLACE_EXISTING = 1
+local MOVEFILE_WRITE_THROUGH = 8
 local ERROR_ALREADY_EXISTS = 183
 local FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 local ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND = 2, 3
 
 local win = {}
-local pathBuffer, findData, writtenBuffer, gameDirectory
+local pathBuffer, tempPathBuffer, tempPrefix, findData, writtenBuffer, gameDirectory
 local dataBuffer, dataBufferSize = nil, 0
 
 local function findImportSlot(dllName, functionName)
@@ -122,6 +124,9 @@ local function initialize()
     return
   end
   pathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
+  tempPathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
+  tempPrefix = core.allocate(4, true)
+  writeCString(tempPrefix, "cst")
   findData = core.allocate(FIND_DATA_SIZE, true)
   writtenBuffer = core.allocate(4, true)
 
@@ -137,6 +142,7 @@ local function initialize()
     { "GetModuleFileNameA", 3 }, { "CreateFileA", 7 }, { "WriteFile", 5 }, { "CloseHandle", 1 },
     { "GetLastError", 0 }, { "MultiByteToWideChar", 6 }, { "GetFileAttributesExA", 3 },
     { "DeleteFileA", 1 }, { "GetFileAttributesA", 1 },
+    { "GetTempFileNameA", 4 }, { "MoveFileExA", 3 },
   }
   for _, entry in ipairs(functions) do
     local name, argumentCount = entry[1], entry[2]
@@ -327,10 +333,17 @@ end
 function winfiles.writeFile(path, contents)
   initialize()
   local absolute = checkedPath(path)
-  local handle = win.CreateFileA(setPath(absolute), GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0)
+  local directory = absolute:match("^(.*\\)[^\\]+$")
+  if directory == nil then return false, "invalid output path" end
+  if win.GetTempFileNameA(setPath(directory), tempPrefix, 0, tempPathBuffer) == 0 then
+    return false, string.format("cannot stage %s (%s)", absolute, lastError())
+  end
+  local handle = win.CreateFileA(tempPathBuffer, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0)
     & 0xFFFFFFFF
   if handle == INVALID_HANDLE then
-    return false, string.format("cannot write %s (%s)", absolute, lastError())
+    local reason = lastError()
+    win.DeleteFileA(tempPathBuffer)
+    return false, string.format("cannot write %s (%s)", absolute, reason)
   end
   local ok, err = true, nil
   if #contents > 0 then
@@ -347,8 +360,18 @@ function winfiles.writeFile(path, contents)
       ok, err = false, string.format("cannot write %s (%s)", absolute, lastError())
     end
   end
-  win.CloseHandle(handle)
-  return ok, err
+  if win.CloseHandle(handle) == 0 then
+    ok, err = false, err or lastError()
+  end
+  -- Replace the directory entry. An existing hard link keeps its other links
+  -- intact, and an interrupted write leaves the previous destination intact.
+  if ok and win.MoveFileExA(tempPathBuffer, setPath(absolute),
+      MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) ~= 0 then
+    return true
+  end
+  err = err or string.format("cannot replace %s (%s)", absolute, lastError())
+  win.DeleteFileA(tempPathBuffer)
+  return false, err
 end
 
 return winfiles

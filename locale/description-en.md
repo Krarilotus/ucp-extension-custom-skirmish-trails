@@ -1,4 +1,7 @@
 # Custom Skirmish Trails
+
+**1.4.1**
+
 This extension enables custom skirmish trails, specified in .csv files.
 
 ## Possibilities
