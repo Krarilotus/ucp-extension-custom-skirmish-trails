@@ -7,15 +7,16 @@ local renderFunc = core.AOBScan("8B 44 24 20 8B 54 24 18 53")
 local placeholderAddress = core.allocate(100)
 core.writeString(placeholderAddress, "[placeholder]")
 
+local LINE_CAPACITY = 1000
 local textLines = {
-  core.allocate(1000, true),
-  core.allocate(1000, true),
-  core.allocate(1000, true),
-  core.allocate(1000, true),
-  core.allocate(1000, true),
-  core.allocate(1000, true),
-  core.allocate(1000, true),
-  core.allocate(1000, true),
+  core.allocate(LINE_CAPACITY, true),
+  core.allocate(LINE_CAPACITY, true),
+  core.allocate(LINE_CAPACITY, true),
+  core.allocate(LINE_CAPACITY, true),
+  core.allocate(LINE_CAPACITY, true),
+  core.allocate(LINE_CAPACITY, true),
+  core.allocate(LINE_CAPACITY, true),
+  core.allocate(LINE_CAPACITY, true),
 }
 
 local function genRenderText(address, xOffset, yOffset)
@@ -151,12 +152,16 @@ return {
     core.insertCode(core.AOBScan("8D A4 24 00 00 00 00 83 FD 01"), 7, codes, nil, 'after')
   end,
   setText = function(line, text)
-    local ttext = modules.textResourceModifier:TransformText(text)
-    core.writeString(textLines[line], ttext)
-    core.writeByte(textLines[line] + string.len(ttext), 0)
+    local address = textLines[line]
+    if address == nil or type(text) ~= "string" then return end
+    local transformed = modules.textResourceModifier:TransformText(text)
+    local bounded = transformed:match("^[^%z]*"):sub(1, LINE_CAPACITY - 1)
+    core.writeString(address, bounded)
+    core.writeByte(address + #bounded, 0)
   end,
   getText = function(line)
-    return core.readString(textLines[line])
+    local address = textLines[line]
+    return address and core.readString(address) or nil
   end,
 }
 

@@ -1,7 +1,7 @@
 -- Writing files where UCP's io.open does not: UCP refuses to write inside ucp/plugins and
 -- ucp/modules, which is where trail csv files usually live. Export and Import therefore write
 -- through Windows' own ANSI functions: the game's kernel32 imports where it has them, the
--- kernel32 export table for the rest. Paths are game-relative ("ucp/plugins/...") or absolute.
+-- kernel32 export table for the rest. Trail paths must resolve inside the game folder.
 
 local winfiles = {}
 
@@ -21,6 +21,8 @@ local GENERIC_WRITE = 0x40000000
 local CREATE_ALWAYS = 2
 local FILE_ATTRIBUTE_NORMAL = 0x80
 local ERROR_ALREADY_EXISTS = 183
+local FILE_ATTRIBUTE_REPARSE_POINT = 0x400
+local ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND = 2, 3
 
 local win = {}
 local pathBuffer, findData, writtenBuffer, gameDirectory
@@ -134,7 +136,7 @@ local function initialize()
     { "CreateDirectoryA", 2 }, { "FindFirstFileA", 2 }, { "FindNextFileA", 2 }, { "FindClose", 1 },
     { "GetModuleFileNameA", 3 }, { "CreateFileA", 7 }, { "WriteFile", 5 }, { "CloseHandle", 1 },
     { "GetLastError", 0 }, { "MultiByteToWideChar", 6 }, { "GetFileAttributesExA", 3 },
-    { "DeleteFileA", 1 },
+    { "DeleteFileA", 1 }, { "GetFileAttributesA", 1 },
   }
   for _, entry in ipairs(functions) do
     local name, argumentCount = entry[1], entry[2]
@@ -151,18 +153,62 @@ local function initialize()
   end
 
   local length = win.GetModuleFileNameA(0, pathBuffer, PATH_BUFFER_SIZE)
-  gameDirectory = core.readString(pathBuffer, length):match("^(.*[/\\])") or ""
+  assert(length > 0 and length < PATH_BUFFER_SIZE, "cannot resolve the game directory")
+  gameDirectory = assert(core.readString(pathBuffer, length):gsub("/", "\\"):match("^(.*\\)"))
   initialized = true
 end
 
----The absolute Windows path of a game-relative path, aliases resolved.
-function winfiles.absolute(path)
+---Resolve a trail path without allowing traversal, device paths or reparse points.
+---Keep a relative spelling for the framework, which also opens paths inside extension ZIP files.
+function winfiles.scopedPath(path)
   initialize()
-  local resolved = ucp.internal.resolveAliasedPath(path):gsub("/", "\\")
-  if resolved:match("^%a:\\") or resolved:match("^\\\\") then
-    return resolved
+  if type(path) ~= "string" or path == "" or path:find("%c") then
+    return nil, "invalid trail path"
   end
-  return gameDirectory .. resolved
+  local resolved = ucp.internal.resolveAliasedPath(path):gsub("/", "\\")
+  if resolved:sub(1, #gameDirectory):lower() == gameDirectory:lower() then
+    resolved = resolved:sub(#gameDirectory + 1)
+  end
+  if resolved:sub(1, 1) == "\\" or resolved:find('[:"<>|?*%c]') then
+    return nil, "trail path must be inside the game folder"
+  end
+  local parts = {}
+  for part in resolved:gmatch("[^\\]+") do
+    if part == ".." then
+      if #parts == 0 then return nil, "trail path leaves the game folder" end
+      parts[#parts] = nil
+    elseif part ~= "." then
+      if part:find("[%. ]$") then return nil, "ambiguous Windows path component" end
+      local stem = (part:match("^[^.]*") or ""):gsub(" +$", ""):upper()
+      if stem == "CON" or stem == "PRN" or stem == "NUL" or stem == "AUX"
+          or stem == "CONIN$" or stem == "CONOUT$" or stem:match("^COM[1-9]$")
+          or stem:match("^LPT[1-9]$") or stem:match("^COM[\185\178\179]$")
+          or stem:match("^LPT[\185\178\179]$") then
+        return nil, "Windows device names cannot be used for trail paths"
+      end
+      parts[#parts + 1] = part
+    end
+  end
+  local absolute = gameDirectory:sub(1, -2)
+  for _, part in ipairs(parts) do
+    absolute = absolute .. "\\" .. part
+    local attributes = win.GetFileAttributesA(setPath(absolute)) & 0xFFFFFFFF
+    if attributes == INVALID_HANDLE then
+      local reason = win.GetLastError()
+      if reason ~= ERROR_FILE_NOT_FOUND and reason ~= ERROR_PATH_NOT_FOUND then
+        return nil, "cannot inspect trail path (Windows error " .. reason .. ")"
+      end
+    elseif attributes & FILE_ATTRIBUTE_REPARSE_POINT ~= 0 then
+      return nil, "trail paths cannot pass through reparse points"
+    end
+  end
+  return #parts == 0 and "." or table.concat(parts, "/"), absolute
+end
+
+local function checkedPath(path)
+  local relative, absolute = winfiles.scopedPath(path)
+  if relative == nil then error(absolute, 2) end
+  return absolute
 end
 
 local function lastError()
@@ -172,7 +218,7 @@ end
 ---Creates the folder `path` (one level). True when it exists afterwards.
 function winfiles.createDirectory(path)
   initialize()
-  local absolute = winfiles.absolute(path)
+  local absolute = checkedPath(path)
   if win.CreateDirectoryA(setPath(absolute), 0) ~= 0 then
     return true
   end
@@ -186,7 +232,8 @@ end
 ---The names of the files (not folders) in the folder `path` that match `pattern` ("*.json").
 function winfiles.listFiles(path, pattern)
   initialize()
-  local absolute = winfiles.absolute(path):gsub("\\$", "")
+  local absolute = checkedPath(path):gsub("\\$", "")
+  assert(pattern == "*.json", "unsupported trail file search")
   local handle = win.FindFirstFileA(setPath(absolute .. "\\" .. pattern), findData) & 0xFFFFFFFF
   local names = {}
   if handle == INVALID_HANDLE then
@@ -231,7 +278,8 @@ end
 ---A new zero-terminated UTF-16 copy of the ANSI path `path` (for GDI+). Free it with core.deallocate.
 function winfiles.widePath(path)
   initialize()
-  local absolute = winfiles.absolute(path)
+  local relative, absolute = winfiles.scopedPath(path)
+  if relative == nil then return nil end
   local characters = win.MultiByteToWideChar(0, 0, setPath(absolute), -1, 0, 0)
   if characters <= 0 then
     return nil
@@ -246,7 +294,7 @@ function winfiles.fileStamp(path)
   initialize()
   local data = core.allocate(36, true) -- WIN32_FILE_ATTRIBUTE_DATA
   local stamp = nil
-  if win.GetFileAttributesExA(setPath(winfiles.absolute(path)), 0, data) ~= 0 then
+  if win.GetFileAttributesExA(setPath(checkedPath(path)), 0, data) ~= 0 then
     stamp = string.format("%u:%u:%u", core.readInteger(data + 32) & 0xFFFFFFFF,
       core.readInteger(data + 20) & 0xFFFFFFFF, core.readInteger(data + 24) & 0xFFFFFFFF)
   end
@@ -259,7 +307,7 @@ function winfiles.fileTime(path)
   initialize()
   local data = core.allocate(36, true)
   local time = nil
-  if win.GetFileAttributesExA(setPath(winfiles.absolute(path)), 0, data) ~= 0 then
+  if win.GetFileAttributesExA(setPath(checkedPath(path)), 0, data) ~= 0 then
     time = (core.readInteger(data + 24) & 0xFFFFFFFF) * 4294967296 + (core.readInteger(data + 20) & 0xFFFFFFFF)
   end
   core.deallocate(data)
@@ -269,7 +317,7 @@ end
 ---Deletes the file `path`. True when it is gone afterwards.
 function winfiles.deleteFile(path)
   initialize()
-  if win.DeleteFileA(setPath(winfiles.absolute(path))) ~= 0 then
+  if win.DeleteFileA(setPath(checkedPath(path))) ~= 0 then
     return true
   end
   return winfiles.fileStamp(path) == nil
@@ -278,7 +326,7 @@ end
 ---Writes `contents` (any bytes) to the file `path`, replacing it.
 function winfiles.writeFile(path, contents)
   initialize()
-  local absolute = winfiles.absolute(path)
+  local absolute = checkedPath(path)
   local handle = win.CreateFileA(setPath(absolute), GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0)
     & 0xFFFFFFFF
   if handle == INVALID_HANDLE then

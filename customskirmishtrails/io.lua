@@ -1,3 +1,4 @@
+local winfiles = require("customskirmishtrails.winfiles")
 ---@diagnostic disable-next-line: undefined-global
 local ucp = ucp or {internal = {
   resolveAliasedPath = function(...) error("resolveAliasedPath not found, ucp lib not found") end,
@@ -353,8 +354,9 @@ local function prefixHeaders(contents)
 end
 
 local function getContents(path)
-  local path = ucp.internal.resolveAliasedPath(path)
-  local handle, err = io.open(path,'rb')
+  local resolved, reason = winfiles.scopedPath(path)
+  if resolved == nil then return nil, reason end
+  local handle, err = io.open(resolved,'rb')
   if handle == nil then error(debug.traceback(err)) end
   local contents = handle:read("*all")
   log(2, string.format("raw csv contents\n%s", contents))

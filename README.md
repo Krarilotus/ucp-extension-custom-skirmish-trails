@@ -29,3 +29,9 @@ Sometimes I get bad reviews of course. Some people don't like it.  Here is a sho
 Reviewer: Krarilotus  
 Module version: 1.2.1
 
+
+### Trail file locations
+
+Place settings, mission CSV and JSON, translations, and image files inside the
+game folder. Existing absolute paths into that folder and UCP aliases are
+accepted. A path through a symbolic link or junction is rejected.
