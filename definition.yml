@@ -2,10 +2,15 @@ name: custom-skirmish-trails
 display-name: Custom Skirmish Trails
 author: gynt, Monsterfish
 type: module
-version: 1.4.0
+version: 1.4.1
 dependencies:
-  textResourceModifier: ">= 0.3.0"
-  gmResourceModifier: ">= 0.3.0"
-  files: ">= 1.2.0"
+  textResourceModifier: '>= 0.3.0'
+  gmResourceModifier: '>= 0.3.0'
+  files: '>= 1.2.0'
+  framework: '>=3.0.7'
+  frontend: '>=1.0.2'
 meta:
   version: 1.0.0
+game:
+- SHC==1.41
+- SHCE==1.41
