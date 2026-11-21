@@ -1,35 +1,45 @@
 options:
 - category:
-  - Custom Skirmish Trails
+  - '{{misc}}'
   name: firstedition
   display: GroupBox
-  header: "First Edition Trail"
-  text: "Customize the first trail. Normally the trail settings file is all you set here: it names the trail's mission data (trail_missions) and language files itself."
+  header: '{{option_1_header}}'
+  text: '{{option_1_text}}'
   hasHeader: true
   children:
-  - name: settings
-    header: "Trail settings file"
-    text: "A .json file with the settings of the first trail: mission data (csv and mission JSON files), language files, title, summary, starting year, button pictures, background, mission positions and AI names (see trail-settings.schema.json). Leave empty to keep the game's own."
-    display: FileInput
-    url: custom-skirmish-trails.firstedition.settings.path
-    contents:
-      generalizeExtensionPaths: true
-      filter: files
-      type: string
-      value: ''
-  - name: csv
-    header: "Csv file (without trail settings file)"
-    text: "The first trail's csv file, for use without a trail settings file. A trail settings file with trail_missions takes its place."
-    display: FileInput
-    url: custom-skirmish-trails.firstedition.csv.path
-    contents:
-      generalizeExtensionPaths: true
-      filter: files
-      type: string
-      value: ''
+  - name: settings_details
+    display: GroupBox
+    hasHeader: true
+    header: '{{option_1_1_header}}'
+    text: '{{option_1_1_text}}'
+    children:
+    - name: settings
+      header: '{{option_1_1_header}}'
+      display: FileInput
+      url: custom-skirmish-trails.firstedition.settings.path
+      contents:
+        generalizeExtensionPaths: true
+        filter: files
+        type: string
+        value: ''
+  - name: csv_details
+    display: GroupBox
+    hasHeader: true
+    header: '{{option_1_2_header}}'
+    text: '{{option_1_2_text}}'
+    children:
+    - name: csv
+      header: '{{option_1_2_header}}'
+      display: FileInput
+      url: custom-skirmish-trails.firstedition.csv.path
+      contents:
+        generalizeExtensionPaths: true
+        filter: files
+        type: string
+        value: ''
   - name: filepaths
-    header: "File paths"
-    text: "See and clear the files set for the first trail"
+    header: '{{option_1_3_header}}'
+    text: '{{option_1_3_text}}'
     hasHeader: true
     display: CustomMenu
     url: custom-skirmish-trails.firstedition
@@ -40,8 +50,8 @@ options:
         css: file-paths.css
         js: file-paths.js
   - name: conversion
-    header: "CSV data"
-    text: "Export the first trail's csv file to one JSON file per mission, or import those JSON files back into the csv file"
+    header: '{{option_1_4_header}}'
+    text: '{{option_1_4_text}}'
     hasHeader: true
     display: CustomMenu
     url: custom-skirmish-trails.firstedition.conversion
@@ -52,36 +62,46 @@ options:
         css: csv-data.css
         js: csv-data.js
 - category:
-  - Custom Skirmish Trails
+  - '{{misc}}'
   name: warchest
   display: GroupBox
-  header: "Warchest Trail"
-  text: "Customize the Warchest trail. Normally the trail settings file is all you set here: it names the trail's mission data (trail_missions) and language files itself."
+  header: '{{option_2_header}}'
+  text: '{{option_2_text}}'
   hasHeader: true
   children:
-  - name: settings
-    header: "Trail settings file"
-    text: "A .json file with the settings of the Warchest trail: mission data (csv and mission JSON files), language files, title, summary, starting year, button pictures, background, mission positions and AI names (see trail-settings.schema.json). Leave empty to keep the game's own."
-    display: FileInput
-    url: custom-skirmish-trails.warchest.settings.path
-    contents:
-      generalizeExtensionPaths: true
-      filter: files
-      type: string
-      value: ''
-  - name: csv
-    header: "Csv file (without trail settings file)"
-    text: "The Warchest trail's csv file, for use without a trail settings file. A trail settings file with trail_missions takes its place."
-    display: FileInput
-    url: custom-skirmish-trails.warchest.csv.path
-    contents:
-      generalizeExtensionPaths: true
-      filter: files
-      type: string
-      value: ''
+  - name: settings_details
+    display: GroupBox
+    hasHeader: true
+    header: '{{option_2_1_header}}'
+    text: '{{option_2_1_text}}'
+    children:
+    - name: settings
+      header: '{{option_2_1_header}}'
+      display: FileInput
+      url: custom-skirmish-trails.warchest.settings.path
+      contents:
+        generalizeExtensionPaths: true
+        filter: files
+        type: string
+        value: ''
+  - name: csv_details
+    display: GroupBox
+    hasHeader: true
+    header: '{{option_2_2_header}}'
+    text: '{{option_2_2_text}}'
+    children:
+    - name: csv
+      header: '{{option_2_2_header}}'
+      display: FileInput
+      url: custom-skirmish-trails.warchest.csv.path
+      contents:
+        generalizeExtensionPaths: true
+        filter: files
+        type: string
+        value: ''
   - name: filepaths
-    header: "File paths"
-    text: "See and clear the files set for the Warchest trail"
+    header: '{{option_2_3_header}}'
+    text: '{{option_2_3_text}}'
     hasHeader: true
     display: CustomMenu
     url: custom-skirmish-trails.warchest
@@ -92,8 +112,8 @@ options:
         css: file-paths.css
         js: file-paths.js
   - name: conversion
-    header: "CSV data"
-    text: "Export the Warchest trail's csv file to one JSON file per mission, or import those JSON files back into the csv file"
+    header: '{{option_2_4_header}}'
+    text: '{{option_2_4_text}}'
     hasHeader: true
     display: CustomMenu
     url: custom-skirmish-trails.warchest.conversion
@@ -104,36 +124,46 @@ options:
         css: csv-data.css
         js: csv-data.js
 - category:
-  - Custom Skirmish Trails
+  - '{{misc}}'
   name: extremetrail
   display: GroupBox
-  header: "Extreme Trail"
-  text: "Customize the Extreme trail. Normally the trail settings file is all you set here: it names the trail's mission data (trail_missions) and language files itself."
+  header: '{{option_3_header}}'
+  text: '{{option_3_text}}'
   hasHeader: true
   children:
-  - name: settings
-    header: "Trail settings file"
-    text: "A .json file with the settings of the Extreme trail: mission data (csv and mission JSON files), language files, title, summary, starting year, button pictures, background, mission positions and AI names (see trail-settings.schema.json). Leave empty to keep the game's own."
-    display: FileInput
-    url: custom-skirmish-trails.extremetrail.settings.path
-    contents:
-      generalizeExtensionPaths: true
-      filter: files
-      type: string
-      value: ''
-  - name: csv
-    header: "Csv file (without trail settings file)"
-    text: "The Extreme trail's csv file, for use without a trail settings file. A trail settings file with trail_missions takes its place."
-    display: FileInput
-    url: custom-skirmish-trails.extremetrail.csv.path
-    contents:
-      generalizeExtensionPaths: true
-      filter: files
-      type: string
-      value: ''
+  - name: settings_details
+    display: GroupBox
+    hasHeader: true
+    header: '{{option_3_1_header}}'
+    text: '{{option_3_1_text}}'
+    children:
+    - name: settings
+      header: '{{option_3_1_header}}'
+      display: FileInput
+      url: custom-skirmish-trails.extremetrail.settings.path
+      contents:
+        generalizeExtensionPaths: true
+        filter: files
+        type: string
+        value: ''
+  - name: csv_details
+    display: GroupBox
+    hasHeader: true
+    header: '{{option_3_2_header}}'
+    text: '{{option_3_2_text}}'
+    children:
+    - name: csv
+      header: '{{option_3_2_header}}'
+      display: FileInput
+      url: custom-skirmish-trails.extremetrail.csv.path
+      contents:
+        generalizeExtensionPaths: true
+        filter: files
+        type: string
+        value: ''
   - name: filepaths
-    header: "File paths"
-    text: "See and clear the files set for the Extreme trail"
+    header: '{{option_3_3_header}}'
+    text: '{{option_3_3_text}}'
     hasHeader: true
     display: CustomMenu
     url: custom-skirmish-trails.extremetrail
@@ -144,8 +174,8 @@ options:
         css: file-paths.css
         js: file-paths.js
   - name: conversion
-    header: "CSV data"
-    text: "Export the Extreme trail's csv file to one JSON file per mission, or import those JSON files back into the csv file"
+    header: '{{option_3_4_header}}'
+    text: '{{option_3_4_text}}'
     hasHeader: true
     display: CustomMenu
     url: custom-skirmish-trails.extremetrail.conversion
@@ -156,14 +186,15 @@ options:
         css: csv-data.css
         js: csv-data.js
 - category:
-  - Developer
-  - Custom Skirmish Trails
+  - '{{misc}}'
   name: strict_format
   hasHeader: false
-  header: "Strict mode: check the trail csv and json files in detail"
-  text: "Logs every problem in the trail csv, mission, language and trail settings files, every trail setting that falls back to the game's own value, and every text a language file lacks. May show error message boxes at game start. Without it, one warning per file with problems."
+  header: '{{option_4_header}}'
+  text: '{{option_4_text}}'
   display: UCP2Switch
   url: custom-skirmish-trails.csv.strict_format
   contents:
     type: boolean
     value: false
+meta:
+  version: 1.0.0
