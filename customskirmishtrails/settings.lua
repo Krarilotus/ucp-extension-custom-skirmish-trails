@@ -3,6 +3,7 @@
 -- missing, empty or invalid falls back to the game's own value, with a warning in ucp3.log.
 
 local patches = require("customskirmishtrails.patches")
+local winfiles = require("customskirmishtrails.winfiles")
 
 local settings = {}
 
@@ -47,7 +48,8 @@ local function info(path, message, ...)
 end
 
 local function readText(path)
-  local resolved = ucp.internal.resolveAliasedPath(path)
+  local resolved, reason = winfiles.scopedPath(path)
+  if resolved == nil then return nil, reason end
   local handle, err = io.open(resolved, "rb")
   if handle == nil then
     return nil, err

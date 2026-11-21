@@ -67,7 +67,11 @@ local function loadImage(path)
     log(WARNING, "custom-skirmish-trails: gmResourceModifier is not active; trail button pictures stay")
     return nil
   end
-  local resolved = ucp.internal.resolveAliasedPath(path)
+  local resolved, reason = winfiles.scopedPath(path)
+  if resolved == nil then
+    log(WARNING, "custom-skirmish-trails: " .. reason)
+    return nil
+  end
   local function load()
     local ok, resource = pcall(function() return gm:LoadResourceFromImage(resolved) end)
     return ok and resource ~= nil and resource >= 0 and resource or nil
