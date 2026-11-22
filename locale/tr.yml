@@ -1,9 +1,9 @@
 option_1_header: İlk Sürüm Seferi (First Edition Trail)
 option_1_text: |-
-  İlk çarpışma seferini özelleştirin. Genellikle burada yalnızca sefer ayar dosyasını belirtmek yeterlidir: seferin görev verilerini (trail_missions) ve dil dosyalarını kendisi tanımlar.
+  İlk çarpışma seferini özelleştirin.
 option_1_1_header: Sefer ayar dosyası
 option_1_1_text: |-
-  İlk seferin ayarlarını içeren bir .json dosyası: görev verileri (CSV ve görev JSON dosyaları), dil dosyaları, başlık, özet, başlangıç yılı, düğme görselleri, arka plan, görev konumları ve yapay zekâ adları (bkz. trail-settings.schema.json). Oyunun kendi değerlerini korumak için boş bırakın.
+  İlk seferin ayar dosyası (.json). Oyunun kendi değerlerini korumak için boş bırakın.
 option_1_2_header: CSV dosyası (sefer ayar dosyası olmadan)
 option_1_2_text: |-
   Sefer ayar dosyası olmadan kullanım için ilk seferin CSV dosyası. trail_missions içeren bir sefer ayar dosyası bunun yerini alır.
@@ -15,10 +15,10 @@ option_1_4_text: |-
   İlk seferin CSV dosyasını görev başına bir JSON dosyasına dışa aktarın veya bu JSON dosyalarını tekrar CSV dosyasına içe aktarın
 option_2_header: Warchest Seferi
 option_2_text: |-
-  Warchest seferini özelleştirin. Genellikle burada yalnızca sefer ayar dosyasını belirtmek yeterlidir: seferin görev verilerini (trail_missions) ve dil dosyalarını kendisi tanımlar.
+  Warchest seferini özelleştirin.
 option_2_1_header: Sefer ayar dosyası
 option_2_1_text: |-
-  Warchest seferinin ayarlarını içeren bir .json dosyası: görev verileri (CSV ve görev JSON dosyaları), dil dosyaları, başlık, özet, başlangıç yılı, düğme görselleri, arka plan, görev konumları ve yapay zekâ adları (bkz. trail-settings.schema.json). Oyunun kendi değerlerini korumak için boş bırakın.
+  Warchest seferinin ayar dosyası (.json). Oyunun kendi değerlerini korumak için boş bırakın.
 option_2_2_header: CSV dosyası (sefer ayar dosyası olmadan)
 option_2_2_text: |-
   Sefer ayar dosyası olmadan kullanım için Warchest seferinin CSV dosyası. trail_missions içeren bir sefer ayar dosyası bunun yerini alır.
@@ -30,10 +30,10 @@ option_2_4_text: |-
   Warchest seferinin CSV dosyasını görev başına bir JSON dosyasına dışa aktarın veya bu JSON dosyalarını tekrar CSV dosyasına içe aktarın
 option_3_header: Extreme Seferi
 option_3_text: |-
-  Extreme seferini özelleştirin. Genellikle burada yalnızca sefer ayar dosyasını belirtmek yeterlidir: seferin görev verilerini (trail_missions) ve dil dosyalarını kendisi tanımlar.
+  Extreme seferini özelleştirin.
 option_3_1_header: Sefer ayar dosyası
 option_3_1_text: |-
-  Extreme seferinin ayarlarını içeren bir .json dosyası: görev verileri (CSV ve görev JSON dosyaları), dil dosyaları, başlık, özet, başlangıç yılı, düğme görselleri, arka plan, görev konumları ve yapay zekâ adları (bkz. trail-settings.schema.json). Oyunun kendi değerlerini korumak için boş bırakın.
+  Extreme seferinin ayar dosyası (.json). Oyunun kendi değerlerini korumak için boş bırakın.
 option_3_2_header: CSV dosyası (sefer ayar dosyası olmadan)
 option_3_2_text: |-
   Sefer ayar dosyası olmadan kullanım için Extreme seferinin CSV dosyası. trail_missions içeren bir sefer ayar dosyası bunun yerini alır.
@@ -45,5 +45,5 @@ option_3_4_text: |-
   Extreme seferinin CSV dosyasını görev başına bir JSON dosyasına dışa aktarın veya bu JSON dosyalarını tekrar CSV dosyasına içe aktarın
 option_4_header: 'Katı mod: sefer CSV ve JSON dosyalarını ayrıntılı denetle'
 option_4_text: |-
-  Sefer CSV, görev, dil ve ayar dosyalarındaki her sorunu, oyunun kendi değerine geri dönen her sefer ayarını ve bir dil dosyasında eksik olan her metni günlüğe kaydeder. Oyun başlangıcında hata pencereleri gösterebilir. Kapalıyken sorunlu dosya başına bir uyarı gösterilir.
+  Sefer dosyalarındaki her sorunu günlüğe kaydeder. Oyun başlangıcında hata pencereleri gösterebilir. Kapalıyken sorunlu dosya başına bir uyarı gösterilir.
 misc: Diğer

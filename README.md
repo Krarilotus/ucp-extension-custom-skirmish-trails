@@ -17,7 +17,7 @@ This tool is recommended to manipulate the csv files https://edit-csv.net/
 11. Mission data as a csv file and/or a folder of mission JSON files (resources/mission.schema.json), kept in step at every start
 12. Language files with only the texts per game language
 
-See `locale/description-en.md` for the details.
+See `docs/trail-files.md` for the details.
 
 ## Support
 Do you like what you are seeing? Consider donating to support my work.

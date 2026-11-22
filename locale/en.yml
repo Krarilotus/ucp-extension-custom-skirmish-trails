@@ -1,10 +1,7 @@
 option_1_header: First Edition Trail
-option_1_text: 'Customize the first trail. Normally the trail settings file is all you set here: it names the trail''s
-  mission data (trail_missions) and language files itself.'
+option_1_text: Customize the first trail.
 option_1_1_header: Trail settings file
-option_1_1_text: 'A .json file with the settings of the first trail: mission data (csv and mission JSON files),
-  language files, title, summary, starting year, button pictures, background, mission positions and AI names (see
-  trail-settings.schema.json). Leave empty to keep the game''s own.'
+option_1_1_text: The first trail's settings file (.json). Leave empty to keep the game's own.
 option_1_2_header: Csv file (without trail settings file)
 option_1_2_text: The first trail's csv file, for use without a trail settings file. A trail settings file with trail_missions
   takes its place.
@@ -14,12 +11,9 @@ option_1_4_header: CSV data
 option_1_4_text: Export the first trail's csv file to one JSON file per mission, or import those JSON files back
   into the csv file
 option_2_header: Warchest Trail
-option_2_text: 'Customize the Warchest trail. Normally the trail settings file is all you set here: it names the
-  trail''s mission data (trail_missions) and language files itself.'
+option_2_text: Customize the Warchest trail.
 option_2_1_header: Trail settings file
-option_2_1_text: 'A .json file with the settings of the Warchest trail: mission data (csv and mission JSON files),
-  language files, title, summary, starting year, button pictures, background, mission positions and AI names (see
-  trail-settings.schema.json). Leave empty to keep the game''s own.'
+option_2_1_text: The Warchest trail's settings file (.json). Leave empty to keep the game's own.
 option_2_2_header: Csv file (without trail settings file)
 option_2_2_text: The Warchest trail's csv file, for use without a trail settings file. A trail settings file with
   trail_missions takes its place.
@@ -29,12 +23,9 @@ option_2_4_header: CSV data
 option_2_4_text: Export the Warchest trail's csv file to one JSON file per mission, or import those JSON files back
   into the csv file
 option_3_header: Extreme Trail
-option_3_text: 'Customize the Extreme trail. Normally the trail settings file is all you set here: it names the
-  trail''s mission data (trail_missions) and language files itself.'
+option_3_text: Customize the Extreme trail.
 option_3_1_header: Trail settings file
-option_3_1_text: 'A .json file with the settings of the Extreme trail: mission data (csv and mission JSON files),
-  language files, title, summary, starting year, button pictures, background, mission positions and AI names (see
-  trail-settings.schema.json). Leave empty to keep the game''s own.'
+option_3_1_text: The Extreme trail's settings file (.json). Leave empty to keep the game's own.
 option_3_2_header: Csv file (without trail settings file)
 option_3_2_text: The Extreme trail's csv file, for use without a trail settings file. A trail settings file with
   trail_missions takes its place.
@@ -44,7 +35,6 @@ option_3_4_header: CSV data
 option_3_4_text: Export the Extreme trail's csv file to one JSON file per mission, or import those JSON files back
   into the csv file
 option_4_header: 'Strict mode: check the trail csv and json files in detail'
-option_4_text: Logs every problem in the trail csv, mission, language and trail settings files, every trail setting
-  that falls back to the game's own value, and every text a language file lacks. May show error message boxes at
-  game start. Without it, one warning per file with problems.
+option_4_text: Logs every problem in the trail files. May show error message boxes at game start. Without it,
+  one warning per file with problems.
 misc: Miscellaneous

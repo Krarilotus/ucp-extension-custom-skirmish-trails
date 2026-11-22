@@ -1,9 +1,9 @@
 option_1_header: 初版遭遇战征程（First Edition Trail）
 option_1_text: |-
-  自定义第一个遭遇战征程。通常只需在此设置征程设置文件：它本身会指定任务数据（trail_missions）和语言文件。
+  自定义第一个遭遇战征程。
 option_1_1_header: 征程设置文件
 option_1_1_text: |-
-  包含第一个征程各项设置的 .json 文件：任务数据（CSV 和任务 JSON 文件）、语言文件、标题、简介、起始年份、按钮图片、背景、任务坐标和 AI 名称（参见 trail-settings.schema.json）。留空以保留游戏默认设置。
+  第一个征程的设置文件（.json）。留空以保留游戏默认设置。
 option_1_2_header: CSV 文件（不使用征程设置文件）
 option_1_2_text: |-
   第一个征程的 CSV 文件，供未使用征程设置文件时使用。若设置了含 trail_missions 的征程设置文件，则会取代此项。
@@ -15,10 +15,10 @@ option_1_4_text: |-
   将第一个征程的 CSV 文件导出为每个任务一个 JSON 文件，或将这些 JSON 文件导回 CSV 文件
 option_2_header: Warchest 征程
 option_2_text: |-
-  自定义 Warchest 征程。通常只需在此设置征程设置文件：它本身会指定任务数据（trail_missions）和语言文件。
+  自定义 Warchest 征程。
 option_2_1_header: 征程设置文件
 option_2_1_text: |-
-  包含 Warchest 征程各项设置的 .json 文件：任务数据（CSV 和任务 JSON 文件）、语言文件、标题、简介、起始年份、按钮图片、背景、任务坐标和 AI 名称（参见 trail-settings.schema.json）。留空以保留游戏默认设置。
+  Warchest 征程的设置文件（.json）。留空以保留游戏默认设置。
 option_2_2_header: CSV 文件（不使用征程设置文件）
 option_2_2_text: |-
   Warchest 征程的 CSV 文件，供未使用征程设置文件时使用。若设置了含 trail_missions 的征程设置文件，则会取代此项。
@@ -30,10 +30,10 @@ option_2_4_text: |-
   将 Warchest 征程的 CSV 文件导出为每个任务一个 JSON 文件，或将这些 JSON 文件导回 CSV 文件
 option_3_header: Extreme 征程
 option_3_text: |-
-  自定义 Extreme 征程。通常只需在此设置征程设置文件：它本身会指定任务数据（trail_missions）和语言文件。
+  自定义 Extreme 征程。
 option_3_1_header: 征程设置文件
 option_3_1_text: |-
-  包含 Extreme 征程各项设置的 .json 文件：任务数据（CSV 和任务 JSON 文件）、语言文件、标题、简介、起始年份、按钮图片、背景、任务坐标和 AI 名称（参见 trail-settings.schema.json）。留空以保留游戏默认设置。
+  Extreme 征程的设置文件（.json）。留空以保留游戏默认设置。
 option_3_2_header: CSV 文件（不使用征程设置文件）
 option_3_2_text: |-
   Extreme 征程的 CSV 文件，供未使用征程设置文件时使用。若设置了含 trail_missions 的征程设置文件，则会取代此项。
@@ -45,5 +45,5 @@ option_3_4_text: |-
   将 Extreme 征程的 CSV 文件导出为每个任务一个 JSON 文件，或将这些 JSON 文件导回 CSV 文件
 option_4_header: '严格模式：详细检查征程的 CSV 和 JSON 文件'
 option_4_text: |-
-  记录征程 CSV、任务、语言和设置文件中的每一处问题、每一项回退到游戏默认值的设置，以及语言文件中缺失的每一段文本。游戏启动时可能会弹出错误提示框。关闭此项时，每个有问题的文件只记录一条警告。
+  记录征程文件中的每一处问题。游戏启动时可能会弹出错误提示框。关闭此项时，每个有问题的文件只记录一条警告。
 misc: 其他

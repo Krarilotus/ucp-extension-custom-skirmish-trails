@@ -1,9 +1,9 @@
 option_1_header: Senda de la Primera Edición
 option_1_text: |-
-  Personaliza la primera senda de escaramuzas. Normalmente basta con indicar aquí el archivo de ajustes de la senda: él mismo define los datos de misiones (trail_missions) y los archivos de idioma.
+  Personaliza la primera senda de escaramuzas.
 option_1_1_header: Archivo de ajustes de la senda
 option_1_1_text: |-
-  Un archivo .json con los ajustes de la primera senda: datos de misiones (archivos CSV y JSON de misión), archivos de idioma, título, resumen, año de inicio, imágenes de botones, fondo, posiciones de misiones y nombres de la IA (véase trail-settings.schema.json). Déjalo vacío para conservar los del juego.
+  El archivo de ajustes de la primera senda (.json). Déjalo vacío para conservar los del juego.
 option_1_2_header: Archivo CSV (sin archivo de ajustes de la senda)
 option_1_2_text: |-
   El archivo CSV de la primera senda para usar sin archivo de ajustes de la senda. Un archivo de ajustes de la senda con trail_missions ocupa su lugar.
@@ -15,10 +15,10 @@ option_1_4_text: |-
   Exportar el archivo CSV de la primera senda a un archivo JSON por misión, o importar esos archivos JSON de vuelta al archivo CSV
 option_2_header: Senda Warchest
 option_2_text: |-
-  Personaliza la senda Warchest. Normalmente basta con indicar aquí el archivo de ajustes de la senda: él mismo define los datos de misiones (trail_missions) y los archivos de idioma.
+  Personaliza la senda Warchest.
 option_2_1_header: Archivo de ajustes de la senda
 option_2_1_text: |-
-  Un archivo .json con los ajustes de la senda Warchest: datos de misiones (archivos CSV y JSON de misión), archivos de idioma, título, resumen, año de inicio, imágenes de botones, fondo, posiciones de misiones y nombres de la IA (véase trail-settings.schema.json). Déjalo vacío para conservar los del juego.
+  El archivo de ajustes de la senda Warchest (.json). Déjalo vacío para conservar los del juego.
 option_2_2_header: Archivo CSV (sin archivo de ajustes de la senda)
 option_2_2_text: |-
   El archivo CSV de la senda Warchest para usar sin archivo de ajustes de la senda. Un archivo de ajustes de la senda con trail_missions ocupa su lugar.
@@ -30,10 +30,10 @@ option_2_4_text: |-
   Exportar el archivo CSV de la senda Warchest a un archivo JSON por misión, o importar esos archivos JSON de vuelta al archivo CSV
 option_3_header: Senda Extreme
 option_3_text: |-
-  Personaliza la senda Extreme. Normalmente basta con indicar aquí el archivo de ajustes de la senda: él mismo define los datos de misiones (trail_missions) y los archivos de idioma.
+  Personaliza la senda Extreme.
 option_3_1_header: Archivo de ajustes de la senda
 option_3_1_text: |-
-  Un archivo .json con los ajustes de la senda Extreme: datos de misiones (archivos CSV y JSON de misión), archivos de idioma, título, resumen, año de inicio, imágenes de botones, fondo, posiciones de misiones y nombres de la IA (véase trail-settings.schema.json). Déjalo vacío para conservar los del juego.
+  El archivo de ajustes de la senda Extreme (.json). Déjalo vacío para conservar los del juego.
 option_3_2_header: Archivo CSV (sin archivo de ajustes de la senda)
 option_3_2_text: |-
   El archivo CSV de la senda Extreme para usar sin archivo de ajustes de la senda. Un archivo de ajustes de la senda con trail_missions ocupa su lugar.
@@ -45,5 +45,5 @@ option_3_4_text: |-
   Exportar el archivo CSV de la senda Extreme a un archivo JSON por misión, o importar esos archivos JSON de vuelta al archivo CSV
 option_4_header: 'Modo estricto: comprobar en detalle los archivos CSV y JSON de las sendas'
 option_4_text: |-
-  Registra cada problema en los archivos CSV, de misión, de idioma y de ajustes de la senda, cada ajuste que recurre al valor propio del juego y cada texto que falta en un archivo de idioma. Puede mostrar cuadros de error al iniciar el juego. Sin él, aparece una sola advertencia por archivo con problemas.
+  Registra cada problema en los archivos de la senda. Puede mostrar cuadros de error al iniciar el juego. Sin él, aparece una sola advertencia por archivo con problemas.
 misc: Varios

@@ -1,9 +1,9 @@
 option_1_header: Piste Première Édition
 option_1_text: |-
-  Personnalise la première piste d'escarmouche. En règle générale, le fichier de paramètres de piste suffit ici : il indique lui-même les données de missions (trail_missions) et les fichiers de langue.
+  Personnalise la première piste d'escarmouche.
 option_1_1_header: Fichier de paramètres de piste
 option_1_1_text: |-
-  Un fichier .json contenant les paramètres de la première piste : données de missions (fichiers CSV et JSON de mission), fichiers de langue, titre, résumé, année de départ, images de boutons, arrière-plan, positions des missions et noms d'IA (voir trail-settings.schema.json). Laissez vide pour conserver les valeurs du jeu.
+  Le fichier de paramètres de la première piste (.json). Laissez vide pour conserver les valeurs du jeu.
 option_1_2_header: Fichier CSV (sans fichier de paramètres de piste)
 option_1_2_text: |-
   Le fichier CSV de la première piste, pour une utilisation sans fichier de paramètres de piste. Un fichier de paramètres de piste avec trail_missions le remplace.
@@ -15,10 +15,10 @@ option_1_4_text: |-
   Exporter le fichier CSV de la première piste en un fichier JSON par mission, ou réimporter ces fichiers JSON dans le fichier CSV
 option_2_header: Piste Warchest
 option_2_text: |-
-  Personnalise la piste Warchest. En règle générale, le fichier de paramètres de piste suffit ici : il indique lui-même les données de missions (trail_missions) et les fichiers de langue.
+  Personnalise la piste Warchest.
 option_2_1_header: Fichier de paramètres de piste
 option_2_1_text: |-
-  Un fichier .json contenant les paramètres de la piste Warchest : données de missions (fichiers CSV et JSON de mission), fichiers de langue, titre, résumé, année de départ, images de boutons, arrière-plan, positions des missions et noms d'IA (voir trail-settings.schema.json). Laissez vide pour conserver les valeurs du jeu.
+  Le fichier de paramètres de la piste Warchest (.json). Laissez vide pour conserver les valeurs du jeu.
 option_2_2_header: Fichier CSV (sans fichier de paramètres de piste)
 option_2_2_text: |-
   Le fichier CSV de la piste Warchest, pour une utilisation sans fichier de paramètres de piste. Un fichier de paramètres de piste avec trail_missions le remplace.
@@ -30,10 +30,10 @@ option_2_4_text: |-
   Exporter le fichier CSV de la piste Warchest en un fichier JSON par mission, ou réimporter ces fichiers JSON dans le fichier CSV
 option_3_header: Piste Extreme
 option_3_text: |-
-  Personnalise la piste Extreme. En règle générale, le fichier de paramètres de piste suffit ici : il indique lui-même les données de missions (trail_missions) et les fichiers de langue.
+  Personnalise la piste Extreme.
 option_3_1_header: Fichier de paramètres de piste
 option_3_1_text: |-
-  Un fichier .json contenant les paramètres de la piste Extreme : données de missions (fichiers CSV et JSON de mission), fichiers de langue, titre, résumé, année de départ, images de boutons, arrière-plan, positions des missions et noms d'IA (voir trail-settings.schema.json). Laissez vide pour conserver les valeurs du jeu.
+  Le fichier de paramètres de la piste Extreme (.json). Laissez vide pour conserver les valeurs du jeu.
 option_3_2_header: Fichier CSV (sans fichier de paramètres de piste)
 option_3_2_text: |-
   Le fichier CSV de la piste Extreme, pour une utilisation sans fichier de paramètres de piste. Un fichier de paramètres de piste avec trail_missions le remplace.
@@ -45,5 +45,5 @@ option_3_4_text: |-
   Exporter le fichier CSV de la piste Extreme en un fichier JSON par mission, ou réimporter ces fichiers JSON dans le fichier CSV
 option_4_header: 'Mode strict : vérifier en détail les fichiers CSV et JSON des pistes'
 option_4_text: |-
-  Consigne chaque problème dans les fichiers CSV, de mission, de langue et de paramètres de piste, chaque paramètre qui revient à la valeur par défaut du jeu, et chaque texte absent d'un fichier de langue. Peut afficher des boîtes d'erreur au démarrage du jeu. Sans cette option, un seul avertissement est affiché par fichier défectueux.
+  Consigne chaque problème dans les fichiers de piste. Peut afficher des boîtes d'erreur au démarrage du jeu. Sans cette option, un seul avertissement est affiché par fichier défectueux.
 misc: Divers

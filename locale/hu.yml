@@ -1,9 +1,9 @@
 option_1_header: Első hadjárat (First Edition)
 option_1_text: |-
-  Az első csetepaté-hadjárat testreszabása. Általában elég itt megadni a hadjárat beállításfájlját: az maga nevezi meg a küldetésadatokat (trail_missions) és a nyelvi fájlokat.
+  Az első csetepaté-hadjárat testreszabása.
 option_1_1_header: Hadjárat beállításfájl
 option_1_1_text: |-
-  Egy .json fájl az első hadjárat beállításaival: küldetésadatok (CSV és küldetés-JSON fájlok), nyelvi fájlok, cím, összefoglaló, kezdő év, gombképek, háttér, küldetéspozíciók és MI-nevek (lásd trail-settings.schema.json). Hagyd üresen a játék alapértelmezett értékeinek megtartásához.
+  Az első hadjárat beállításfájlja (.json). Hagyd üresen a játék alapértelmezett értékeinek megtartásához.
 option_1_2_header: CSV-fájl (hadjárat beállításfájl nélkül)
 option_1_2_text: |-
   Az első hadjárat CSV-fájlja, ha nincs hadjárat beállításfájl. A trail_missions bejegyzést tartalmazó beállításfájl ennek a helyébe lép.
@@ -15,10 +15,10 @@ option_1_4_text: |-
   Az első hadjárat CSV-fájljának exportálása küldetésenként egy JSON-fájlba, vagy ezen JSON-fájlok visszaimportálása a CSV-fájlba
 option_2_header: Warchest hadjárat
 option_2_text: |-
-  A Warchest hadjárat testreszabása. Általában elég itt megadni a hadjárat beállításfájlját: az maga nevezi meg a küldetésadatokat (trail_missions) és a nyelvi fájlokat.
+  A Warchest hadjárat testreszabása.
 option_2_1_header: Hadjárat beállításfájl
 option_2_1_text: |-
-  Egy .json fájl a Warchest hadjárat beállításaival: küldetésadatok (CSV és küldetés-JSON fájlok), nyelvi fájlok, cím, összefoglaló, kezdő év, gombképek, háttér, küldetéspozíciók és MI-nevek (lásd trail-settings.schema.json). Hagyd üresen a játék alapértelmezett értékeinek megtartásához.
+  A Warchest hadjárat beállításfájlja (.json). Hagyd üresen a játék alapértelmezett értékeinek megtartásához.
 option_2_2_header: CSV-fájl (hadjárat beállításfájl nélkül)
 option_2_2_text: |-
   A Warchest hadjárat CSV-fájlja, ha nincs hadjárat beállításfájl. A trail_missions bejegyzést tartalmazó beállításfájl ennek a helyébe lép.
@@ -30,10 +30,10 @@ option_2_4_text: |-
   A Warchest hadjárat CSV-fájljának exportálása küldetésenként egy JSON-fájlba, vagy ezen JSON-fájlok visszaimportálása a CSV-fájlba
 option_3_header: Extreme hadjárat
 option_3_text: |-
-  Az Extreme hadjárat testreszabása. Általában elég itt megadni a hadjárat beállításfájlját: az maga nevezi meg a küldetésadatokat (trail_missions) és a nyelvi fájlokat.
+  Az Extreme hadjárat testreszabása.
 option_3_1_header: Hadjárat beállításfájl
 option_3_1_text: |-
-  Egy .json fájl az Extreme hadjárat beállításaival: küldetésadatok (CSV és küldetés-JSON fájlok), nyelvi fájlok, cím, összefoglaló, kezdő év, gombképek, háttér, küldetéspozíciók és MI-nevek (lásd trail-settings.schema.json). Hagyd üresen a játék alapértelmezett értékeinek megtartásához.
+  Az Extreme hadjárat beállításfájlja (.json). Hagyd üresen a játék alapértelmezett értékeinek megtartásához.
 option_3_2_header: CSV-fájl (hadjárat beállításfájl nélkül)
 option_3_2_text: |-
   Az Extreme hadjárat CSV-fájlja, ha nincs hadjárat beállításfájl. A trail_missions bejegyzést tartalmazó beállításfájl ennek a helyébe lép.
@@ -45,5 +45,5 @@ option_3_4_text: |-
   Az Extreme hadjárat CSV-fájljának exportálása küldetésenként egy JSON-fájlba, vagy ezen JSON-fájlok visszaimportálása a CSV-fájlba
 option_4_header: 'Szigorú mód: a hadjárat CSV- és JSON-fájljainak részletes ellenőrzése'
 option_4_text: |-
-  Naplóz minden hibát a CSV-, küldetés-, nyelvi és hadjárat-beállításfájlokban, minden olyan beállítást, amely a játék alapértelmezésére esik vissza, és minden szöveget, amely hiányzik egy nyelvi fájlból. A játék indításakor hibaablakokat jeleníthet meg. Enélkül fájlonként csak egy figyelmeztetés jelenik meg.
+  Naplóz minden hibát a hadjárat fájljaiban. A játék indításakor hibaablakokat jeleníthet meg. Enélkül fájlonként csak egy figyelmeztetés jelenik meg.
 misc: Egyéb
