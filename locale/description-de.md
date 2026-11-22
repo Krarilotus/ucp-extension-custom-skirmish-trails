@@ -94,7 +94,7 @@ Hier die Liste der Spalten:
 - text_dexcription_line_01 - 08: Verwende `""`, um Text für das Startmenü der Gefechtsmission einzutragen
 - trade_: Verwende z. B. `trade_spear` (Einzahl!), um den Handel mit dieser Ware ein- oder auszuschalten
 
-## Neu in 1.4 (Fork von Monsterfish)
+## Neu in 1.4 (von Monsterfish)
 
 ### Spielernamen und Lord des menschlichen Spielers
 Optionale CSV-Spalten, am besten am Ende eingefügt:
@@ -111,12 +111,12 @@ Jeder Marsch kann eine Marsch-Einstellungsdatei (eine `.json`-Datei, eingestellt
 - `starting_year`: das Jahr, in dem die erste Mission beginnt.
 - `trail_visuals`: `trail_button_idle` und `trail_button_highlighted` (Bilder, z. B. `.png`, für die Marsch-Schaltfläche im Gefechtsmenü) sowie `trail_background` (Hintergrund des Marsch-Bildschirms: eine `.tgx`-Datei oder ein `.png`/`.jpg`/`.bmp`, das das Spiel einmalig in `.tgx` umwandelt und in `ucp/.cache` speichert; die Größe der Spieldatei beibehalten).
 - `trail_mission_positions`: eine Liste von `{ "x": .., "y": .. }`-Punkten auf dem 800×600-Marsch-Bildschirm, einer pro Mission. Ihre Anzahl bestimmt die Missionszahl des Marschs (höchstens 50 für den ersten Marsch, 30 für Warchest und Extreme).
-- `ai_character_mapping`: eigene Namen für die KI-Schlüssel (`"SK_RICHARD": "Alfonso"`). Missionsdateien nutzen sie, und die CSV-Datei darf sie in `player1` bis `player8` verwenden.
+- `ai_character_mapping`: eigene Namen für die KI-Schlüssel (`"SK_RICHARD": "Robert"`). Missionsdateien nutzen sie, und die CSV-Datei darf sie in `player1` bis `player8` verwenden.
 
 Relative Pfade in der Datei beziehen sich auf den Ordner der Datei selbst.
 
 ### Missionsdaten: CSV-Datei und Missionsdateien
-`"trail_missions": { "base_name": "missions/reconquista", "data_mode": "csv" }` benennt sowohl die CSV-Datei (`missions/reconquista.csv`) als auch einen Ordner mit Missionsdateien (`missions/reconquista/reconquista_mission_01.json`, …). Eine Missionsdatei (Format 1, `resources/mission.schema.json`) enthält dieselben Daten wie eine CSV-Zeile, übersichtlich zum Lesen und Bearbeiten gegliedert:
+`"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` benennt sowohl die CSV-Datei (`missions/my_trail.csv`) als auch einen Ordner mit Missionsdateien (`missions/my_trail/my_trail_mission_01.json`, …). Eine Missionsdatei (Format 1, `resources/mission.schema.json`) enthält dieselben Daten wie eine CSV-Zeile, übersichtlich zum Lesen und Bearbeiten gegliedert:
 - `mission_name` und `text_description` (eine Liste der 8 Zeilen) ganz oben;
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; entspricht `fairness` 1–5 in der CSV) und `start_mode` (`normal`, `crusader`, `deathmatch`; entspricht `start_levels` 1–3). Zahlen funktionieren ebenfalls;
 - `players`: ein Eintrag pro Spieler, sodass ihre Anzahl die Spielerzahl der Mission ergibt. `players[0]` ist der menschliche Spieler: darf `lord` und `skip_start_units` enthalten, niemals `ai`. Die übrigen haben stets `ai`, niemals `lord`. Alle besitzen bei Bedarf `name`, `start_position`, `team`, `aiv_type` und `gold`;
@@ -135,7 +135,7 @@ Die Missionsdaten enthalten einen Textbestand, die Standardsprache. Jede weitere
 
 ```json
 {
-  "trail_title": "Die Reconquista",
+  "trail_title": "Der Kreuzzug",
   "trail_summary": "...",
   "missions": {
     "1": { "mission_name": "Die Küste", "text_description_line_01": "...", "player2_name": "..." }
@@ -149,7 +149,7 @@ Missionen werden über ihre Nummer zugeordnet. Ein Text, der in einer Sprachdate
 Das Fenster „Dateipfade“ jedes Marschs listet die dafür gesetzten Dateien auf und löscht sie (das Zurücksetzen der GUI selbst funktioniert nur unmittelbar nach dem Setzen eines Pfads).
 
 ### Strikter Modus
-Entwicklereinstellung: protokolliert jedes Problem in CSV-, Missions-, Sprach- und Einstellungsdateien, jede auf den Spielwert zurückfallende Einstellung und jeden fehlenden Text einer Sprachdatei. Ohne diese Option erscheint eine Warnung pro fehlerhafter Datei.
+Sonstiges: protokolliert jedes Problem in CSV-, Missions-, Sprach- und Einstellungsdateien, jede auf den Spielwert zurückfallende Einstellung und jeden fehlenden Text einer Sprachdatei. Ohne diese Option erscheint eine Warnung pro fehlerhafter Datei.
 
 ### CSV-Daten exportieren und importieren
 Das Fenster „CSV-Daten“ jedes Marschs in der GUI bietet Schaltflächen zum Exportieren und Importieren per Hand (`trail_missions` erledigt das bei jedem Start automatisch). Export schreibt jede CSV-Zeile in eine Missionsdatei; Import setzt die Missionsdateien wieder zur CSV-Datei zusammen. Da die GUI selbst keine Dateien schreiben kann, merkt sich der Klick die Anfrage und das Spiel führt sie beim nächsten Start aus; das Fenster zeigt danach das Ergebnis an.

@@ -94,7 +94,7 @@ Voici la liste des colonnes :
 - text_dexcription_line_01 - 08 : Utilisez `""` pour écrire le texte affiché dans le menu de lancement de la mission d'escarmouche
 - trade_ : Utilisez par ex. `trade_spear` (au singulier !) pour activer ou désactiver le commerce de cette marchandise
 
-## Nouveautés de la 1.4 (fork par Monsterfish)
+## Nouveautés de la 1.4 (par Monsterfish)
 
 ### Noms des joueurs et seigneur du joueur humain
 Colonnes CSV optionnelles, de préférence placées à la fin :
@@ -111,12 +111,12 @@ Chaque piste peut disposer d'un fichier de paramètres de piste (un fichier `.js
 - `starting_year` : l'année de départ de la première mission.
 - `trail_visuals` : `trail_button_idle` et `trail_button_highlighted` (images, par exemple `.png`, pour le bouton de la piste dans le menu d'escarmouche), ainsi que `trail_background` (l'arrière-plan de l'écran de piste : un fichier `.tgx`, ou un `.png`/`.jpg`/`.bmp` que le jeu convertit une fois en `.tgx` et conserve dans `ucp/.cache` ; utilisez les dimensions du fichier du jeu).
 - `trail_mission_positions` : une liste de points `{ "x": .., "y": .. }` sur l'écran de piste 800 × 600, un par mission. Leur nombre définit le nombre de missions de la piste (au maximum 50 pour la première piste, 30 pour Warchest et Extreme).
-- `ai_character_mapping` : vos propres noms pour les clés d'IA (`"SK_RICHARD": "Alfonso"`). Les fichiers de mission les utilisent, et le fichier CSV peut les employer dans `player1` à `player8`.
+- `ai_character_mapping` : vos propres noms pour les clés d'IA (`"SK_RICHARD": "Robert"`). Les fichiers de mission les utilisent, et le fichier CSV peut les employer dans `player1` à `player8`.
 
 Les chemins relatifs dans le fichier sont résolus à partir du dossier de ce fichier.
 
 ### Données de missions : fichier CSV et fichiers de mission
-`"trail_missions": { "base_name": "missions/reconquista", "data_mode": "csv" }` désigne à la fois le fichier CSV (`missions/reconquista.csv`) et un dossier de fichiers de mission (`missions/reconquista/reconquista_mission_01.json`, …). Un fichier de mission (format 1, `resources/mission.schema.json`) contient les mêmes données qu'une ligne CSV, structurées pour être lues et modifiées facilement :
+`"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` désigne à la fois le fichier CSV (`missions/my_trail.csv`) et un dossier de fichiers de mission (`missions/my_trail/my_trail_mission_01.json`, …). Un fichier de mission (format 1, `resources/mission.schema.json`) contient les mêmes données qu'une ligne CSV, structurées pour être lues et modifiées facilement :
 - `mission_name` et `text_description` (une liste des 8 lignes) en haut ;
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large` ; équivalent de `fairness` 1–5 dans le CSV) et `start_mode` (`normal`, `crusader`, `deathmatch` ; équivalent de `start_levels` 1–3). Les nombres fonctionnent aussi ;
 - `players` : une entrée par joueur, leur nombre déterminant le nombre de joueurs de la mission. `players[0]` est le joueur humain : il peut avoir `lord` et `skip_start_units`, jamais `ai`. Les autres ont toujours `ai`, jamais `lord`. Tous peuvent inclure `name`, `start_position`, `team`, `aiv_type` et `gold` selon les besoins ;
@@ -135,7 +135,7 @@ Les données de missions contiennent un jeu de textes, la langue par défaut. Ch
 
 ```json
 {
-  "trail_title": "Die Reconquista",
+  "trail_title": "Der Kreuzzug",
   "trail_summary": "...",
   "missions": {
     "1": { "mission_name": "Die Küste", "text_description_line_01": "...", "player2_name": "..." }
@@ -149,7 +149,7 @@ Les missions sont repérées par leur numéro. Un texte absent d'un fichier de l
 Le panneau « Chemins de fichiers » de chaque piste liste les fichiers définis pour celle-ci et permet de les effacer (la réinitialisation native de l'interface ne fonctionne que juste après avoir défini un chemin).
 
 ### Mode strict
-Paramètres développeur : consigne chaque problème dans les fichiers CSV, de mission, de langue et de paramètres de piste, chaque paramètre qui revient à la valeur par défaut du jeu, et chaque texte absent d'un fichier de langue. Sans cette option, un seul avertissement est affiché par fichier défectueux.
+Divers : consigne chaque problème dans les fichiers CSV, de mission, de langue et de paramètres de piste, chaque paramètre qui revient à la valeur par défaut du jeu, et chaque texte absent d'un fichier de langue. Sans cette option, un seul avertissement est affiché par fichier défectueux.
 
 ### Exporter et importer des données CSV
 Le panneau « Données CSV » de chaque piste dans l'interface propose un bouton Exporter et un bouton Importer pour convertir manuellement (`trail_missions` le fait automatiquement à chaque lancement). Exporter écrit chaque ligne CSV dans un fichier de mission ; Importer rassemble les fichiers de mission dans le fichier CSV. Comme l'interface ne peut pas écrire de fichiers elle-même, un clic enregistre la demande et le jeu l'exécute au prochain démarrage ; le panneau indique ensuite ce qui a été effectué.

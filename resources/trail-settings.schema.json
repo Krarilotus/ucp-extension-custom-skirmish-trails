@@ -1,6 +1,6 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "https://github.com/Monsterfisch/CustomSkirmishTrails/resources/trail-settings.schema.json",
+  "$id": "https://github.com/gynt/ucp-extension-custom-skirmish-trails/resources/trail-settings.schema.json",
   "title": "Custom Skirmish Trails: trail settings",
   "description": "Settings for one skirmish trail as a whole. Every entry is optional; a missing or empty entry keeps the game's own value. Relative file paths are taken from the folder of this file.",
   "type": "object",

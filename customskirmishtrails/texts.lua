@@ -111,7 +111,7 @@ function texts.load(path)
   end
   if problems > 0 and not strict then
     log(WARNING, string.format("custom-skirmish-trails: %d problems in the language file %s; turn on strict mode "
-      .. "(Developer settings) to see them", problems, path))
+      .. "(Miscellaneous) to see them", problems, path))
   end
   return result
 end

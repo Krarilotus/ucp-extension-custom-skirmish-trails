@@ -94,7 +94,7 @@ Az oszlopok listája:
 - text_dexcription_line_01 - 08: Használj `""` idézőjeleket a csetepaté-küldetés indítómenüjében megjelenő szöveghez
 - trade_: Használd pl. a `trade_spear` formát (egyes számban!) az adott áru kereskedelmének be- vagy kikapcsolásához
 
-## Újdonságok az 1.4-ben (Monsterfish fork)
+## Újdonságok az 1.4-ben (Monsterfish munkája)
 
 ### Játékosnevek és az emberi játékos lordja
 Opcionális CSV-oszlopok, célszerűen a végére helyezve:
@@ -111,12 +111,12 @@ Minden hadjárathoz tartozhat egy beállításfájl (egy `.json` fájl, a felül
 - `starting_year`: az évszám, amelyben az első küldetés kezdődik.
 - `trail_visuals`: `trail_button_idle` és `trail_button_highlighted` (képek, például `.png`, a hadjárat gombjához a csetepaté menüben), valamint `trail_background` (a hadjárat-képernyő háttere: `.tgx` fájl, vagy `.png`/`.jpg`/`.bmp`, amelyet a játék egyszer átalakít `.tgx` formátumra és a `ucp/.cache` mappában tárol; használd a játék saját fájljának méretét).
 - `trail_mission_positions`: `{ "x": .., "y": .. }` pontok listája a 800 × 600-as hadjárat-képernyőn, küldetésenként egy. A számuk határozza meg a hadjárat küldetéseinek számát (legfeljebb 50 az első hadjáratnál, 30 a Warchest és Extreme hadjáratnál).
-- `ai_character_mapping`: saját nevek az MI-kulcsokhoz (`"SK_RICHARD": "Alfonso"`). A küldetésfájlok ezeket használják, és a CSV-fájlban is használhatók a `player1`–`player8` oszlopokban.
+- `ai_character_mapping`: saját nevek az MI-kulcsokhoz (`"SK_RICHARD": "Robert"`). A küldetésfájlok ezeket használják, és a CSV-fájlban is használhatók a `player1`–`player8` oszlopokban.
 
 A fájlban szereplő relatív útvonalak a fájl saját mappájához viszonyítva értendők.
 
 ### Küldetésadatok: CSV-fájl és küldetésfájlok
-A `"trail_missions": { "base_name": "missions/reconquista", "data_mode": "csv" }` egyszerre nevezi meg a CSV-fájlt (`missions/reconquista.csv`) és a küldetésfájlok mappáját (`missions/reconquista/reconquista_mission_01.json`, …). Egy küldetésfájl (1-es formátum, `resources/mission.schema.json`) ugyanazokat az adatokat tárolja, mint egy CSV-sor, olvasásra és szerkesztésre áttekinthetően elrendezve:
+A `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` egyszerre nevezi meg a CSV-fájlt (`missions/my_trail.csv`) és a küldetésfájlok mappáját (`missions/my_trail/my_trail_mission_01.json`, …). Egy küldetésfájl (1-es formátum, `resources/mission.schema.json`) ugyanazokat az adatokat tárolja, mint egy CSV-sor, olvasásra és szerkesztésre áttekinthetően elrendezve:
 - `mission_name` és `text_description` (a 8 sor listája) legfelül;
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; a CSV `fairness` 1–5 értéke) és `start_mode` (`normal`, `crusader`, `deathmatch`; a CSV `start_levels` 1–3 értéke). Számok is működnek;
 - `players`: játékosonként egy bejegyzés, így a számuk adja meg a küldetés játékosszámát. A `players[0]` az emberi játékos: lehet benne `lord` és `skip_start_units`, de sosem `ai`. A többiben mindig van `ai`, és sosem `lord`. Mindegyik tartalmazhat `name`, `start_position`, `team`, `aiv_type` és `gold` mezőt igény szerint;
@@ -135,7 +135,7 @@ A küldetésadatok egy szövegkészletet tartalmaznak, az alapértelmezett nyelv
 
 ```json
 {
-  "trail_title": "Die Reconquista",
+  "trail_title": "Der Kreuzzug",
   "trail_summary": "...",
   "missions": {
     "1": { "mission_name": "Die Küste", "text_description_line_01": "...", "player2_name": "..." }
@@ -149,7 +149,7 @@ A küldetéseket a sorszámuk alapján azonosítja. A nyelvi fájlból hiányzó
 Minden hadjárat „Fájlútvonalak” panelje felsorolja a hozzá beállított fájlokat és törli azokat (a felület saját visszaállítása csak közvetlenül egy útvonal beállítása után működik).
 
 ### Szigorú mód
-Fejlesztői beállítások: naplóz minden hibát a CSV-, küldetés-, nyelvi és beállításfájlokban, minden alapértelmezésre visszaeső beállítást, valamint minden nyelvi fájlból hiányzó szöveget. Enélkül fájlonként egy figyelmeztetés jelenik meg.
+Egyéb: naplóz minden hibát a CSV-, küldetés-, nyelvi és beállításfájlokban, minden alapértelmezésre visszaeső beállítást, valamint minden nyelvi fájlból hiányzó szöveget. Enélkül fájlonként egy figyelmeztetés jelenik meg.
 
 ### CSV-adatok exportálása és importálása
 Minden hadjárat „CSV-adatok” paneljén a felületen található egy Export és egy Import gomb kézi átalakításhoz (a `trail_missions` ezt minden induláskor magától elvégzi). Az Export minden CSV-sort egy küldetésfájlba ír, az Import pedig visszaállítja a küldetésfájlokból a CSV-fájlt. Mivel a felület önmagában nem tud fájlokat írni, a gomb rögzíti a kérést, a játék pedig a következő indításkor végrehajtja; a panel ezután megmutatja az eredményt.

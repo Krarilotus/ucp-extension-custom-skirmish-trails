@@ -94,7 +94,7 @@ Here is a list:
 - text_dexcription_line_01 - 08: Use "" to write text displayed in the skirmish misson start menu
 - trade_: Use e.g. trade_spear (single!) to set trading of that good off or on
 
-## New in 1.4 (fork by Monsterfish)
+## New in 1.4 (by Monsterfish)
 
 ### Player names and the human player's lord
 Optional csv columns, best placed at the end:
@@ -111,12 +111,12 @@ Each trail can have a trail settings file (a .json file, set in the GUI) with ev
 - `starting_year`: the year the first mission starts in.
 - `trail_visuals`: `trail_button_idle` and `trail_button_highlighted` (pictures, for example .png, for the trail's button in the skirmish menu), and `trail_background` (the trail screen's background: a .tgx file, or a .png/.jpg/.bmp that the game turns into a .tgx once and keeps in `ucp/.cache`; use the size of the game's own file).
 - `trail_mission_positions`: a list of `{ "x": .., "y": .. }` points on the 800 x 600 trail screen, one per mission. Their number is the trail's number of missions (at most 50 for the first trail, 30 for the Warchest and the Extreme trail).
-- `ai_character_mapping`: your own names for the AI keys (`"SK_RICHARD": "Alfonso"`). Mission files use them, and the csv file may use them in player1 to player8.
+- `ai_character_mapping`: your own names for the AI keys (`"SK_RICHARD": "Robert"`). Mission files use them, and the csv file may use them in player1 to player8.
 
 Relative paths in the file are taken from the file's own folder.
 
 ### Mission data: csv file and mission files
-`"trail_missions": { "base_name": "missions/reconquista", "data_mode": "csv" }` names both the csv file (`missions/reconquista.csv`) and a folder of mission files (`missions/reconquista/reconquista_mission_01.json`, ...). A mission file (format 1, `resources/mission.schema.json`) holds the same data as one csv line, laid out for reading and editing:
+`"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` names both the csv file (`missions/my_trail.csv`) and a folder of mission files (`missions/my_trail/my_trail_mission_01.json`, ...). A mission file (format 1, `resources/mission.schema.json`) holds the same data as one csv line, laid out for reading and editing:
 - `mission_name` and `text_description` (a list of the 8 lines) at the top;
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; the csv's fairness 1-5) and `start_mode` (`normal`, `crusader`, `deathmatch`; the csv's start_levels 1-3). Numbers work too;
 - `players`: one entry per player, so their number is the mission's number of players. `players[0]` is the human player: it may have `lord` and `skip_start_units`, never `ai`. The others always have `ai`, never `lord`. All have `name`, `start_position`, `team`, `aiv_type` and `gold` as needed;
@@ -135,7 +135,7 @@ The mission data holds one set of texts, the default language. Each further lang
 
 ```json
 {
-  "trail_title": "Die Reconquista",
+  "trail_title": "Der Kreuzzug",
   "trail_summary": "...",
   "missions": {
     "1": { "mission_name": "Die Küste", "text_description_line_01": "...", "player2_name": "..." }
@@ -149,7 +149,7 @@ Missions are found by their number. A text a language file does not have shows t
 Each trail's "File paths" panel lists the files set for it and clears them (the GUI's own reset only works right after a path was set).
 
 ### Strict mode
-Developer settings: logs every problem in the csv, mission, language and trail settings files, every trail setting that falls back to the game's own value, and every text a language file lacks. Without it, one warning per file with problems.
+Miscellaneous: logs every problem in the csv, mission, language and trail settings files, every trail setting that falls back to the game's own value, and every text a language file lacks. Without it, one warning per file with problems.
 
 ### Export and Import CSV Data
 Each trail's "CSV data" panel in the GUI has an Export and an Import button, for converting by hand (`trail_missions` does it at every start on its own). Export writes every csv line into a mission file, Import puts the mission files back together into the csv file. The GUI cannot write files itself, so a button records the request and the game carries it out at its next start; the panel then shows what was done.

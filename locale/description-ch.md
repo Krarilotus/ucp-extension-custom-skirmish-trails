@@ -94,7 +94,7 @@
 - text_dexcription_line_01 - 08：使用 `""` 填写遭遇战任务开始菜单中显示的说明文字
 - trade_：例如使用 `trade_spear`（注意单数形式！）来开启或关闭对应物资的交易
 
-## 1.4 新增功能（Monsterfish 分支）
+## 1.4 新增功能（Monsterfish 制作）
 
 ### 玩家名称与人类玩家领主
 可选的 CSV 列，建议放在表格末尾：
@@ -111,12 +111,12 @@
 - `starting_year`：第一关的起始年份。
 - `trail_visuals`：`trail_button_idle` 与 `trail_button_highlighted`（遭遇战菜单中征程按钮的图片，如 `.png`），以及 `trail_background`（征程界面的背景图：`.tgx` 文件，或 `.png`/`.jpg`/`.bmp`，游戏会将其一次性转换为 `.tgx` 并缓存在 `ucp/.cache` 中；请保持与原版文件相同尺寸）。
 - `trail_mission_positions`：800 × 600 征程界面上的 `{ "x": .., "y": .. }` 坐标列表，每个任务一个点。列表长度决定征程的任务总数（初版征程最多 50 关，Warchest 和 Extreme 征程最多 30 关）。
-- `ai_character_mapping`：为 AI 键值定义自定义名称（例如 `"SK_RICHARD": "Alfonso"`）。任务文件会使用这些名称，CSV 文件也可在 `player1` 至 `player8` 列中使用它们。
+- `ai_character_mapping`：为 AI 键值定义自定义名称（例如 `"SK_RICHARD": "Robert"`）。任务文件会使用这些名称，CSV 文件也可在 `player1` 至 `player8` 列中使用它们。
 
 文件中的相对路径均以该文件所在文件夹为基准。
 
 ### 任务数据：CSV 文件与任务文件
-`"trail_missions": { "base_name": "missions/reconquista", "data_mode": "csv" }` 同时指定了 CSV 文件（`missions/reconquista.csv`）和任务文件夹（`missions/reconquista/reconquista_mission_01.json` 等）。每个任务文件（格式 1，`resources/mission.schema.json`）保存与一行 CSV 相同的数据，但结构更便于阅读和编辑：
+`"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` 同时指定了 CSV 文件（`missions/my_trail.csv`）和任务文件夹（`missions/my_trail/my_trail_mission_01.json` 等）。每个任务文件（格式 1，`resources/mission.schema.json`）保存与一行 CSV 相同的数据，但结构更便于阅读和编辑：
 - 顶部为 `mission_name` 和 `text_description`（包含 8 行文本的列表）；
 - `advantage`（`human_large`、`human_small`、`neutral`、`ai_small`、`ai_large`，对应 CSV 的 `fairness` 1–5）和 `start_mode`（`normal`、`crusader`、`deathmatch`，对应 CSV 的 `start_levels` 1–3），也可直接写数字；
 - `players`：每位玩家一项，条目数即任务玩家数。`players[0]` 为人类玩家，可包含 `lord` 和 `skip_start_units`，不可含 `ai`；其余玩家必须含 `ai`，不可含 `lord`。所有玩家均按需包含 `name`、`start_position`、`team`、`aiv_type` 和 `gold`；
@@ -135,7 +135,7 @@
 
 ```json
 {
-  "trail_title": "Die Reconquista",
+  "trail_title": "Der Kreuzzug",
   "trail_summary": "...",
   "missions": {
     "1": { "mission_name": "Die Küste", "text_description_line_01": "...", "player2_name": "..." }
@@ -149,7 +149,7 @@
 每个征程的“文件路径”面板会列出已设置的文件并允许清除（启动器自带的重置功能仅在刚设置完路径时有效）。
 
 ### 严格模式
-开发者选项：记录 CSV、任务、语言和征程设置文件中的每一处问题、每一项回退到游戏默认值的设置，以及语言文件中缺失的每一段文本。关闭此项时，每个有问题的文件仅显示一条警告。
+其他：记录 CSV、任务、语言和征程设置文件中的每一处问题、每一项回退到游戏默认值的设置，以及语言文件中缺失的每一段文本。关闭此项时，每个有问题的文件仅显示一条警告。
 
 ### 导出和导入 CSV 数据
 启动器界面中每个征程的“CSV 数据”面板都提供了“导出”和“导入”按钮，用于手动转换（配置 `trail_missions` 后每次启动会自动处理）。导出会将每行 CSV 写入对应的任务文件，导入则将任务文件重新合并回 CSV 文件。由于启动器界面本身无法直接写文件，点击按钮后会记录请求，待下次启动游戏时执行，随后面板会显示处理结果。

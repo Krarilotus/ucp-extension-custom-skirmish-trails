@@ -1,4 +1,4 @@
-# Custom Skirmish Trails: data structure and localization (answer to 4.8)
+# Custom Skirmish Trails: data structure and localization (design note by Monsterfish)
 
 Status: built in 1.4.0 with the changes of point 5: mission file format 1 (not 2), advantage/start_mode as names, ai and lord exclusive per player, no mission_id (missions are keyed by number), no language csv files, and trail_missions (base_name + data_mode) to keep csv and mission files in step. See locale/description-en.md for the result.
 

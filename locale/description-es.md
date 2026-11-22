@@ -94,7 +94,7 @@ Aquí tienes la lista de columnas:
 - text_dexcription_line_01 - 08: Usa `""` para escribir el texto que se muestra en el menú inicial de la misión de escaramuza
 - trade_: Usa por ejemplo `trade_spear` (¡en singular!) para activar o desactivar el comercio de ese bien
 
-## Novedades en 1.4 (bifurcación de Monsterfish)
+## Novedades en 1.4 (de Monsterfish)
 
 ### Nombres de jugadores y Señor del jugador humano
 Columnas CSV opcionales, mejor situadas al final:
@@ -111,12 +111,12 @@ Cada senda puede tener un archivo de ajustes (un archivo `.json`, configurado en
 - `starting_year`: el año en que comienza la primera misión.
 - `trail_visuals`: `trail_button_idle` y `trail_button_highlighted` (imágenes, por ejemplo `.png`, para el botón de la senda en el menú de escaramuza), y `trail_background` (el fondo de la pantalla de la senda: un archivo `.tgx`, o un `.png`/`.jpg`/`.bmp` que el juego convierte una vez a `.tgx` y guarda en `ucp/.cache`; usa las dimensiones del archivo del juego).
 - `trail_mission_positions`: una lista de puntos `{ "x": .., "y": .. }` en la pantalla de senda de 800 × 600, uno por misión. Su cantidad define el número de misiones de la senda (como máximo 50 para la primera senda y 30 para Warchest y Extreme).
-- `ai_character_mapping`: tus propios nombres para las claves de la IA (`"SK_RICHARD": "Alfonso"`). Los archivos de misión los usan, y el archivo CSV puede usarlos en `player1` a `player8`.
+- `ai_character_mapping`: tus propios nombres para las claves de la IA (`"SK_RICHARD": "Robert"`). Los archivos de misión los usan, y el archivo CSV puede usarlos en `player1` a `player8`.
 
 Las rutas relativas del archivo se resuelven desde la carpeta del propio archivo.
 
 ### Datos de misiones: archivo CSV y archivos de misión
-`"trail_missions": { "base_name": "missions/reconquista", "data_mode": "csv" }` nombra tanto el archivo CSV (`missions/reconquista.csv`) como una carpeta de archivos de misión (`missions/reconquista/reconquista_mission_01.json`, …). Un archivo de misión (formato 1, `resources/mission.schema.json`) contiene los mismos datos que una línea del CSV, organizados para leerse y editarse con facilidad:
+`"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` nombra tanto el archivo CSV (`missions/my_trail.csv`) como una carpeta de archivos de misión (`missions/my_trail/my_trail_mission_01.json`, …). Un archivo de misión (formato 1, `resources/mission.schema.json`) contiene los mismos datos que una línea del CSV, organizados para leerse y editarse con facilidad:
 - `mission_name` y `text_description` (una lista de las 8 líneas) al principio;
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; equivalente a `fairness` 1–5 del CSV) y `start_mode` (`normal`, `crusader`, `deathmatch`; equivalente a `start_levels` 1–3). Los números también sirven;
 - `players`: una entrada por jugador, de modo que su cantidad es el número de jugadores de la misión. `players[0]` es el jugador humano: puede tener `lord` y `skip_start_units`, nunca `ai`. Los demás siempre tienen `ai`, nunca `lord`. Todos pueden llevar `name`, `start_position`, `team`, `aiv_type` y `gold` según haga falta;
@@ -135,7 +135,7 @@ Los datos de misión guardan un conjunto de textos, el idioma predeterminado. Ca
 
 ```json
 {
-  "trail_title": "Die Reconquista",
+  "trail_title": "Der Kreuzzug",
   "trail_summary": "...",
   "missions": {
     "1": { "mission_name": "Die Küste", "text_description_line_01": "...", "player2_name": "..." }
@@ -149,7 +149,7 @@ Las misiones se identifican por su número. Si falta un texto en un archivo de i
 El panel «Rutas de archivos» de cada senda muestra los archivos configurados para ella y permite borrarlos (el restablecimiento propio de la interfaz solo funciona justo después de fijar una ruta).
 
 ### Modo estricto
-Ajustes de desarrollo: registra cada problema en los archivos CSV, de misión, de idioma y de ajustes de la senda, cada ajuste que vuelve al valor propio del juego y cada texto que falta en un archivo de idioma. Sin él, se muestra una única advertencia por archivo con problemas.
+Varios: registra cada problema en los archivos CSV, de misión, de idioma y de ajustes de la senda, cada ajuste que vuelve al valor propio del juego y cada texto que falta en un archivo de idioma. Sin él, se muestra una única advertencia por archivo con problemas.
 
 ### Exportar e importar datos CSV
 El panel «Datos CSV» de cada senda en la interfaz incluye botones de Exportar e Importar para convertir manualmente (`trail_missions` lo hace solo en cada inicio). Exportar escribe cada línea CSV en un archivo de misión; Importar vuelve a unir los archivos de misión en el archivo CSV. Como la interfaz no puede escribir archivos directamente, pulsar un botón guarda la solicitud y el juego la ejecuta en el siguiente inicio; el panel muestra después lo que se hizo.
