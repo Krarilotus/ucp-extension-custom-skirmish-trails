@@ -5,10 +5,12 @@
 --   data_mode "json_folder": the JSON files are the truth; the csv is written from them.
 --   data_mode "automatic":   per mission, whichever was edited last wins.
 --
--- Before JSON files are changed, the folder's mission files are copied into <folder>/.bak (its
--- previous contents are deleted first). Before the csv is changed, it is copied to <csv>.bak.
--- When no file changed since the last start, nothing is read or written: the sizes and times
--- after each sync are kept in ucp/.cache.
+-- Before JSON files are changed, the folder's mission files are copied into <folder>/.bak; older
+-- backups of missions that no longer exist are removed after that copy is complete. Before the
+-- csv is changed, it is copied to <csv>.bak. When a backup cannot be written, the files it
+-- protects stay as they are. When no file changed since the last start, nothing is read or
+-- written: the sizes and times after each sync are kept in ucp/.cache. After any failed write or
+-- delete they are not updated, so the next start tries again.
 
 local winfiles = require("customskirmishtrails.winfiles")
 local settingsModule = require("customskirmishtrails.settings")
@@ -214,22 +216,32 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder)
     end
   end
 
+  -- Any failed write or delete keeps the previous sync state, so the next start tries again.
+  local failed = false
+
   -- the csv
   if newRows ~= nil then
     local newHeader = conversion.columnOrder(csv ~= nil and csv.header or nil, newRows, knownHeaders)
     local text = conversion.csvText(newHeader, newRows, csv ~= nil and csv.newline or "\r\n")
     if csv == nil or text ~= csv.text then
+      local backedUp, backupError = true, nil
       if csv ~= nil then
-        winfiles.writeFile(missions.csv .. ".bak", csv.text)
+        backedUp, backupError = winfiles.writeFile(missions.csv .. ".bak", csv.text)
       end
-      local ok, err = winfiles.writeFile(missions.csv, text)
-      if ok then
-        say("wrote %s from the mission files%s", missions.csv,
-          csv ~= nil and string.format(" (previous version: %s.bak)", missions.csv) or "")
+      if not backedUp then
+        failed = true
+        say("%s is left as it is, because its backup cannot be written: %s", missions.csv, tostring(backupError))
       else
-        say("%s", tostring(err))
+        local ok, err = winfiles.writeFile(missions.csv, text)
+        if ok then
+          say("wrote %s from the mission files%s", missions.csv,
+            csv ~= nil and string.format(" (previous version: %s.bak)", missions.csv) or "")
+          header = newHeader
+        else
+          failed = true
+          say("%s", tostring(err))
+        end
       end
-      header = newHeader
     end
   end
 
@@ -237,35 +249,68 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder)
   if next(writes) ~= nil or #deletes > 0 then
     local made, folderError = winfiles.createDirectory(missions.folder)
     if not made then
+      failed = true
       say("%s", tostring(folderError))
     else
+      -- Back up every current mission file first. Older backups are replaced one by one and
+      -- removed only after the new set is complete, so a failure never leaves no backup.
+      local backedUp = true
       if #files > 0 then
         local backup = missions.folder .. "/.bak"
-        winfiles.createDirectory(backup)
-        for _, old in ipairs(conversion.listMissionFiles(backup, missions.name)) do
-          winfiles.deleteFile(backup .. "/" .. old.name)
-        end
-        for _, file in ipairs(files) do
-          local text = settingsModule.readText(missions.folder .. "/" .. file.name)
-          if text ~= nil then
-            winfiles.writeFile(backup .. "/" .. file.name, text)
+        local backupMade, backupError = winfiles.createDirectory(backup)
+        if not backupMade then
+          backedUp = false
+          say("%s", tostring(backupError))
+        else
+          local current = {}
+          for _, file in ipairs(files) do
+            current[file.name:lower()] = true
+            local text = settingsModule.readText(missions.folder .. "/" .. file.name)
+            local ok, err = false, "cannot read " .. missions.folder .. "/" .. file.name
+            if text ~= nil then
+              ok, err = winfiles.writeFile(backup .. "/" .. file.name, text)
+            end
+            if not ok then
+              backedUp = false
+              say("%s", tostring(err))
+              break
+            end
+          end
+          if backedUp then
+            for _, old in ipairs(conversion.listMissionFiles(backup, missions.name)) do
+              if not current[old.name:lower()] then
+                winfiles.deleteFile(backup .. "/" .. old.name)
+              end
+            end
           end
         end
       end
-      local count = 0
-      for number, text in pairs(writes) do
-        local ok, err = winfiles.writeFile(missions.folder .. "/" .. conversion.missionFileName(missions.name, number), text)
-        if ok then
-          count = count + 1
-        else
-          say("%s", tostring(err))
+      if not backedUp then
+        failed = true
+        say("the mission files in %s are left as they are, because their backup is incomplete", missions.folder)
+      else
+        local count = 0
+        for number, text in pairs(writes) do
+          local ok, err = winfiles.writeFile(missions.folder .. "/" .. conversion.missionFileName(missions.name, number), text)
+          if ok then
+            count = count + 1
+          else
+            failed = true
+            say("%s", tostring(err))
+          end
         end
+        local removed = 0
+        for _, name in ipairs(deletes) do
+          if winfiles.deleteFile(missions.folder .. "/" .. name) then
+            removed = removed + 1
+          else
+            failed = true
+            say("cannot remove %s/%s", missions.folder, name)
+          end
+        end
+        say("wrote %d and removed %d mission files in %s from %s%s", count, removed, missions.folder, missions.csv,
+          #files > 0 and string.format(" (previous versions: %s/.bak)", missions.folder) or "")
       end
-      for _, name in ipairs(deletes) do
-        winfiles.deleteFile(missions.folder .. "/" .. name)
-      end
-      say("wrote %d and removed %d mission files in %s from %s%s", count, #deletes, missions.folder, missions.csv,
-        #files > 0 and string.format(" (previous versions: %s/.bak)", missions.folder) or "")
     end
   end
 
@@ -278,7 +323,11 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder)
     end
   end
 
-  writeState(trailName, missions.mode, currentStamps(missions))
+  if failed then
+    say("the sync of %s is retried at the next start", missions.csv)
+  else
+    writeState(trailName, missions.mode, currentStamps(missions))
+  end
   return messages
 end
 

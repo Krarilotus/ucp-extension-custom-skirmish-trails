@@ -171,7 +171,8 @@ function winfiles.scopedPath(path)
   if type(path) ~= "string" or path == "" or path:find("%c") then
     return nil, "invalid trail path"
   end
-  local resolved = ucp.internal.resolveAliasedPath(path):gsub("/", "\\")
+  -- UCP registers its aliases (ucp/plugins/<name>-*/) with forward slashes
+  local resolved = ucp.internal.resolveAliasedPath((path:gsub("\\", "/"))):gsub("/", "\\")
   if resolved:sub(1, #gameDirectory):lower() == gameDirectory:lower() then
     resolved = resolved:sub(#gameDirectory + 1)
   end
@@ -217,22 +218,39 @@ local function checkedPath(path)
   return absolute
 end
 
+---Like checkedPath, for paths that must name something inside the game folder (not the
+---game folder itself): files to write or delete.
+local function checkedEntryPath(path)
+  local relative, absolute = winfiles.scopedPath(path)
+  if relative == nil then error(absolute, 2) end
+  if relative == "." then error("trail path must name a file inside the game folder", 2) end
+  return absolute
+end
+
 local function lastError()
   return string.format("Windows error %d", win.GetLastError())
 end
 
----Creates the folder `path` (one level). True when it exists afterwards.
+---Creates the folder `path`, with any missing parent folders inside the game folder.
+---True when it exists afterwards.
 function winfiles.createDirectory(path)
   initialize()
-  local absolute = checkedPath(path)
-  if win.CreateDirectoryA(setPath(absolute), 0) ~= 0 then
+  local relative, absolute = winfiles.scopedPath(path)
+  if relative == nil then error(absolute, 2) end
+  if relative == "." then
     return true
   end
-  local err = win.GetLastError()
-  if err == ERROR_ALREADY_EXISTS then
-    return true
+  local current = gameDirectory:sub(1, -2)
+  for part in relative:gmatch("[^/]+") do
+    current = current .. "\\" .. part
+    if win.CreateDirectoryA(setPath(current), 0) == 0 then
+      local err = win.GetLastError()
+      if err ~= ERROR_ALREADY_EXISTS then
+        return false, string.format("cannot create the folder %s (Windows error %d)", current, err)
+      end
+    end
   end
-  return false, string.format("cannot create the folder %s (Windows error %d)", absolute, err)
+  return true
 end
 
 ---The names of the files (not folders) in the folder `path` that match `pattern` ("*.json").
@@ -323,7 +341,7 @@ end
 ---Deletes the file `path`. True when it is gone afterwards.
 function winfiles.deleteFile(path)
   initialize()
-  if win.DeleteFileA(setPath(checkedPath(path))) ~= 0 then
+  if win.DeleteFileA(setPath(checkedEntryPath(path))) ~= 0 then
     return true
   end
   return winfiles.fileStamp(path) == nil
@@ -332,9 +350,11 @@ end
 ---Writes `contents` (any bytes) to the file `path`, replacing it.
 function winfiles.writeFile(path, contents)
   initialize()
-  local absolute = checkedPath(path)
+  local absolute = checkedEntryPath(path)
   local directory = absolute:match("^(.*\\)[^\\]+$")
-  if directory == nil then return false, "invalid output path" end
+  if directory == nil or directory:sub(1, #gameDirectory):lower() ~= gameDirectory:lower() then
+    return false, "invalid output path"
+  end
   if win.GetTempFileNameA(setPath(directory), tempPrefix, 0, tempPathBuffer) == 0 then
     return false, string.format("cannot stage %s (%s)", absolute, lastError())
   end
