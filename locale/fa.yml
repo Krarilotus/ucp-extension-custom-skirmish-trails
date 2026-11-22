@@ -1,50 +1,49 @@
-option_1_1_header: Trail settings file
-option_1_1_text: 'A .json file with the settings of the first trail: mission data (csv and mission JSON files),
-  language files, title, summary, starting year, button pictures, background, mission positions and AI names (see
-  trail-settings.schema.json). Leave empty to keep the game''s own.'
-option_1_2_header: Csv file (without trail settings file)
-option_1_2_text: The first trail's csv file, for use without a trail settings file. A trail settings file with trail_missions
-  takes its place.
-option_1_3_header: File paths
-option_1_3_text: See and clear the files set for the first trail
-option_1_4_header: CSV data
-option_1_4_text: Export the first trail's csv file to one JSON file per mission, or import those JSON files back
-  into the csv file
-option_1_header: First Edition Trail
-option_1_text: 'Customize the first trail. Normally the trail settings file is all you set here: it names the trail''s
-  mission data (trail_missions) and language files itself.'
-option_2_1_header: Trail settings file
-option_2_1_text: 'A .json file with the settings of the Warchest trail: mission data (csv and mission JSON files),
-  language files, title, summary, starting year, button pictures, background, mission positions and AI names (see
-  trail-settings.schema.json). Leave empty to keep the game''s own.'
-option_2_2_header: Csv file (without trail settings file)
-option_2_2_text: The Warchest trail's csv file, for use without a trail settings file. A trail settings file with
-  trail_missions takes its place.
-option_2_3_header: File paths
-option_2_3_text: See and clear the files set for the Warchest trail
-option_2_4_header: CSV data
-option_2_4_text: Export the Warchest trail's csv file to one JSON file per mission, or import those JSON files back
-  into the csv file
-option_2_header: Warchest Trail
-option_2_text: 'Customize the Warchest trail. Normally the trail settings file is all you set here: it names the
-  trail''s mission data (trail_missions) and language files itself.'
-option_3_1_header: Trail settings file
-option_3_1_text: 'A .json file with the settings of the Extreme trail: mission data (csv and mission JSON files),
-  language files, title, summary, starting year, button pictures, background, mission positions and AI names (see
-  trail-settings.schema.json). Leave empty to keep the game''s own.'
-option_3_2_header: Csv file (without trail settings file)
-option_3_2_text: The Extreme trail's csv file, for use without a trail settings file. A trail settings file with
-  trail_missions takes its place.
-option_3_3_header: File paths
-option_3_3_text: See and clear the files set for the Extreme trail
-option_3_4_header: CSV data
-option_3_4_text: Export the Extreme trail's csv file to one JSON file per mission, or import those JSON files back
-  into the csv file
-option_3_header: Extreme Trail
-option_3_text: 'Customize the Extreme trail. Normally the trail settings file is all you set here: it names the
-  trail''s mission data (trail_missions) and language files itself.'
-option_4_header: 'Strict mode: check the trail csv and json files in detail'
-option_4_text: Logs every problem in the trail csv, mission, language and trail settings files, every trail setting
-  that falls back to the game's own value, and every text a language file lacks. May show error message boxes at
-  game start. Without it, one warning per file with problems.
-misc: Miscellaneous
+option_1_header: مسیر نبرد آزاد نسخهٔ اول (First Edition Trail)
+option_1_text: |-
+  مسیر اول نبرد آزاد را سفارشی کنید. معمولاً تنها چیزی که اینجا تنظیم می‌کنید فایل تنظیمات مسیر است: این فایل خود داده‌های مأموریت‌ها (trail_missions) و فایل‌های زبان را مشخص می‌کند.
+option_1_1_header: فایل تنظیمات مسیر
+option_1_1_text: |-
+  یک فایل .json شامل تنظیمات مسیر اول: داده‌های مأموریت‌ها (فایل‌های CSV و JSON مأموریت)، فایل‌های زبان، عنوان، خلاصه، سال شروع، تصاویر دکمه‌ها، پس‌زمینه، موقعیت مأموریت‌ها و نام‌های هوش مصنوعی (بنگرید به trail-settings.schema.json). برای حفظ مقادیر خود بازی خالی بگذارید.
+option_1_2_header: فایل CSV (بدون فایل تنظیمات مسیر)
+option_1_2_text: |-
+  فایل CSV مسیر اول برای استفاده بدون فایل تنظیمات مسیر. اگر فایل تنظیمات مسیر دارای trail_missions باشد، جایگزین این مورد می‌شود.
+option_1_3_header: مسیر فایل‌ها
+option_1_3_text: |-
+  مشاهده و پاک کردن فایل‌های تنظیم‌شده برای مسیر اول
+option_1_4_header: داده‌های CSV
+option_1_4_text: |-
+  خروجی گرفتن از فایل CSV مسیر اول به یک فایل JSON برای هر مأموریت، یا وارد کردن دوبارهٔ آن فایل‌های JSON به فایل CSV
+option_2_header: مسیر Warchest
+option_2_text: |-
+  مسیر Warchest را سفارشی کنید. معمولاً تنها چیزی که اینجا تنظیم می‌کنید فایل تنظیمات مسیر است: این فایل خود داده‌های مأموریت‌ها (trail_missions) و فایل‌های زبان را مشخص می‌کند.
+option_2_1_header: فایل تنظیمات مسیر
+option_2_1_text: |-
+  یک فایل .json شامل تنظیمات مسیر Warchest: داده‌های مأموریت‌ها (فایل‌های CSV و JSON مأموریت)، فایل‌های زبان، عنوان، خلاصه، سال شروع، تصاویر دکمه‌ها، پس‌زمینه، موقعیت مأموریت‌ها و نام‌های هوش مصنوعی (بنگرید به trail-settings.schema.json). برای حفظ مقادیر خود بازی خالی بگذارید.
+option_2_2_header: فایل CSV (بدون فایل تنظیمات مسیر)
+option_2_2_text: |-
+  فایل CSV مسیر Warchest برای استفاده بدون فایل تنظیمات مسیر. اگر فایل تنظیمات مسیر دارای trail_missions باشد، جایگزین این مورد می‌شود.
+option_2_3_header: مسیر فایل‌ها
+option_2_3_text: |-
+  مشاهده و پاک کردن فایل‌های تنظیم‌شده برای مسیر Warchest
+option_2_4_header: داده‌های CSV
+option_2_4_text: |-
+  خروجی گرفتن از فایل CSV مسیر Warchest به یک فایل JSON برای هر مأموریت، یا وارد کردن دوبارهٔ آن فایل‌های JSON به فایل CSV
+option_3_header: مسیر Extreme
+option_3_text: |-
+  مسیر Extreme را سفارشی کنید. معمولاً تنها چیزی که اینجا تنظیم می‌کنید فایل تنظیمات مسیر است: این فایل خود داده‌های مأموریت‌ها (trail_missions) و فایل‌های زبان را مشخص می‌کند.
+option_3_1_header: فایل تنظیمات مسیر
+option_3_1_text: |-
+  یک فایل .json شامل تنظیمات مسیر Extreme: داده‌های مأموریت‌ها (فایل‌های CSV و JSON مأموریت)، فایل‌های زبان، عنوان، خلاصه، سال شروع، تصاویر دکمه‌ها، پس‌زمینه، موقعیت مأموریت‌ها و نام‌های هوش مصنوعی (بنگرید به trail-settings.schema.json). برای حفظ مقادیر خود بازی خالی بگذارید.
+option_3_2_header: فایل CSV (بدون فایل تنظیمات مسیر)
+option_3_2_text: |-
+  فایل CSV مسیر Extreme برای استفاده بدون فایل تنظیمات مسیر. اگر فایل تنظیمات مسیر دارای trail_missions باشد، جایگزین این مورد می‌شود.
+option_3_3_header: مسیر فایل‌ها
+option_3_3_text: |-
+  مشاهده و پاک کردن فایل‌های تنظیم‌شده برای مسیر Extreme
+option_3_4_header: داده‌های CSV
+option_3_4_text: |-
+  خروجی گرفتن از فایل CSV مسیر Extreme به یک فایل JSON برای هر مأموریت، یا وارد کردن دوبارهٔ آن فایل‌های JSON به فایل CSV
+option_4_header: 'حالت سخت‌گیرانه: بررسی دقیق فایل‌های CSV و JSON مسیرها'
+option_4_text: |-
+  هر خطا در فایل‌های CSV، مأموریت، زبان و تنظیمات مسیر، هر تنظیمی که به مقدار خود بازی برگردد و هر متنی که در فایل زبان وجود نداشته باشد را در گزارش ثبت می‌کند. ممکن است هنگام شروع بازی پنجره‌های خطا نمایش دهد. بدون آن، برای هر فایلِ دارای مشکل تنها یک هشدار ثبت می‌شود.
+misc: سایر
