@@ -27,7 +27,7 @@ Sometimes I get bad reviews of course. Some people don't like it.  Here is a sho
 
 #### "A half-baked and inconsequential plugin"
 Reviewer: Krarilotus  
-Module version: 1.4.1
+Module version: 1.2.1
 
 
 ### Trail file locations
