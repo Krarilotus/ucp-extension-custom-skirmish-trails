@@ -117,17 +117,22 @@ end
 ---(.png, .jpg, .bmp, .gif) is turned into a .tgx in ucp/.cache first.
 function backgroundTgx(trailName, path)
   local original = "gfx/" .. BACKGROUND_FILES[trailName]
-  local result, width, height = path, nil, nil
+  local resolved, reason = winfiles.scopedPath(path)
+  if resolved == nil then
+    log(WARNING, string.format("custom-skirmish-trails: the trail background stays: %s: %s", tostring(path), tostring(reason)))
+    return nil
+  end
+  local result, width, height = resolved, nil, nil
   if not path:lower():match("%.tgx$") then
     local ok, made, madeWidth, madeHeight = pcall(tgx.cached, path,
       string.format("ucp/.cache/custom-skirmish-trails-background-%s.tgx", trailName))
-    if not ok then
+    if not ok or made == nil then
       log(WARNING, string.format("custom-skirmish-trails: the trail background stays: %s", tostring(made)))
       return nil
     end
     result, width, height = made, madeWidth, madeHeight
   else
-    width, height = tgx.size(path)
+    width, height = tgx.size(resolved)
   end
   local originalWidth, originalHeight = tgx.size(original)
   if width ~= nil and originalWidth ~= nil and (width ~= originalWidth or height ~= originalHeight) then

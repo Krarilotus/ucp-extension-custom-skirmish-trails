@@ -193,7 +193,7 @@ end
 ---date. Returns the tgx path and its size.
 function tgx.cached(path, cachePath)
   local resolved, reason = winfiles.scopedPath(path)
-  if resolved == nil then return nil, reason end
+  if resolved == nil then error(reason) end
   local stamp = winfiles.fileStamp(resolved)
   if stamp == nil then
     error("the picture " .. path .. " does not exist")

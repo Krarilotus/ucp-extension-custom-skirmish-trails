@@ -361,7 +361,10 @@ return {
           patches.setPositions(trail.name, positions)
         end
         startYears[trail.name] = settings.startingYear
-        visuals.applyVisuals(trail.name, settings.visuals)
+        local okVisuals, visualsError = pcall(visuals.applyVisuals, trail.name, settings.visuals)
+        if not okVisuals then
+          log(WARNING, string.format("custom-skirmish-trails: %s trail visuals: %s", trail.type, tostring(visualsError)))
+        end
         if settings.hasAiMapping then
           interface.setAiAliases(trail.name, settings.aiMapping)
         end

@@ -444,7 +444,10 @@ end
 
 local function readCSV(path, limit)
   log(2, string.format("readCSV: %s", path))
-  local contents = getContents(path)
+  local contents, reason = getContents(path)
+  if contents == nil then
+    return nil, string.format("%s: %s", tostring(path), tostring(reason))
+  end
   local c = csv.openstring(contents, {header = true, })
 
   local entries = {}
