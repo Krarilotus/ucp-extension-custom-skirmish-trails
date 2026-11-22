@@ -279,7 +279,11 @@ function conversion.import(csvPath, aiMapping, knownHeaders)
   local header = conversion.columnOrder(existing and existing.header or nil, missions, knownHeaders)
   local text = conversion.csvText(header, missions, existing and existing.newline or "\r\n")
   if existing ~= nil then
-    winfiles.writeFile(csvPath .. ".bak", existing.text)
+    local backedUp, backupError = winfiles.writeFile(csvPath .. ".bak", existing.text)
+    if not backedUp then
+      return false, string.format("%s stays as it is, because its backup cannot be written: %s", csvPath,
+        tostring(backupError))
+    end
   end
   local done, writeError = winfiles.writeFile(csvPath, text)
   if not done then

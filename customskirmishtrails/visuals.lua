@@ -133,6 +133,11 @@ function backgroundTgx(trailName, path)
     result, width, height = made, madeWidth, madeHeight
   else
     width, height = tgx.size(resolved)
+    if width == nil then
+      log(WARNING, string.format("custom-skirmish-trails: the trail background stays: %s cannot be read as a .tgx file",
+        tostring(path)))
+      return nil
+    end
   end
   local originalWidth, originalHeight = tgx.size(original)
   if width ~= nil and originalWidth ~= nil and (width ~= originalWidth or height ~= originalHeight) then

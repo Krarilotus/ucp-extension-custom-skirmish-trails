@@ -318,8 +318,15 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder)
   if textFolder ~= nil and (newRows ~= nil or next(writes) ~= nil or #deletes > 0) then
     local current = conversion.readTable(missions.csv)
     if current ~= nil then
-      winfiles.createDirectory(textFolder:gsub("[/\\]$", ""))
-      winfiles.writeFile(textFolder .. "_template.json", texts.format(current.missions))
+      -- the template is a help for translators; a failure is reported but doesn't repeat the sync
+      local folderMade, folderError = winfiles.createDirectory((textFolder:gsub("[/\\]$", "")))
+      local written, writeError = false, folderError
+      if folderMade then
+        written, writeError = winfiles.writeFile(textFolder .. "_template.json", texts.format(current.missions))
+      end
+      if not written then
+        say("the translation template %s_template.json is not written: %s", textFolder, tostring(writeError))
+      end
     end
   end
 
