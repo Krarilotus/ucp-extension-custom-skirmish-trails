@@ -44,6 +44,8 @@ local EXTRACTS = {
     .. " C7 05 ? ? ? ? 02 00 00 00 74 61 68 80 38 01 00 53 68 ? ? ? ? 89 1D ? ? ? ?"
     .. " C7 05 I(? ? ? ?) 01 00 00 00 C7 05 I(? ? ? ?) 01 00 00 00 89 1D I(? ? ? ?) A3 I(? ? ? ?)"
     .. " A3 ? ? ? ? 88 1D I(? ? ? ?)",
+  -- the Play a Map list's render, once it has faded out after the launcher: "mov [menuSwitchDelay], 0"
+  listFaded = "C7 05 ? ? ? ? 20 00 00 00 89 1D I(? ? ? ?) 39 1D ? ? ? ? 0F 84",
 }
 
 local ARMY_CUT_JE_OFFSET = 0x0F
@@ -199,6 +201,7 @@ local function resolve()
     inGame = list[4],
     lobbyMission = list[5],
     lobbyMapName = list[6],
+    menuSwitchDelay = found.listFaded[1],
     gameMode = readOperand(branch, 1),
     winnersBranch = branch,
     winners = readOperand(winnersSite, 9),
@@ -281,7 +284,7 @@ end
 ---Starts `trailName` mission `index` (a scenario mission playing `fileName`) as Play a Map does:
 ---the Custom Scenarios handler's Play a Map case (it opens the Play a Map list, which ends a
 ---session), what the list sets when it opens, the session, the chosen map, Normal difficulty, the
----launcher.
+---launcher, and what the list does once it has faded out: the launcher's next screen opens now.
 local function start(trailName, index, entry, fileName)
   local b = bindings
   b.customScenarios(PLAY_A_MAP)
@@ -296,6 +299,7 @@ local function start(trailName, index, entry, fileName)
   writeName(b.chosenMap, fileName)
   core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
   b.launcher(LAUNCH_WITH_BRIEFING)
+  core.writeInteger(b.menuSwitchDelay, 0)
 end
 
 ---The trail and mission of a won scenario: the session's. The game empties the chosen map
