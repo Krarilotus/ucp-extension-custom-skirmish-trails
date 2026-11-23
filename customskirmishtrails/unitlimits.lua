@@ -233,7 +233,7 @@ local function installEntry(b, s)
       0x0F, 0x84, core.relTo("native", -4),                  -- je native
       0x83, 0x3D, core.itob(s.gameMode), GAME_MODE_SCENARIO, -- cmp dword [gameMode], 2
       0x0F, 0x85, core.relTo("native", -4),                  -- jne native
-      0xE8, core.relTo(s.sameMap, -4),                       -- call sameMap
+      core.callTo(s.sameMap),
       0x0F, 0x85, core.relTo("native", -4),                  -- jne native
       core.jmpTo(b.entry + COUNT_OFFSET),
       "native",

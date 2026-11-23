@@ -75,6 +75,15 @@ local function object()
   return { order = {}, values = {} }
 end
 
+---keep_start_army as the CSV reader takes it (a number, 0 or 1): 0 or 1, nil for anything else.
+function missionjson.startArmyFlag(value)
+  local number = tonumber(value)
+  if number == 0 or number == 1 then
+    return number == 1 and 1 or 0
+  end
+  return nil
+end
+
 local function put(o, key, value)
   table.insert(o.order, key)
   o.values[key] = value
@@ -138,8 +147,10 @@ function missionjson.fromRow(header, cells, aiMapping)
     end
   end
   -- keep_start_army: 0 or 1; any other text stays in "extra"
-  if cells.keep_start_army == "0" or cells.keep_start_army == "1" then
-    put(mission, "keep_start_army", { raw = take("keep_start_army") })
+  local keep = missionjson.startArmyFlag(cells.keep_start_army)
+  if keep ~= nil then
+    take("keep_start_army")
+    put(mission, "keep_start_army", { raw = tostring(keep) })
   end
   local lines = { items = {} }
   for line = 1, TEXT_LINES do

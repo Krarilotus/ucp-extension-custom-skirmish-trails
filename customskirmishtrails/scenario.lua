@@ -8,8 +8,9 @@
 --
 -- The trail's Start records which mission it started (the session): its trail, number and map.
 -- The session holds while that map is played in this run of the game, through Restart and loaded
--- saves of it; the next trail Start or opening the Play a Map list ends it. A save of another game
--- on the same map, loaded while the session holds, counts as the session's mission.
+-- saves of it; the next trail Start, opening the Play a Map list or loading a save of another map
+-- ends it. A save of another game on the same map, loaded while the session holds, counts as the
+-- session's mission.
 --
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and
 -- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing, found
@@ -33,6 +34,9 @@ local SCANS = {
   -- it deletes every 4th (Normal) of the human player's military units until about a quarter of
   -- their troop value is gone.
   armyCut = "83 F8 03 0F 85 ? ? ? ? 39 1D ? ? ? ? 0F 84 ? ? ? ? B9 ? ? ? ? E8 ? ? ? ? 85 C0 0F 85",
+  -- the Load Game button's read of the save: "push / mov ecx / mov [callback], / call read"; after
+  -- it (SAVE_LOADED_OFFSET) the chosen map holds the save's map name
+  saveRead = "68 ? ? ? ? B9 ? ? ? ? C7 05 ? ? ? ? ? ? ? ? E8 ? ? ? ? B9 ? ? ? ? 89 2D ? ? ? ? 89 1D ? ? ? ? 89 1D",
 }
 -- with operands
 local EXTRACTS = {
@@ -49,6 +53,7 @@ local EXTRACTS = {
 }
 
 local ARMY_CUT_JE_OFFSET = 0x0F
+local SAVE_LOADED_OFFSET = 0x19
 
 -- In the mission finished screen ("win" in patches.lua): the branch that picks the follow-up by
 -- game mode, and the values the game's trail branch reads.
@@ -143,10 +148,6 @@ function scenario.availability(entry)
   return result.available, result.from
 end
 
-local function readOperand(site, offset)
-  return core.readInteger(site + offset)
-end
-
 ---The address of `aob` (found at `found`), or nil when it is not unique in the game's code.
 local function unique(name, aob, found)
   local ok, reason = patches.isUnique(aob, found)
@@ -185,7 +186,7 @@ local function resolve()
   end
   local list = found.listPrepare
   -- the list and the mission finished screen must name the same game mode and human slot
-  if readOperand(syncModeSite, 1) ~= list[1] or readOperand(winnersSite, 1) ~= list[3] then
+  if core.readInteger(syncModeSite + 1) ~= list[1] or core.readInteger(winnersSite + 1) ~= list[3] then
     log(WARNING, "custom-skirmish-trails: the game's mode and player slot don't match; scenario missions are switched off")
     return nil
   end
@@ -193,6 +194,7 @@ local function resolve()
     launcher = core.exposeCode(found.launcher.address, 1, 0),
     customScenarios = core.exposeCode(found.customScenarios.address, 1, 0),
     listPrepare = list.address,
+    saveLoaded = found.saveRead.address + SAVE_LOADED_OFFSET,
     chosenMap = found.playAMap[1],
     difficulty = found.playAMap[2],
     syncMode = list[1],
@@ -202,9 +204,9 @@ local function resolve()
     lobbyMission = list[5],
     lobbyMapName = list[6],
     menuSwitchDelay = found.listFaded[1],
-    gameMode = readOperand(branch, 1),
+    gameMode = core.readInteger(branch + 1),
     winnersBranch = branch,
-    winners = readOperand(winnersSite, 9),
+    winners = core.readInteger(winnersSite + 9),
     armyCutJe = jeSite,
     armyCutSkip = jeSite + 6 + core.readInteger(jeSite + 2),
   }
@@ -245,7 +247,7 @@ local function installArmyCutSkip(b)
     core.jeTo(skip),
     0x80, 0x3D, core.itob(b.keepArmy), 0x00, -- cmp byte [keepArmy], 0
     0x0F, 0x84, core.relTo("cut", -4),       -- je cut
-    0xE8, core.relTo(b.sameMap, -4),         -- call sameMap
+    core.callTo(b.sameMap),
     0x0F, 0x85, core.relTo("cut", -4),       -- jne cut
     core.jmpTo(skip),
     "cut",
@@ -282,9 +284,10 @@ local function setSession(trailName, index, entry, fileName)
 end
 
 ---Starts `trailName` mission `index` (a scenario mission playing `fileName`) as Play a Map does:
----the Custom Scenarios handler's Play a Map case (it opens the Play a Map list, which ends a
----session), what the list sets when it opens, the session, the chosen map, Normal difficulty, the
----launcher, and what the list does once it has faded out: the launcher's next screen opens now.
+---the Custom Scenarios handler's Play a Map case (it asks for the Play a Map list, which the
+---launcher's next screen replaces), what the list sets when it opens, the session, the chosen
+---map, Normal difficulty, the launcher, and what the list does once it has faded out: the
+---launcher's next screen opens now.
 local function start(trailName, index, entry, fileName)
   local b = bindings
   b.customScenarios(PLAY_A_MAP)
@@ -350,13 +353,21 @@ local function installWinHandover(b)
   end, b.winnersBranch, 5)
 end
 
----Opening the Play a Map list ends the session. The Custom Scenarios handler opens the list
----from inside the trail's Start (Lua), so this is code, not a Lua detour.
+---Opening the Play a Map list ends the session, and so does loading a save of another map.
 local function installSessionEnd(b)
-  core.insertCode(b.listPrepare, 6, {
-    0xC6, 0x05, core.itob(b.trailMap), 0x00, -- mov byte [trailMap], 0
-    0xC6, 0x05, core.itob(b.keepArmy), 0x00, -- mov byte [keepArmy], 0
-    0xC6, 0x05, core.itob(b.cap), 0x00,      -- mov byte [cap], 0
+  local function clear()
+    return {
+      0xC6, 0x05, core.itob(b.trailMap), 0x00, -- mov byte [trailMap], 0
+      0xC6, 0x05, core.itob(b.keepArmy), 0x00, -- mov byte [keepArmy], 0
+      0xC6, 0x05, core.itob(b.cap), 0x00,      -- mov byte [cap], 0
+    }
+  end
+  core.insertCode(b.listPrepare, 6, clear(), nil, "after")
+  core.insertCode(b.saveLoaded, 5, {
+    core.callTo(b.sameMap),
+    0x0F, 0x84, core.relTo("keep", -4),      -- je keep
+    clear(),
+    "keep",
   }, nil, "after")
 end
 
@@ -476,6 +487,7 @@ function scenario.enable(missionsOf)
   local sites = {
     { address = result.armyCutJe, size = 6 },
     { address = result.listPrepare, size = 6 },
+    { address = result.saveLoaded, size = 5 },
     { address = result.winnersBranch, size = 5 },
   }
   local installed, err = pcall(patches.guarded, sites, function()
