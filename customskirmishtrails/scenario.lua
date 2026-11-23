@@ -356,7 +356,7 @@ end
 ---Opening the Play a Map list ends the session.
 local function installSessionEnd(b)
   core.detourCode(function(registers)
-    if active ~= nil or core.readByte(b.trailMap) ~= 0 then
+    if bindings ~= nil and (active ~= nil or core.readByte(b.trailMap) ~= 0) then
       setSession()
     end
     return registers

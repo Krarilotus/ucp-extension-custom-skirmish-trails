@@ -244,18 +244,20 @@ end
 
 ---True when `aob` (as for utils.AOBExtract), found at `found`, matches there and nowhere else in
 ---the game executable's code section; otherwise false and the reason. The framework's scanner may
----look beyond `max`, so hits outside the section don't count.
+---look beyond `max`, so only hits that lie wholly in the section count.
 function patches.isUnique(aob, found)
   local start, finish = codeSectionOf(found)
-  if start == nil then
+  local plain = patches.plain(aob)
+  local _, length = plain:gsub("%S+", "")
+  local last = finish and finish - length -- the last address a whole match can start at
+  if start == nil or found > last then
     return false, "is not in the game's code"
   end
-  local plain = patches.plain(aob)
   local function inSection(hit)
-    return hit ~= nil and hit >= start and hit < finish
+    return hit ~= nil and hit >= start and hit <= last
   end
   local first = core.scanForAOB(plain, start, finish)
-  local again = found + 1 < finish and core.scanForAOB(plain, found + 1, finish) or nil
+  local again = found < last and core.scanForAOB(plain, found + 1, finish) or nil
   if first ~= found or inSection(again) then
     return false, "is found twice"
   end
