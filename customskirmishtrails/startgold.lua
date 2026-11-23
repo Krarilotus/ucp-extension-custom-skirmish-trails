@@ -50,7 +50,6 @@ local t = function()
 end
 
 function startgold.enable()
-  -- AOB for: 0x00456063
   local detourAddress, detourSize = core.AOBScan("89 86 00 E4 FF FF"), 6
   log(VERBOSE, string.format('startgold: enabling hook @ 0x%X', detourAddress))
   -- pointer start gold = ESI - 7618

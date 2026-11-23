@@ -1,15 +1,15 @@
 -- Writing files where UCP's io.open does not: UCP refuses to write inside ucp/plugins and
 -- ucp/modules, which is where trail csv files usually live. Export and Import therefore write
--- through Windows' own ANSI functions: the game's kernel32 imports where it has them, the
--- kernel32 export table for the rest. Trail paths must resolve inside the game folder.
+-- through Windows' own ANSI functions: LoadLibraryA through the game's own import of it, the
+-- rest from kernel32's export table. Trail paths must resolve inside the game folder.
 
 local winfiles = {}
 
-local IMAGE_BASE = 0x400000
 local OFFSET_NT_HEADERS = 0x3C
 local OFFSET_EXPORT_DIRECTORY = 0x78
-local OFFSET_IMPORT_DIRECTORY = 0x80
-local IMPORT_DESCRIPTOR_SIZE = 20
+-- the game loads DDRAW.DLL with "push name / call dword [LoadLibraryA import]" (both 1.41
+-- executables); the capture is the import slot
+local LOAD_LIBRARY_CALL = "51 56 68 ? ? ? ? FF 15 I(? ? ? ?) 8B F0 85 F6"
 local MAX_FORWARDS = 4
 local PATH_BUFFER_SIZE = 1024
 local FIND_DATA_SIZE = 320
@@ -29,32 +29,6 @@ local ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND = 2, 3
 local win = {}
 local pathBuffer, tempPathBuffer, tempPrefix, findData, writtenBuffer, gameDirectory
 local dataBuffer, dataBufferSize = nil, 0
-
-local function findImportSlot(dllName, functionName)
-  local ntHeaders = IMAGE_BASE + core.readInteger(IMAGE_BASE + OFFSET_NT_HEADERS)
-  local descriptor = IMAGE_BASE + core.readInteger(ntHeaders + OFFSET_IMPORT_DIRECTORY)
-  while core.readInteger(descriptor + 12) ~= 0 do
-    local dll = core.readString(IMAGE_BASE + core.readInteger(descriptor + 12))
-    if dll:lower() == dllName:lower() then
-      local lookup = core.readInteger(descriptor)
-      local addresses = core.readInteger(descriptor + 16)
-      if lookup == 0 then
-        lookup = addresses
-      end
-      local index = 0
-      local entry = core.readInteger(IMAGE_BASE + lookup)
-      while entry ~= 0 do
-        if entry > 0 and core.readString(IMAGE_BASE + entry + 2) == functionName then
-          return IMAGE_BASE + addresses + index * 4
-        end
-        index = index + 1
-        entry = core.readInteger(IMAGE_BASE + lookup + index * 4)
-      end
-    end
-    descriptor = descriptor + IMPORT_DESCRIPTOR_SIZE
-  end
-  return nil
-end
 
 ---A cdecl function that forwards its arguments to the stdcall function whose pointer is at `slot`.
 local function stdcallThunk(slot, argumentCount)
@@ -130,9 +104,9 @@ local function initialize()
   findData = core.allocate(FIND_DATA_SIZE, true)
   writtenBuffer = core.allocate(4, true)
 
-  local loadLibrarySlot = findImportSlot("kernel32.dll", "LoadLibraryA")
-  if loadLibrarySlot == nil then
-    error("the game does not import LoadLibraryA")
+  local found, _, loadLibrarySlot = pcall(utils.AOBExtract, LOAD_LIBRARY_CALL)
+  if not found or loadLibrarySlot == nil then
+    error("cannot find the game's LoadLibraryA import")
   end
   win.LoadLibraryA = stdcallThunk(loadLibrarySlot, 1)
   local kernel32 = win.LoadLibraryA(setPath("kernel32.dll")) & 0xFFFFFFFF
@@ -146,15 +120,12 @@ local function initialize()
   }
   for _, entry in ipairs(functions) do
     local name, argumentCount = entry[1], entry[2]
-    local slot = findImportSlot("kernel32.dll", name)
-    if slot == nil then
-      local address = kernel32 ~= 0 and findExport(kernel32, name, 0) or nil
-      if address == nil then
-        error("kernel32 has no " .. name)
-      end
-      slot = core.allocate(4, true)
-      core.writeInteger(slot, address)
+    local address = kernel32 ~= 0 and findExport(kernel32, name, 0) or nil
+    if address == nil then
+      error("kernel32 has no " .. name)
     end
+    local slot = core.allocate(4, true)
+    core.writeInteger(slot, address)
     win[name] = stdcallThunk(slot, argumentCount)
   end
 
