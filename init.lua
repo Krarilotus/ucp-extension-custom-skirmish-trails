@@ -65,7 +65,7 @@ local function insertPostSkirmishSetupDetour()
     if trailName == nil then error(string.format("invalid trail: %s", trail)) end
 
     log(2, string.format("trail: %s", trailName))
-
+    
     local missions = REGISTRY[trailName]
     if missions == nil then
       log(2, string.format("No custom missions registered for trail name: %s", trailName))
@@ -73,7 +73,7 @@ local function insertPostSkirmishSetupDetour()
     end
 
     log(2, string.format("Committing extra parameters for %s mission: %s", trailName, mission))
-
+    
     local entry = missions[mission]
     if entry == nil then
       log(-1, string.format("skirmish trail (%s) entry is unexpectedly nil: %s", trailName, mission))
@@ -97,7 +97,7 @@ local function insertPostSkirmishSetupDetour()
     end
 
     log(2, string.format("Committing start goods parameters for %s mission: %s", trailName, mission))
-
+    
     local entry = missions[mission]
     if entry == nil then
       log(-1, string.format("skirmish trail (%s) entry is unexpectedly nil: %s", trailName, mission))
@@ -138,7 +138,7 @@ local function applyTrail(trailName, path, missions, limit, languageTexts)
       end
     end
   end
-
+  
   local f = io.open(string.format("ucp/.cache/custom-skirmish-trails-config-%s.yml", trailName), 'w')
   if f ~= nil then
     f:write(yaml.dump(result))
@@ -146,7 +146,7 @@ local function applyTrail(trailName, path, missions, limit, languageTexts)
   end
 
   REGISTRY[trailName] = result
-
+  
   for index, entry in pairs(REGISTRY[trailName]) do
     interface.commitEntry(missions, index, entry, trailName)
   end
@@ -172,11 +172,11 @@ local function detourSwitchToMenu()
         patches.applyLord(nil)
         return registers
       end
-
+      
       interface.commitTextDescription(scenario.briefingEntry(entry, LOCKED_TEXTS[trailName]))
       interface.commitStartGoldDisplay(entry)
       patches.applyLord(entry)
-
+      
     else
       log(2, "detourSwitchMenu: no text description to set")
     end
@@ -500,13 +500,13 @@ return {
     --   local entry = REGISTRY.extremeTrail[mission]
     --   -- todo
     -- end, core.AOBScan("83 C2 51 52", 9))
-
+    
     log(2, "enable description hijack")
     description.enable()
     tradeability.enable()
     producibility.enable()
     startgold.enable()
-
+    
     detourSwitchToMenu()
     hookPlayerNaming()
     scenario.enable(function(trailName) return REGISTRY[trailName] end)
@@ -519,7 +519,7 @@ return {
     if progressAddr == nil then
       error(string.format("no such trail: %s", trail))
     end
-
+    
     return core.readInteger(progressAddr)
   end,
   setTrailProgress = function(self, trail, progress)
@@ -528,7 +528,7 @@ return {
     if progressAddr == nil then
       error(string.format("no such trail: %s", trail))
     end
-
+    
     core.writeInteger(progressAddr, progress)
   end,
   ---A plugin gives mission `mission` (1, 2, ...) of a trail ("First", "Warchest" or "Extreme")

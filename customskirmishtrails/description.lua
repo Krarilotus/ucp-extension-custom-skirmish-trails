@@ -74,5 +74,3 @@ return {
     return address and core.readString(address) or nil
   end,
 }
-
-

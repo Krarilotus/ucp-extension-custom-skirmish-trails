@@ -4,11 +4,11 @@ author: gynt, Monsterfish
 type: module
 version: 1.5.0
 dependencies:
-  textResourceModifier: '>= 0.3.0'
-  gmResourceModifier: '>= 0.2.0'
-  files: '>= 1.2.0'
-  framework: '>=3.0.7'
-  frontend: '>=1.0.2'
+  textResourceModifier: ">= 0.3.0" 
+  gmResourceModifier: ">= 0.2.0"
+  files: ">= 1.2.0"
+  framework: ">=3.0.7"
+  frontend: ">=1.0.2"
 meta:
   version: 1.0.0
 game:
