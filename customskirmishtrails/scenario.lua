@@ -9,7 +9,7 @@
 -- The trail's Start records which mission it started (the session): its trail, number and map.
 -- The session holds while that map is played in this run of the game, through Restart and loaded
 -- saves of it; the next trail Start, opening the Play a Map list or loading a save of another map
--- ends it. A save of another game on the same map, loaded while the session holds, counts as the
+-- (or one that names no map) ends it. A save of another game on the same map, loaded while the session holds, counts as the
 -- session's mission.
 --
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and

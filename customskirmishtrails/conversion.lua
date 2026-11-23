@@ -254,7 +254,7 @@ function conversion.export(csvPath, aiMapping)
   end
   for index, cells in ipairs(csv.missions) do
     local keep = cells.keep_start_army or ""
-    if keep ~= "" and missionjson.startArmyFlag(keep) == nil then
+    if not keep:match("^%s*$") and missionjson.startArmyFlag(keep) == nil then
       log(WARNING, string.format("custom-skirmish-trails: %s mission %d: keep_start_army '%s' is not 0 or 1; "
         .. "it is kept under \"extra\"", csvPath, index, keep))
     end
