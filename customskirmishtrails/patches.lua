@@ -239,7 +239,7 @@ end
 
 ---`aob` (as for utils.AOBExtract) without its capture marks, as core.scanForAOB and matches take it.
 function patches.plain(aob)
-  return (aob:gsub("I%(", ""):gsub("%)", ""))
+  return (aob:gsub("[I@]%(", ""):gsub("%)", ""))
 end
 
 ---True when `aob` (as for utils.AOBExtract), found at `found`, matches there and nowhere else in

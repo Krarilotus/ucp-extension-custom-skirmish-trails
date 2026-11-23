@@ -34,10 +34,10 @@ local SCANS = {
   -- it deletes every 4th (Normal) of the human player's military units until about a quarter of
   -- their troop value is gone.
   armyCut = "83 F8 03 0F 85 ? ? ? ? 39 1D ? ? ? ? 0F 84 ? ? ? ? B9 ? ? ? ? E8 ? ? ? ? 85 C0 0F 85",
-  -- the Load Game button's read of the save: "push / mov ecx / mov [callback], / call read"; after
-  -- it (SAVE_LOADED_OFFSET) the chosen map holds the save's map name
   -- the Play a Map list's DoEveryFrame
   listFrame = "81 EC F8 03 00 00 A1 ? ? ? ? 33 C4 89 84 24 F4 03 00 00 A1 ? ? ? ? 2B 05 ? ? ? ? 53 99 55 2B C2 56",
+  -- the Load Game button's read of the save: "push / mov ecx / mov [callback], / call read"; after
+  -- it (SAVE_LOADED_OFFSET) the chosen map holds the save's map name
   saveRead = "68 ? ? ? ? B9 ? ? ? ? C7 05 ? ? ? ? ? ? ? ? E8 ? ? ? ? B9 ? ? ? ? 89 2D ? ? ? ? 89 1D ? ? ? ? 89 1D",
 }
 -- with operands
@@ -54,12 +54,14 @@ local EXTRACTS = {
   -- [menuSwitchDelay], 0", then "cmp [reparse], 0": on its first frame the list reads the maps,
   -- selects the chosen map's row and empties the chosen map
   listFaded = "C7 05 ? ? ? ? 20 00 00 00 89 1D I(? ? ? ?) 39 1D I(? ? ? ?) 0F 84",
+  -- Restart of a Play a Map game: "mov [currentMenuView], 0x31 / call ResetSomeValues (cdecl, no
+  -- arguments)", then the launcher with 1
+  restart = "C7 05 I(? ? ? ?) 31 00 00 00 @(E8 ? ? ? ?) 0F B7 05",
 }
 
 local ARMY_CUT_JE_OFFSET = 0x0F
--- GameCore: menuSwitchDelay (+0x04), then menuRenderMoment, currentMenuViewType (+0x0C)
-local CURRENT_VIEW_AFTER_DELAY = 8
 local TRAIL_BRIEFING_VIEW = 0x38 -- the trail's mission briefing (CrusadeMissionIntro)
+local RESTART_VIEW = 0x31
 local SAVE_LOADED_OFFSET = 0x19
 
 -- In the mission finished screen ("win" in patches.lua): the branch that picks the follow-up by
@@ -73,6 +75,7 @@ local GAME_MODE_SKIRMISH = 3
 local SYNC_MODE_SKIRMISH = 99
 local PLAY_A_MAP = 4
 local LAUNCH_WITH_BRIEFING = 2
+local LAUNCH_RESTART = 1
 local DIFFICULTY_NORMAL = 1
 local MAX_PLAYERS = 8
 -- The game resolves "maps\<name>.map" and "<Documents>\Stronghold Crusader\Maps\<name>.map"
@@ -207,7 +210,8 @@ local function resolve()
     syncMode = list[1],
     humanSlot = list[2],
     menuSwitchDelay = found.listFaded[1],
-    currentView = found.listFaded[1] + CURRENT_VIEW_AFTER_DELAY,
+    currentView = found.restart[1],
+    resetGame = core.exposeCode(found.restart[2], 0, 0),
     listReparse = found.listFaded[2],
     gameMode = core.readInteger(branch + 1),
     winnersBranch = branch,
@@ -300,17 +304,18 @@ local function selectTrailMission(trailName, mission)
   core.writeInteger(memory.IS_SKIRMISH_TRAIL, 1)
 end
 
----Launches `mission` as the Play a Map list's Start does: the session, the chosen map, Normal
----difficulty, the launcher; its next screen opens at once. A map saved from a skirmish game keeps
----the skirmish mode and its rules (for example, winning when every enemy lord is dead); the game
----then takes it for the trail mission, so Restart starts it again from the trail and the troop
----limit reads the mission.
-local function launch(b, mission)
+---Launches `mission` as the Play a Map list's Start (`how` LAUNCH_WITH_BRIEFING) or Restart
+---(LAUNCH_RESTART) does: the session, the chosen map, Normal difficulty, the launcher; its next
+---screen opens at once. A map saved from a skirmish game keeps the skirmish mode and its rules
+---(for example, winning when every enemy lord is dead); the game then takes it for the trail
+---mission, as for a skirmish mission: Restart starts it again from the trail, and the troop limit,
+---a win and its saves go by the game's trail state.
+local function launch(b, mission, how)
   setSession(mission.trailName, mission.index, mission.entry, mission.fileName)
   core.writeInteger(memory.IS_SKIRMISH_TRAIL, 0)
   writeName(b.chosenMap, mission.fileName)
   core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
-  b.launcher(LAUNCH_WITH_BRIEFING)
+  b.launcher(how)
   if core.readInteger(b.syncMode) == SYNC_MODE_SKIRMISH then
     selectTrailMission(mission.trailName, mission.index)
   end
@@ -323,12 +328,14 @@ local pending = nil
 ---Starts `trailName` mission `index` (a scenario mission playing `fileName`) as Play a Map does.
 ---From the trail's briefing, which loads its own mission every frame until it closes, the Custom
 ---Scenarios handler's Play a Map case opens the Play a Map list, whose first frame launches it.
----Restart in the game launches it at once.
+---Restart in the game launches it as Play a Map's Restart does.
 local function start(trailName, index, entry, fileName)
   local b = bindings
   local mission = { trailName = trailName, index = index, entry = entry, fileName = fileName }
   if core.readInteger(b.currentView) ~= TRAIL_BRIEFING_VIEW then
-    launch(b, mission)
+    core.writeInteger(b.currentView, RESTART_VIEW)
+    b.resetGame()
+    launch(b, mission, LAUNCH_RESTART)
     return
   end
   b.customScenarios(PLAY_A_MAP)
@@ -345,9 +352,10 @@ local function installListStart(b)
       return registers
     end
     pending = nil
-    local ok, err = pcall(launch, b, mission)
-    core.writeInteger(b.listReparse, 0)
-    if not ok then
+    local ok, err = pcall(launch, b, mission, LAUNCH_WITH_BRIEFING)
+    if ok then
+      core.writeInteger(b.listReparse, 0)
+    else
       log(WARNING, "custom-skirmish-trails: starting a scenario mission failed: " .. tostring(err))
       setSession()
     end
@@ -358,6 +366,18 @@ end
 ---The trail and mission of a won scenario: the session's. A chosen map name must be the
 ---session's map (the Play a Map list empties it when it selects a map).
 local function wonMission()
+  if core.readInteger(bindings.syncMode) == SYNC_MODE_SKIRMISH then
+    -- a map saved from a skirmish game: the trail mission the game's trail state names, when it
+    -- is a scenario mission playing the chosen map
+    local ok, isTrail, _, trailName, mission = pcall(memory.fetchCurrentTrail)
+    local missions = ok and isTrail and trailOf(trailName) or nil
+    local entry = missions and missions[mission] or nil
+    if entry == nil or not scenario.isScenario(entry)
+        or scenario.mapFileName(entry.map_name) ~= core.readString(bindings.chosenMap) then
+      return nil
+    end
+    return trailName, mission
+  end
   local current = session()
   if current == nil then
     return nil
@@ -398,18 +418,16 @@ end
 
 ---Opening the Play a Map list ends the session, and so does loading a save of another map.
 local function installSessionEnd(b)
-  local function clear()
-    return {
-      0xC6, 0x05, core.itob(b.trailMap), 0x00, -- mov byte [trailMap], 0
-      0xC6, 0x05, core.itob(b.keepArmy), 0x00, -- mov byte [keepArmy], 0
-      0xC6, 0x05, core.itob(b.cap), 0x00,      -- mov byte [cap], 0
-    }
-  end
-  core.insertCode(b.listPrepare, 6, clear(), nil, "after")
+  local clear = {
+    0xC6, 0x05, core.itob(b.trailMap), 0x00, -- mov byte [trailMap], 0
+    0xC6, 0x05, core.itob(b.keepArmy), 0x00, -- mov byte [keepArmy], 0
+    0xC6, 0x05, core.itob(b.cap), 0x00,      -- mov byte [cap], 0
+  }
+  core.insertCode(b.listPrepare, 6, { clear }, nil, "after")
   core.insertCode(b.saveLoaded, 5, {
     core.callTo(b.sameMap),
     0x0F, 0x84, core.relTo("keep", -4),      -- je keep
-    clear(),
+    clear,
     "keep",
   }, nil, "after")
 end
