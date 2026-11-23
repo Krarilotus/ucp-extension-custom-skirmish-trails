@@ -3,7 +3,7 @@
 -- the way Custom Scenarios -> Play a Map starts a map, so the map's events, goals, invasions,
 -- placed units and AI lords run as they do from Play a Map; an Invasion map opens the game's own
 -- briefing. keep_start_army skips Play a Map's starting-army cut for one mission. A win of the
--- trail's selected mission is handed to the game's own trail code on the mission finished
+-- scenario the trail started is handed to the game's own trail code on the mission finished
 -- screen, which advances the trail and returns to the trail map.
 --
 -- The trail's Start records which mission it started (the session): its trail, number and map.
@@ -298,37 +298,18 @@ local function start(trailName, index, entry, fileName)
   b.launcher(LAUNCH_WITH_BRIEFING)
 end
 
----The trail and mission of a won scenario: the session's mission while its map is played;
----otherwise (a save loaded in another run of the game) the trail mission that is selected in its
----trail and plays the map the game keeps for Restart, which is also in saved games. The current
----trail is asked first.
+---The trail and mission of a won scenario: the session's. The game empties the chosen map
+---before the mission finished screen; a name still there must be the session's map.
 local function wonMission()
-  local chosen = core.readString(bindings.chosenMap) or ""
-  if chosen == "" then
+  local current = session()
+  if current == nil then
     return nil
   end
-  local current = session()
-  if current ~= nil and current.fileName == chosen then
-    return current.trailName, current.index
+  local chosen = core.readString(bindings.chosenMap) or ""
+  if chosen ~= "" and chosen ~= current.fileName then
+    return nil
   end
-  chosen = asciiLower(chosen)
-  local selected = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
-  local order = { selected }
-  for _, name in pairs(memory.TRAIL_TYPES) do
-    if name ~= selected then table.insert(order, name) end
-  end
-  for _, trailName in ipairs(order) do
-    local missions = trailOf(trailName)
-    if missions ~= nil then
-      local progress = core.readInteger(memory.TRAIL_PROGRESS_ADDRESSES[trailName])
-      local entry = missions[progress + 1]
-      local fileName = scenario.isScenario(entry) and scenario.mapFileName(entry.map_name) or nil
-      if fileName ~= nil and asciiLower(fileName) == chosen then
-        return trailName, progress + 1
-      end
-    end
-  end
-  return nil
+  return current.trailName, current.index
 end
 
 local TRAIL_INDEX = {}
