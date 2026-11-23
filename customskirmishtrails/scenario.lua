@@ -168,12 +168,12 @@ local function resolve()
     found[name] = { address = address }
   end
   for name, aob in pairs(EXTRACTS) do
-    local ok, address, a, b, c, d, e, f = pcall(utils.AOBExtract, aob)
+    local ok, address, a, b = pcall(utils.AOBExtract, aob)
     if not ok or address == nil or unique(name, aob, address) == nil then
       log(WARNING, string.format("custom-skirmish-trails: could not bind %s; scenario missions are switched off", name))
       return nil
     end
-    found[name] = { address = address, a, b, c, d, e, f }
+    found[name] = { address = address, a, b }
   end
   local branch = patches.siteAddress(WIN_BRANCH_SITE, "the mission finished screen")
   local syncModeSite = patches.siteAddress(WIN_SYNC_MODE_SITE, "the mission finished screen")
