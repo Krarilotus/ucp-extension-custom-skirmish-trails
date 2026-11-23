@@ -132,13 +132,13 @@ function scenario.availability(entry)
   if files == nil or files.getMapAvailability == nil then
     return true, nil
   end
-  local ok, available, from = pcall(function() return files:getMapAvailability(entry.map_name, "crusader") end)
-  if not ok or type(available) ~= "boolean" then
+  local ok, result = pcall(function() return files:getMapAvailability(entry.map_name, "crusader") end)
+  if not ok or type(result) ~= "table" or type(result.available) ~= "boolean" then
     log(WARNING, string.format("custom-skirmish-trails: map availability of %s: %s", tostring(entry.map_name),
-      tostring(ok and "no answer" or available)))
+      tostring(ok and "no answer" or result)))
     return false, nil
   end
-  return available, from
+  return result.available, result.from
 end
 
 local function readOperand(site, offset)
