@@ -408,13 +408,14 @@ function scenario.startIfScenario(trailName, index, entry)
 end
 
 ---The mission as its briefing shows it: a scenario mission that isn't open yet shows
----`lockedText` ({date} becomes the date it opens) instead of its description.
+---`lockedText` ({date} becomes the date it opens) instead of its description. Asking files also
+---gives a dated map that is due its file redirect, which the trail's Start needs to find the map.
 function scenario.briefingEntry(entry, lockedText)
-  if not scenario.isScenario(entry) or type(lockedText) ~= "string" then
+  if not scenario.isScenario(entry) then
     return entry
   end
   local available, from = scenario.availability(entry)
-  if available then
+  if available or type(lockedText) ~= "string" then
     return entry
   end
   local shown = {}
