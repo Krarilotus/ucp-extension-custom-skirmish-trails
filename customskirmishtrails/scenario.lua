@@ -57,6 +57,9 @@ local EXTRACTS = {
 }
 
 local ARMY_CUT_JE_OFFSET = 0x0F
+-- GameCore: menuSwitchDelay (+0x04), then menuRenderMoment, currentMenuViewType (+0x0C)
+local CURRENT_VIEW_AFTER_DELAY = 8
+local TRAIL_BRIEFING_VIEW = 0x38 -- the trail's mission briefing (CrusadeMissionIntro)
 local SAVE_LOADED_OFFSET = 0x19
 
 -- In the mission finished screen ("win" in patches.lua): the branch that picks the follow-up by
@@ -204,6 +207,7 @@ local function resolve()
     syncMode = list[1],
     humanSlot = list[2],
     menuSwitchDelay = found.listFaded[1],
+    currentView = found.listFaded[1] + CURRENT_VIEW_AFTER_DELAY,
     listReparse = found.listFaded[2],
     gameMode = core.readInteger(branch + 1),
     winnersBranch = branch,
@@ -284,21 +288,56 @@ local function setSession(trailName, index, entry, fileName)
   core.writeByte(b.cap, active and unitlimits.policy(entry) ~= nil and 1 or 0)
 end
 
+local TRAIL_INDEX = {}
+for index, name in pairs(memory.TRAIL_TYPES) do
+  TRAIL_INDEX[name] = index
+end
+
+---Makes the game's trail state name `trailName` mission `mission` as the trail mission played.
+local function selectTrailMission(trailName, mission)
+  core.writeInteger(memory.CURRENT_TRAIL_TYPE, TRAIL_INDEX[trailName])
+  core.writeInteger(memory.TRAIL_PROGRESS_ADDRESSES[trailName], mission - 1)
+  core.writeInteger(memory.IS_SKIRMISH_TRAIL, 1)
+end
+
+---Launches `mission` as the Play a Map list's Start does: the session, the chosen map, Normal
+---difficulty, the launcher; its next screen opens at once. A map saved from a skirmish game keeps
+---the skirmish mode and its rules (for example, winning when every enemy lord is dead); the game
+---then takes it for the trail mission, so Restart starts it again from the trail and the troop
+---limit reads the mission.
+local function launch(b, mission)
+  setSession(mission.trailName, mission.index, mission.entry, mission.fileName)
+  core.writeInteger(memory.IS_SKIRMISH_TRAIL, 0)
+  writeName(b.chosenMap, mission.fileName)
+  core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
+  b.launcher(LAUNCH_WITH_BRIEFING)
+  if core.readInteger(b.syncMode) == SYNC_MODE_SKIRMISH then
+    selectTrailMission(mission.trailName, mission.index)
+  end
+  core.writeInteger(b.menuSwitchDelay, 0)
+end
+
 -- the scenario mission the Play a Map list starts when it opens: { trailName, index, entry, fileName }
 local pending = nil
 
----Starts `trailName` mission `index` (a scenario mission playing `fileName`) as Play a Map does:
----the Custom Scenarios handler's Play a Map case opens the Play a Map list, whose first frame
----starts it. Until the trail's briefing is closed, it loads its own mission every frame.
+---Starts `trailName` mission `index` (a scenario mission playing `fileName`) as Play a Map does.
+---From the trail's briefing, which loads its own mission every frame until it closes, the Custom
+---Scenarios handler's Play a Map case opens the Play a Map list, whose first frame launches it.
+---Restart in the game launches it at once.
 local function start(trailName, index, entry, fileName)
-  pending = { trailName = trailName, index = index, entry = entry, fileName = fileName }
-  bindings.customScenarios(PLAY_A_MAP)
+  local b = bindings
+  local mission = { trailName = trailName, index = index, entry = entry, fileName = fileName }
+  if core.readInteger(b.currentView) ~= TRAIL_BRIEFING_VIEW then
+    launch(b, mission)
+    return
+  end
+  b.customScenarios(PLAY_A_MAP)
+  pending = mission
 end
 
----The Play a Map list's first frame, after its Prepare (which ends a session), starts the pending
----mission as the list's Start does: the session, the chosen map, Normal difficulty, the launcher.
----Then the list doesn't read the maps (which would empty the chosen map, needed by Restart and
----saves), and the launcher's next screen opens at once.
+---The Play a Map list's first frame, after its Prepare (which ends a session), launches the
+---pending mission. Then the list doesn't read the maps, which would empty the chosen map that
+---Restart and saves need.
 local function installListStart(b)
   core.detourCode(function(registers)
     local mission = pending
@@ -306,15 +345,8 @@ local function installListStart(b)
       return registers
     end
     pending = nil
-    local ok, err = pcall(function()
-      setSession(mission.trailName, mission.index, mission.entry, mission.fileName)
-      core.writeInteger(memory.IS_SKIRMISH_TRAIL, 0)
-      writeName(b.chosenMap, mission.fileName)
-      core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
-      b.launcher(LAUNCH_WITH_BRIEFING)
-      core.writeInteger(b.listReparse, 0)
-      core.writeInteger(b.menuSwitchDelay, 0)
-    end)
+    local ok, err = pcall(launch, b, mission)
+    core.writeInteger(b.listReparse, 0)
     if not ok then
       log(WARNING, "custom-skirmish-trails: starting a scenario mission failed: " .. tostring(err))
       setSession()
@@ -337,11 +369,6 @@ local function wonMission()
   return current.trailName, current.index
 end
 
-local TRAIL_INDEX = {}
-for index, name in pairs(memory.TRAIL_TYPES) do
-  TRAIL_INDEX[name] = index
-end
-
 ---On the mission finished screen of a scenario (it opens only for a victory): a won trail mission
 ---takes the game's own trail branch, which credits the trail's selected mission, advances the
 ---trail and opens the trail map. That branch counts a win only when the human player's winner
@@ -361,9 +388,7 @@ local function installWinHandover(b)
       return registers
     end
     log(INFO, string.format("custom-skirmish-trails: %s mission %d won", trailName, mission))
-    core.writeInteger(memory.CURRENT_TRAIL_TYPE, TRAIL_INDEX[trailName])
-    core.writeInteger(memory.TRAIL_PROGRESS_ADDRESSES[trailName], mission - 1)
-    core.writeInteger(memory.IS_SKIRMISH_TRAIL, 1)
+    selectTrailMission(trailName, mission)
     core.writeInteger(b.syncMode, SYNC_MODE_SKIRMISH)
     core.writeSmallInteger(b.winners + 2 * slot, 1)
     core.writeInteger(b.gameMode, GAME_MODE_SKIRMISH)
