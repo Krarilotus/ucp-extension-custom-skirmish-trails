@@ -36,6 +36,8 @@ local SCANS = {
   armyCut = "83 F8 03 0F 85 ? ? ? ? 39 1D ? ? ? ? 0F 84 ? ? ? ? B9 ? ? ? ? E8 ? ? ? ? 85 C0 0F 85",
   -- the Load Game button's read of the save: "push / mov ecx / mov [callback], / call read"; after
   -- it (SAVE_LOADED_OFFSET) the chosen map holds the save's map name
+  -- the Play a Map list's DoEveryFrame
+  listFrame = "81 EC F8 03 00 00 A1 ? ? ? ? 33 C4 89 84 24 F4 03 00 00 A1 ? ? ? ? 2B 05 ? ? ? ? 53 99 55 2B C2 56",
   saveRead = "68 ? ? ? ? B9 ? ? ? ? C7 05 ? ? ? ? ? ? ? ? E8 ? ? ? ? B9 ? ? ? ? 89 2D ? ? ? ? 89 1D ? ? ? ? 89 1D",
 }
 -- with operands
@@ -48,8 +50,10 @@ local EXTRACTS = {
     .. " C7 05 ? ? ? ? 02 00 00 00 74 61 68 80 38 01 00 53 68 ? ? ? ? 89 1D ? ? ? ?"
     .. " C7 05 ? ? ? ? 01 00 00 00 C7 05 I(? ? ? ?) 01 00 00 00 89 1D ? ? ? ? A3 ? ? ? ?"
     .. " A3 ? ? ? ? 88 1D ? ? ? ?",
-  -- the Play a Map list's render, once it has faded out after the launcher: "mov [menuSwitchDelay], 0"
-  listFaded = "C7 05 ? ? ? ? 20 00 00 00 89 1D I(? ? ? ?) 39 1D ? ? ? ? 0F 84",
+  -- in the Play a Map list's DoEveryFrame, once it has faded out after the launcher: "mov
+  -- [menuSwitchDelay], 0", then "cmp [reparse], 0": on its first frame the list reads the maps,
+  -- selects the chosen map's row and empties the chosen map
+  listFaded = "C7 05 ? ? ? ? 20 00 00 00 89 1D I(? ? ? ?) 39 1D I(? ? ? ?) 0F 84",
 }
 
 local ARMY_CUT_JE_OFFSET = 0x0F
@@ -193,13 +197,14 @@ local function resolve()
     launcher = core.exposeCode(found.launcher.address, 1, 0),
     customScenarios = core.exposeCode(found.customScenarios.address, 1, 0),
     listPrepare = list.address,
-    prepareList = core.exposeCode(list.address, 0, 0),
+    listFrame = found.listFrame.address,
     saveLoaded = found.saveRead.address + SAVE_LOADED_OFFSET,
     chosenMap = found.playAMap[1],
     difficulty = found.playAMap[2],
     syncMode = list[1],
     humanSlot = list[2],
     menuSwitchDelay = found.listFaded[1],
+    listReparse = found.listFaded[2],
     gameMode = core.readInteger(branch + 1),
     winnersBranch = branch,
     winners = core.readInteger(winnersSite + 9),
@@ -279,25 +284,47 @@ local function setSession(trailName, index, entry, fileName)
   core.writeByte(b.cap, active and unitlimits.policy(entry) ~= nil and 1 or 0)
 end
 
+-- the scenario mission the Play a Map list starts when it opens: { trailName, index, entry, fileName }
+local pending = nil
+
 ---Starts `trailName` mission `index` (a scenario mission playing `fileName`) as Play a Map does:
----the Custom Scenarios handler's Play a Map case, then the Prepare of the Play a Map list it asks
----for (the launcher's next screen replaces the list, so the game doesn't run it; it ends a
----session), the session, the chosen map, Normal difficulty, the launcher, and what the list does
----once it has faded out: the launcher's next screen opens now.
+---the Custom Scenarios handler's Play a Map case opens the Play a Map list, whose first frame
+---starts it. Until the trail's briefing is closed, it loads its own mission every frame.
 local function start(trailName, index, entry, fileName)
-  local b = bindings
-  b.customScenarios(PLAY_A_MAP)
-  b.prepareList()
-  setSession(trailName, index, entry, fileName)
-  core.writeInteger(memory.IS_SKIRMISH_TRAIL, 0)
-  writeName(b.chosenMap, fileName)
-  core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
-  b.launcher(LAUNCH_WITH_BRIEFING)
-  core.writeInteger(b.menuSwitchDelay, 0)
+  pending = { trailName = trailName, index = index, entry = entry, fileName = fileName }
+  bindings.customScenarios(PLAY_A_MAP)
 end
 
----The trail and mission of a won scenario: the session's. The game empties the chosen map
----before the mission finished screen; a name still there must be the session's map.
+---The Play a Map list's first frame, after its Prepare (which ends a session), starts the pending
+---mission as the list's Start does: the session, the chosen map, Normal difficulty, the launcher.
+---Then the list doesn't read the maps (which would empty the chosen map, needed by Restart and
+---saves), and the launcher's next screen opens at once.
+local function installListStart(b)
+  core.detourCode(function(registers)
+    local mission = pending
+    if mission == nil then
+      return registers
+    end
+    pending = nil
+    local ok, err = pcall(function()
+      setSession(mission.trailName, mission.index, mission.entry, mission.fileName)
+      core.writeInteger(memory.IS_SKIRMISH_TRAIL, 0)
+      writeName(b.chosenMap, mission.fileName)
+      core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
+      b.launcher(LAUNCH_WITH_BRIEFING)
+      core.writeInteger(b.listReparse, 0)
+      core.writeInteger(b.menuSwitchDelay, 0)
+    end)
+    if not ok then
+      log(WARNING, "custom-skirmish-trails: starting a scenario mission failed: " .. tostring(err))
+      setSession()
+    end
+    return registers
+  end, b.listFrame, 6)
+end
+
+---The trail and mission of a won scenario: the session's. A chosen map name must be the
+---session's map (the Play a Map list empties it when it selects a map).
 local function wonMission()
   local current = session()
   if current == nil then
@@ -439,6 +466,7 @@ local function installStartHook()
     local trailName = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
     local missions = trailName and trailOf(trailName) or nil
     local entry = missions and missions[index + 1] or nil
+    pending = nil
     if active ~= nil then
       setSession()
     end
@@ -479,6 +507,7 @@ function scenario.enable(missionsOf)
     { address = result.armyCutJe, size = 6 },
     { address = result.listPrepare, size = 6 },
     { address = result.saveLoaded, size = 5 },
+    { address = result.listFrame, size = 6 },
     { address = result.winnersBranch, size = 5 },
   }
   local installed, err = pcall(patches.guarded, sites, function()
@@ -486,6 +515,7 @@ function scenario.enable(missionsOf)
     installArmyCutSkip(result)
     installSessionEnd(result)
     installWinHandover(result)
+    installListStart(result)
   end)
   if not installed then
     log(WARNING, "custom-skirmish-trails: scenario missions are switched off: " .. tostring(err))
