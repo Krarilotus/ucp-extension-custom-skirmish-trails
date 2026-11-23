@@ -6,12 +6,19 @@
 -- trail's selected mission is handed to the game's own trail code on the mission finished
 -- screen, which advances the trail and returns to the trail map.
 --
+-- The trail's Start records which mission it started (the session): its trail, number and map.
+-- The session holds while that map is played, through Restart and loaded saves of it, also after
+-- the game is started again (ucp/.cache keeps it). The next trail Start or opening the Play a Map
+-- list ends it. A save of another game on the same map, loaded while the session holds, counts as
+-- the session's mission.
+--
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and
 -- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing, found
 -- twice or has unexpected bytes, scenario missions are switched off and start nothing.
 
 local patches = require("customskirmishtrails.patches")
 local memory = require("customskirmishtrails.memory")
+local unitlimits = require("customskirmishtrails.unitlimits")
 
 local scenario = {}
 
@@ -61,8 +68,11 @@ local MAX_PLAYERS = 8
 local MAX_MAP_NAME = 200
 local NAME_BUFFER = MAX_MAP_NAME + 1
 
+local SESSION_FILE = "ucp/.cache/custom-skirmish-trails-scenario.txt"
+
 local bindings = nil
 local trailOf = nil -- function(trailName) -> missions of that trail, set by enable
+local active = nil  -- the session: { trailName, index, entry, fileName }
 
 local function asciiLower(text)
   return (text:gsub("[A-Z]", string.lower))
@@ -200,14 +210,14 @@ local function resolve()
   }
 end
 
----Starting-army cut: a Play a Map start skips it when the map it loads is the scenario the trail
----started last with keep_start_army (Restart of it too). That start writes the name; opening the
----Play a Map list clears it, so other starts and loads of other maps stay as they are.
+---Starting-army cut: a Play a Map start skips it when it loads the session's map and the
+---session's mission has keep_start_army (Restart of it too).
 local function installArmyCutSkip(b)
-  b.trailMap = core.allocate(NAME_BUFFER, true)
   local skip = b.armyCutSkip
   core.insertCode(b.armyCutJe, 6, {
     core.jeTo(skip),
+    0x80, 0x3D, core.itob(b.keepArmy), 0x00, -- cmp byte [keepArmy], 0
+    0x0F, 0x84, core.relTo("done", -4),      -- je done (cut)
     0x56,                                    -- push esi
     0x57,                                    -- push edi
     0xBE, core.itob(b.trailMap),             -- mov esi, trailMap
@@ -228,10 +238,8 @@ local function installArmyCutSkip(b)
     "cut",
     0x5F,                                    -- pop edi
     0x5E,                                    -- pop esi
+    "done",
   })
-  core.insertCode(b.listPrepare, 6, {
-    0xC6, 0x05, core.itob(b.trailMap), 0x00, -- mov byte [trailMap], 0
-  }, nil, "after")
 end
 
 local function writeName(address, name)
@@ -245,9 +253,32 @@ local function keepsStartArmy(entry)
   return value == 1 or value == true or value == "1"
 end
 
+local function writeSessionFile(text)
+  local handle = io.open(SESSION_FILE, "wb")
+  if handle == nil then
+    log(WARNING, "custom-skirmish-trails: cannot write " .. SESSION_FILE)
+    return
+  end
+  handle:write(text)
+  handle:close()
+end
+
+---Makes `trailName` mission `index` (a scenario mission playing `fileName`) the session, or ends
+---the session (no trail name). `persist` also writes it to ucp/.cache.
+local function setSession(trailName, index, entry, fileName, persist)
+  local b = bindings
+  active = trailName and { trailName = trailName, index = index, entry = entry, fileName = fileName } or nil
+  writeName(b.trailMap, active and fileName or "")
+  core.writeByte(b.keepArmy, active and keepsStartArmy(entry) and 1 or 0)
+  core.writeByte(b.cap, active and unitlimits.policy(entry) ~= nil and 1 or 0)
+  if persist then
+    writeSessionFile(active and string.format("trail=%s\nmission=%d\nmap=%s\n", trailName, index, fileName) or "")
+  end
+end
+
 ---Starts a scenario mission as Play a Map does: the Custom Scenarios handler's Play a Map case,
 ---what the list sets when it opens, the chosen map, Normal difficulty, the launcher.
-local function start(fileName, keepArmy)
+local function start(fileName)
   local b = bindings
   b.customScenarios(PLAY_A_MAP)
   core.writeInteger(b.syncMode, SYNC_MODE_SINGLE_PLAYER)
@@ -258,20 +289,23 @@ local function start(fileName, keepArmy)
   core.writeByte(b.lobbyMapName, 0)
   core.writeInteger(memory.IS_SKIRMISH_TRAIL, 0)
   writeName(b.chosenMap, fileName)
-  writeName(b.trailMap, keepArmy and fileName or "")
   core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
   b.launcher(LAUNCH_WITH_BRIEFING)
 end
 
----The trail and mission of the scenario being played: the trail mission that is selected in its
----trail and plays the map the game keeps for Restart. That name is also in saved games, so a door
----saved and loaded later counts as well, and so does the same map started from Play a Map. The
----current trail is asked first.
-local function scenarioMission()
-  local chosen = asciiLower(core.readString(bindings.chosenMap) or "")
+---The trail and mission of a won scenario: the session's mission while its map is played;
+---otherwise (a save from before the session) the trail mission that is selected in its trail and
+---plays the map the game keeps for Restart, which is also in saved games. The current trail is
+---asked first.
+local function wonMission()
+  local chosen = core.readString(bindings.chosenMap) or ""
   if chosen == "" then
     return nil
   end
+  if active ~= nil and active.fileName == chosen then
+    return active.trailName, active.index
+  end
+  chosen = asciiLower(chosen)
   local current = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
   local order = { current }
   for _, name in pairs(memory.TRAIL_TYPES) do
@@ -286,34 +320,6 @@ local function scenarioMission()
       if fileName ~= nil and asciiLower(fileName) == chosen then
         return trailName, progress + 1
       end
-    end
-  end
-  return nil
-end
-
----The trail mission being played, as (trail name, mission number, entry), or nil: a skirmish
----trail mission (the game's trail flag, trail and progress) or a scenario mission (as above).
-function scenario.currentMission()
-  if bindings == nil then
-    return nil
-  end
-  local mode = core.readInteger(bindings.gameMode)
-  if mode == GAME_MODE_SKIRMISH and core.readInteger(memory.IS_SKIRMISH_TRAIL) == 1 then
-    local trailName = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
-    local missions = trailName and trailOf(trailName) or nil
-    if missions == nil then
-      return nil
-    end
-    local index = core.readInteger(memory.TRAIL_PROGRESS_ADDRESSES[trailName]) + 1
-    local entry = missions[index]
-    if entry == nil or scenario.isScenario(entry) then
-      return nil
-    end
-    return trailName, index, entry
-  elseif mode == GAME_MODE_SCENARIO then
-    local trailName, index = scenarioMission()
-    if trailName ~= nil then
-      return trailName, index, trailOf(trailName)[index]
     end
   end
   return nil
@@ -337,7 +343,7 @@ local function installWinHandover(b)
     if slot < 1 or slot > MAX_PLAYERS then
       return registers
     end
-    local trailName, mission = scenarioMission()
+    local trailName, mission = wonMission()
     if trailName == nil then
       return registers
     end
@@ -351,12 +357,27 @@ local function installWinHandover(b)
   end, b.winnersBranch, 5)
 end
 
----Starts `entry` when it is a scenario mission. Returns true when the trail's own skirmish
----setup must not run: the scenario started, or it can't start (switched off, invalid map name,
----not open yet).
-function scenario.startIfScenario(entry)
+---Opening the Play a Map list ends the session.
+local function installSessionEnd(b)
+  core.detourCode(function(registers)
+    if active ~= nil or core.readByte(b.trailMap) ~= 0 then
+      setSession(nil, nil, nil, nil, true)
+    end
+    return registers
+  end, b.listPrepare, 6)
+end
+
+---Starts `entry` (`trailName` mission `index`) when it is a scenario mission. Returns true when
+---the trail's own skirmish setup must not run: the scenario started, or it can't start (switched
+---off, invalid map name, not open yet, troop limit unavailable).
+function scenario.startIfScenario(trailName, index, entry)
   local kind = scenario.kind(entry)
   if kind == "skirmish" then
+    if not unitlimits.available(entry, false) then
+      log(WARNING, string.format("custom-skirmish-trails: %s has a unit_limit, and the troop limit is switched off; "
+        .. "the mission doesn't start", tostring(entry.map_name)))
+      return true
+    end
     return false
   end
   if kind == nil then
@@ -380,7 +401,13 @@ function scenario.startIfScenario(entry)
     log(INFO, string.format("custom-skirmish-trails: %s opens on %s", fileName, tostring(from)))
     return true
   end
-  start(fileName, keepsStartArmy(entry))
+  if not unitlimits.available(entry, true) then
+    log(WARNING, string.format("custom-skirmish-trails: %s has a unit_limit, and the troop limit of scenario missions "
+      .. "is switched off; the mission doesn't start", fileName))
+    return true
+  end
+  setSession(trailName, index, entry, fileName, true)
+  start(fileName)
   return true
 end
 
@@ -417,7 +444,10 @@ local function installStartHook()
     local trailName = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
     local missions = trailName and trailOf(trailName) or nil
     local entry = missions and missions[index + 1] or nil
-    local ok, handled = pcall(scenario.startIfScenario, entry)
+    if bindings ~= nil and active ~= nil then
+      setSession(nil, nil, nil, nil, true)
+    end
+    local ok, handled = pcall(scenario.startIfScenario, trailName, index + 1, entry)
     if not ok then
       log(WARNING, "custom-skirmish-trails: starting a scenario mission failed: " .. tostring(handled))
       return 0
@@ -447,7 +477,11 @@ function scenario.enable(missionsOf)
     return false
   end
   local installed, err = pcall(function()
+    result.trailMap = core.allocate(NAME_BUFFER, true)
+    result.keepArmy = core.allocate(1, true)
+    result.cap = core.allocate(1, true)
     installArmyCutSkip(result)
+    installSessionEnd(result)
     installWinHandover(result)
   end)
   if not installed then
@@ -456,6 +490,39 @@ function scenario.enable(missionsOf)
   end
   bindings = result
   return true
+end
+
+---The session for the troop limit, or nil when scenario missions are switched off: the
+---addresses of the session's map name, the chosen map, the game mode and the flag "the session's
+---mission has a troop limit", and entry() for the session's mission.
+function scenario.session()
+  if bindings == nil then
+    return nil
+  end
+  return {
+    map = bindings.trailMap,
+    chosenMap = bindings.chosenMap,
+    gameMode = bindings.gameMode,
+    cap = bindings.cap,
+    entry = function() return active and active.entry or nil end,
+  }
+end
+
+---Restores the session of an earlier run of the game from ucp/.cache when its mission still plays
+---that map. Call it after the missions and their unit_limit are read.
+function scenario.restore()
+  local handle = bindings ~= nil and io.open(SESSION_FILE, "rb") or nil
+  if handle == nil then
+    return
+  end
+  local text = handle:read("*all") or ""
+  handle:close()
+  local trailName, index, fileName = text:match("^trail=([%w_]+)\nmission=(%d+)\nmap=([^\n]+)\n")
+  local missions = trailName and trailOf(trailName) or nil
+  local entry = missions and missions[tonumber(index)] or nil
+  if entry ~= nil and scenario.isScenario(entry) and scenario.mapFileName(entry.map_name) == fileName then
+    setSession(trailName, tonumber(index), entry, fileName, false)
+  end
 end
 
 return scenario

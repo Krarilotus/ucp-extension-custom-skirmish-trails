@@ -7,6 +7,8 @@
 -- functions in both. Each site's bytes are checked before anything is written, so a game
 -- version or another module that changed them only switches that one feature off.
 
+local winfiles = require("customskirmishtrails.winfiles")
+
 local patches = {}
 
 -- The game keeps 50 progress slots per trail in memory, but saves only 30 for the Warchest and
@@ -194,46 +196,58 @@ patches.matches = matches
 patches.siteAddress = siteAddress
 patches.functionAddress = locate
 
-local IMAGE_ALIGNMENT = 0x10000 -- Windows maps images on 64 KB boundaries
-local MAX_IMAGE_STEPS = 0x200   -- 32 MB, far more than the game's image
+local IMAGE_SCN_MEM_EXECUTE = 0x20000000
+local gameImage = nil
 
----The bounds of the executable section that `address` lies in, read from the PE headers of its
----image (found by walking back to the "MZ" header), or nil.
-local function sectionOf(address)
-  local base = address - address % IMAGE_ALIGNMENT
-  for _ = 1, MAX_IMAGE_STEPS do
-    if core.readSmallInteger(base) & 0xFFFF == 0x5A4D then
-      local nt = base + core.readInteger(base + 0x3C)
-      if core.readInteger(nt) ~= 0x4550 then
+---The base of the game's executable image (GetModuleHandleA(NULL)), or nil.
+local function gameImageBase()
+  if gameImage == nil then
+    local ok, base = pcall(function()
+      return winfiles.dllFunction("kernel32.dll", "GetModuleHandleA", 1)(0) & 0xFFFFFFFF
+    end)
+    gameImage = ok and base ~= 0 and base or false
+  end
+  return gameImage or nil
+end
+
+---The bounds of the game executable's code section that `address` lies in, read from the
+---executable's PE headers, or nil when it lies in no executable section of the game itself.
+local function codeSectionOf(address)
+  local base = gameImageBase()
+  if base == nil or core.readSmallInteger(base) & 0xFFFF ~= 0x5A4D then
+    return nil
+  end
+  local nt = base + core.readInteger(base + 0x3C)
+  if core.readInteger(nt) ~= 0x4550 then
+    return nil
+  end
+  local count = core.readSmallInteger(nt + 6) & 0xFFFF
+  local first = nt + 24 + (core.readSmallInteger(nt + 20) & 0xFFFF)
+  for index = 0, count - 1 do
+    local header = first + 40 * index
+    local start = base + core.readInteger(header + 12)
+    local finish = start + core.readInteger(header + 8)
+    if address >= start and address < finish then
+      if core.readInteger(header + 36) & IMAGE_SCN_MEM_EXECUTE == 0 then
         return nil
       end
-      local count = core.readSmallInteger(nt + 6) & 0xFFFF
-      local first = nt + 24 + (core.readSmallInteger(nt + 20) & 0xFFFF)
-      for index = 0, count - 1 do
-        local header = first + 40 * index
-        local start = base + core.readInteger(header + 12)
-        local finish = start + core.readInteger(header + 8)
-        if address >= start and address < finish then
-          return start, finish
-        end
-      end
-      return nil
+      return start, finish
     end
-    base = base - IMAGE_ALIGNMENT
   end
   return nil
 end
 
----True when `aob` (as for utils.AOBExtract), found at `found`, matches nowhere else in the rest
----of the game's code section; otherwise false and the reason.
+---True when `aob` (as for utils.AOBExtract), found at `found`, matches there and nowhere else in
+---the game executable's code section; otherwise false and the reason.
 function patches.isUnique(aob, found)
-  local _, finish = sectionOf(found)
-  if finish == nil then
+  local start, finish = codeSectionOf(found)
+  if start == nil then
     return false, "is not in the game's code"
   end
   local plain = aob:gsub("I%(", ""):gsub("%)", "")
+  local first = core.scanForAOB(plain, start, finish)
   local again = found + 1 < finish and core.scanForAOB(plain, found + 1, finish) or 0
-  if again ~= nil and again ~= 0 then
+  if first ~= found or (again ~= nil and again ~= 0) then
     return false, "is found twice"
   end
   return true

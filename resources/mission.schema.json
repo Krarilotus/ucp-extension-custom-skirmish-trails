@@ -26,11 +26,11 @@
       ]
     },
     "keep_start_army": {
-      "description": "Scenario missions: 1 keeps the player's whole starting army. Without it the game removes part of it, as Play a Map does on maps without invasion events.",
+      "description": "Scenario missions: 1 keeps the player's whole starting army when the trail starts the mission and on its Restart. Without it the game removes part of it, as Play a Map does on maps without invasion events.",
       "enum": [0, 1]
     },
     "unit_limit": {
-      "description": "The player's troop limit in this mission: 'native', 'formula BASE OFFSET' (BASE / living lords - OFFSET; 'formula 2400 40' gives Crusader's limits in Extreme), 'by_alive 8=250 4=500 2=1000 1=2000' (limit per living lords, interpolated), or per difficulty, e.g. 'story: native; normal: formula 2400 40; hard: formula 2400 40' (story, normal, hard, very_hard, default). Never above the game's own limit.",
+      "description": "The player's troop limit in this mission: 'native', 'formula BASE OFFSET' (BASE / living lords - OFFSET; 'formula 2400 40' gives Crusader's limits in Extreme), 'by_alive 8=250 4=500 2=1000 1=2000' (limit per living lords, interpolated), or per difficulty, e.g. 'story: native; normal: formula 2400 40; hard: formula 2400 40' (story, normal, hard, very_hard, default). Never above the game's skirmish formula for the living lords, also in scenario missions.",
       "type": "string"
     },
     "text_description": {

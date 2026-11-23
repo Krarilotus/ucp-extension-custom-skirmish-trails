@@ -134,7 +134,7 @@ function missionjson.fromRow(header, cells, aiMapping)
   for _, column in ipairs({ "mission_kind", "keep_start_army", "unit_limit" }) do
     local value = take(column)
     if value ~= "" then
-      put(mission, column, cell(value))
+      put(mission, column, column == "keep_start_army" and cell(value) or value)
     end
   end
   local lines = { items = {} }

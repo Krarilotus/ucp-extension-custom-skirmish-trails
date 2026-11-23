@@ -6,16 +6,17 @@
 --   formula BASE OFFSET  BASE / living lords - OFFSET ("formula 2400 40" = Crusader limits)
 --   by_alive L=N ...     N troops at L living lords, linear between the listed counts
 --                        ("by_alive 8=250 4=500 2=1000 1=2000")
--- The result never exceeds the game's own formula value, so the unit pool can't fill up. The value
--- follows from the game state each tick (the mission being played, the living lords) and the
--- difficulty option, so saving, loading and replays give the same limit, and it goes back to the
--- game's own value when the mission ends.
+-- The result never exceeds the game's skirmish formula for the living lords, also in scenarios,
+-- where the game itself has no limit (10000). The mission comes from the game's trail state
+-- (skirmish missions) or the scenario the trail started (see scenario.session), the policy from
+-- the difficulty option.
 --
 -- The function is found by AOB, the same in both 1.41 executables, with the operands decoded.
--- Single-player games go through the game's own counting part only while trail data has a
--- policy; then the stored value is set here every tick.
+-- Single-player games go through the game's own counting part only for the scenario the trail
+-- started, and only when its mission has a policy; then the stored value is set here every tick.
 
 local patches = require("customskirmishtrails.patches")
+local memory = require("customskirmishtrails.memory")
 
 local unitlimits = {}
 
@@ -24,15 +25,20 @@ local ENTRY_AOB = "83 3D I(? ? ? ?) 00 75 0B C7 81 I(? ? ? ?) I(? ? ? ?) C3 56 5
 -- "mov eax, base / cdq / idiv esi / pop edi / pop esi / sub eax, offset / mov [ecx + limit], eax / ret"
 local STORE_AOB = "B8 I(? ? ? ?) 99 F7 FE 5F 5E 83 E8 ? 89 81 I(? ? ? ?) C3 5F C7 81 ? ? ? ? ? ? ? ? 5E C3"
 local STORE_OFFSET = 0x0D
+local STORE_PATCH_SIZE = 6   -- mov [ecx + limit], eax
 local ENTRY_PATCH_SIZE = 9   -- the compare (7 bytes) and the short jne (2 bytes)
 local COUNT_OFFSET = 0x14    -- where the jne goes: the counting part
+local GAME_MODE_SCENARIO = 2
 local MAX_LORDS = 8
 
 local DIFFICULTIES = { story = true, normal = true, hard = true, very_hard = true }
+local DEFAULT_DIFFICULTY = "normal" -- the option's default
 
 local bindings = nil
-local currentMission = nil
-local difficulty = nil
+local difficulty = DEFAULT_DIFFICULTY
+local registry = nil
+local session = nil
+local installed = { skirmish = false, scenario = false }
 
 ---Reads one policy ("native", "formula 2400 40"), or nil and a reason.
 local function parsePolicy(text)
@@ -114,17 +120,22 @@ function unitlimits.value(policy, lords)
   return points[#points].limit
 end
 
----The policy of a mission for the difficulty that is set, or nil for the game's own value.
-local function policyOf(entry)
-  local policies = entry and entry.unit_limit_policies or nil
-  if policies == nil then
-    return nil
+---The policy a mission plays with at the difficulty that is set, or nil for the game's own value.
+function unitlimits.policy(entry)
+  return type(entry) == "table" and entry.unit_limit_policy or nil
+end
+
+---False when the mission has a policy that can't be applied (the game code was not found), so
+---that it doesn't start without its limit. `isScenario`: the mission starts as a scenario.
+function unitlimits.available(entry, isScenario)
+  if unitlimits.policy(entry) == nil then
+    return true
   end
-  local policy = (difficulty and policies[difficulty]) or policies.default
-  if policy == nil or policy.kind == "native" then
-    return nil
-  end
-  return policy
+  return installed.skirmish and (not isScenario or installed.scenario)
+end
+
+local function plain(aob)
+  return (aob:gsub("I%(", ""):gsub("%)", ""))
 end
 
 local function resolve()
@@ -147,12 +158,36 @@ local function resolve()
   end
   return {
     entry = entry,
+    store = store,
     syncMode = syncMode,
+    field = limitField,
     singlePlayerValue = singlePlayerValue,
     base = base,
     offset = core.readByte(store + STORE_OFFSET - 1),
     storeSite = store + STORE_OFFSET,
   }
+end
+
+---True when both sites still hold the code and operands found by resolve (another patch may
+---have changed them since).
+local function unchanged(b)
+  return patches.matches(b.entry, plain(ENTRY_AOB)) and patches.matches(b.store, plain(STORE_AOB))
+    and core.readInteger(b.entry + 2) == b.syncMode and core.readInteger(b.entry + 11) == b.field
+    and core.readInteger(b.entry + 15) == b.singlePlayerValue and core.readInteger(b.store + 1) == b.base
+    and core.readInteger(b.store + 15) == b.field and core.readByte(b.store + STORE_OFFSET - 1) == b.offset
+end
+
+---Runs `write`, which patches `size` bytes at `site`; puts the original bytes back when it fails.
+local function guarded(site, size, write)
+  local original = {}
+  for index, byte in ipairs(core.readBytes(site, size)) do
+    original[index] = byte & 0xFF
+  end
+  local ok, err = pcall(write)
+  if not ok then
+    pcall(core.writeCode, site, original)
+    error(err, 0)
+  end
 end
 
 ---The number of living lords the game's formula used, from its result.
@@ -165,39 +200,82 @@ local function livingLords(value)
   return nil
 end
 
-local function install(b)
-  b.route = core.allocate(1, true)
-  core.insertCode(b.entry, ENTRY_PATCH_SIZE, {
-    0x80, 0x3D, core.itob(b.route), 0x00,               -- cmp byte [route], 0
-    0x0F, 0x85, core.relTo(b.entry + COUNT_OFFSET, -4), -- jne count
-    0x83, 0x3D, core.itob(b.syncMode), 0x00,            -- cmp dword [syncMode], 0
-    0x0F, 0x85, core.relTo(b.entry + COUNT_OFFSET, -4), -- jne count
-  })
-  core.detourCode(function(registers)
-    local singlePlayer = core.readInteger(b.syncMode) == 0
-    local native = singlePlayer and b.singlePlayerValue or registers.EAX
-    local value = native
-    local ok, _, _, mission = pcall(currentMission)
-    local policy = ok and policyOf(mission) or nil
-    local lords = policy and livingLords(registers.EAX) or nil
-    if policy ~= nil and lords ~= nil then
-      local formula = registers.EAX -- the game's own formula for these lords
-      value = math.max(0, math.min(unitlimits.value(policy, lords), formula))
-    end
-    registers.EAX = value
-    return registers
-  end, b.storeSite, 6)
-  core.writeByte(b.route, 1)
+---The trail mission being played: in single-player mode only the trail's scenario reaches the
+---store (the entry patch checks it), otherwise the game's trail state names it.
+local function playedEntry(singlePlayer)
+  if singlePlayer then
+    return session ~= nil and session.entry() or nil
+  end
+  local ok, isTrail, _, trailName, index = pcall(memory.fetchCurrentTrail)
+  if not ok or not isTrail then
+    return nil
+  end
+  local missions = registry[trailName]
+  return missions and missions[index] or nil
 end
 
----Binds the troop limit. `missionNow()` gives the trail mission being played (see
----scenario.currentMission); `level` is the difficulty option (story, normal, hard, very_hard).
-function unitlimits.enable(missionNow, level)
-  currentMission = missionNow
-  difficulty = type(level) == "string" and level:lower() or nil
-  if difficulty ~= nil and not DIFFICULTIES[difficulty] then
-    log(WARNING, string.format("custom-skirmish-trails: difficulty '%s' is not story, normal, hard or very_hard", level))
-    difficulty = nil
+local function installStore(b)
+  guarded(b.storeSite, STORE_PATCH_SIZE, function()
+    core.detourCode(function(registers)
+      local singlePlayer = core.readInteger(b.syncMode) == 0
+      local policy = unitlimits.policy(playedEntry(singlePlayer))
+      local lords = policy and livingLords(registers.EAX) or nil
+      if policy ~= nil and lords ~= nil then
+        registers.EAX = math.max(0, math.min(unitlimits.value(policy, lords), registers.EAX))
+      elseif singlePlayer then
+        registers.EAX = b.singlePlayerValue
+      end
+      return registers
+    end, b.storeSite, STORE_PATCH_SIZE)
+  end)
+end
+
+---Single-player games count only for the trail's scenario: the scenario mode is on, its mission
+---has a policy (session.cap) and the chosen map is the one the trail started (session.map).
+local function installEntry(b, s)
+  guarded(b.entry, ENTRY_PATCH_SIZE, function()
+    core.insertCode(b.entry, ENTRY_PATCH_SIZE, {
+      0x83, 0x3D, core.itob(b.syncMode), 0x00,             -- cmp dword [syncMode], 0
+      0x0F, 0x85, core.relTo(b.entry + COUNT_OFFSET, -4),  -- jne count
+      0x80, 0x3D, core.itob(s.cap), 0x00,                  -- cmp byte [cap], 0
+      0x0F, 0x84, core.relTo("native", -4),                -- je native
+      0x83, 0x3D, core.itob(s.gameMode), GAME_MODE_SCENARIO, -- cmp dword [gameMode], 2
+      0x0F, 0x85, core.relTo("native", -4),                -- jne native
+      0x50,                                                -- push eax
+      0x56,                                                -- push esi
+      0x57,                                                -- push edi
+      0xBE, core.itob(s.map),                              -- mov esi, map
+      0xBF, core.itob(s.chosenMap),                        -- mov edi, chosenMap
+      "compare",
+      0x8A, 0x06,                                          -- mov al, [esi]
+      0x3A, 0x07,                                          -- cmp al, [edi]
+      0x0F, 0x85, core.relTo("other", -4),                 -- jne other
+      0x46,                                                -- inc esi
+      0x47,                                                -- inc edi
+      0x84, 0xC0,                                          -- test al, al
+      0x0F, 0x85, core.relTo("compare", -4),               -- jnz compare
+      0x5F,                                                -- pop edi
+      0x5E,                                                -- pop esi
+      0x58,                                                -- pop eax
+      core.jmpTo(b.entry + COUNT_OFFSET),
+      "other",
+      0x5F,                                                -- pop edi
+      0x5E,                                                -- pop esi
+      0x58,                                                -- pop eax
+      "native",
+    })
+  end)
+end
+
+---Binds the troop limit. `level` is the difficulty option (story, normal, hard, very_hard); none
+---means normal, the option's default.
+function unitlimits.enable(level)
+  difficulty = DEFAULT_DIFFICULTY
+  if type(level) == "string" and DIFFICULTIES[level:lower()] then
+    difficulty = level:lower()
+  elseif level ~= nil then
+    log(WARNING, string.format("custom-skirmish-trails: difficulty '%s' is not story, normal, hard or very_hard; "
+      .. "unit_limit uses normal", tostring(level)))
   end
   local ok, result = pcall(resolve)
   if ok then
@@ -207,9 +285,11 @@ function unitlimits.enable(missionNow, level)
   end
 end
 
----Reads the unit_limit of every mission and installs the troop limit when one of them has a
----policy other than native. Call it after the trails' missions are loaded.
-function unitlimits.apply(trails)
+---Reads the unit_limit of every mission and installs the troop limit when a mission has a policy
+---other than native at the difficulty that is set. Call it after the trails' missions are loaded.
+---`scenarioSession` (scenario.session(), or nil) is needed for scenario missions.
+function unitlimits.apply(trails, scenarioSession)
+  registry = trails
   local any = false
   for trailName, missions in pairs(trails) do
     for index, entry in ipairs(missions) do
@@ -218,19 +298,35 @@ function unitlimits.apply(trails)
         log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unit_limit %s", trailName, index, reason))
         policies = {}
       end
-      entry.unit_limit_policies = policies
-      for _, policy in pairs(policies) do
-        if policy.kind ~= "native" then any = true end
-      end
+      local policy = policies[difficulty] or policies.default
+      entry.unit_limit_policy = (policy ~= nil and policy.kind ~= "native") and policy or nil
+      any = any or entry.unit_limit_policy ~= nil
     end
   end
-  if not any or bindings == nil or bindings.route ~= nil then
+  if not any or bindings == nil or installed.skirmish then
     return
   end
-  local ok, err = pcall(install, bindings)
+  if not unchanged(bindings) then
+    log(WARNING, "custom-skirmish-trails: the troop limit code was changed by another patch; unit_limit is switched off")
+    return
+  end
+  local ok, err = pcall(installStore, bindings)
   if not ok then
     log(WARNING, "custom-skirmish-trails: unit_limit is switched off: " .. tostring(err))
+    return
   end
+  installed.skirmish = true
+  if scenarioSession == nil then
+    log(WARNING, "custom-skirmish-trails: scenario missions are switched off, so are their troop limits")
+    return
+  end
+  session = scenarioSession
+  ok, err = pcall(installEntry, bindings, scenarioSession)
+  if not ok then
+    log(WARNING, "custom-skirmish-trails: the troop limits of scenario missions are switched off: " .. tostring(err))
+    return
+  end
+  installed.scenario = true
 end
 
 return unitlimits
