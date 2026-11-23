@@ -12,8 +12,9 @@
 -- the difficulty option.
 --
 -- The function is found by AOB, the same in both 1.41 executables, with the operands decoded.
--- Single-player games go through the game's own counting part only for the scenario the trail
--- started, and only when its mission has a policy; then the stored value is set here every tick.
+-- The game counts the lords of the skirmish lobby's slots, which don't describe a scenario. So
+-- the scenario the trail started, when its mission has a policy, goes straight to the store, and
+-- its living lords are the players with a lord, as the game's single-player defeat check reads them.
 
 local patches = require("customskirmishtrails.patches")
 local memory = require("customskirmishtrails.memory")
@@ -28,6 +29,9 @@ local STORE_OFFSET = 0x0D
 local STORE_PATCH_SIZE = 6   -- mov [ecx + limit], eax
 local ENTRY_PATCH_SIZE = 9   -- the compare (7 bytes) and the short jne (2 bytes)
 local COUNT_OFFSET = 0x14    -- where the jne goes: the counting part
+-- The single-player defeat check: "imul ecx, ecx, player size / cmp dword [ecx + campground], 0 /
+-- jle lost / cmp dword [ecx + lord], 0 / jg playing" (the lord of player 0, the players follow).
+local SCENARIO_LORD_AOB = "69 C9 I(? ? ? ?) 83 B9 ? ? ? ? 00 7E 09 83 B9 I(? ? ? ?) 00 7F 0C"
 local GAME_MODE_SCENARIO = 2
 local SYNC_MODE_SKIRMISH = 99
 local MAX_LORDS = 8
@@ -188,6 +192,17 @@ local function livingLords(value)
   return nil
 end
 
+---The living lords of a scenario: players 1-8 with a lord.
+local function scenarioLords(b)
+  local count = 0
+  for player = 1, MAX_LORDS do
+    if core.readInteger(b.lords + player * b.playerSize) > 0 then
+      count = count + 1
+    end
+  end
+  return count > 0 and count or nil
+end
+
 ---The trail mission being played: in single-player mode only the trail's scenario reaches the
 ---store (the entry patch checks it); in single-player skirmish the game's trail state names it,
 ---unless it is a scenario mission whose map isn't the one played.
@@ -213,9 +228,14 @@ local function installStore(b)
       local syncMode = core.readInteger(b.syncMode)
       local singlePlayer = syncMode == 0
       local policy = unitlimits.policy(playedEntry(syncMode))
-      local lords = policy and livingLords(registers.EAX) or nil
-      if policy ~= nil and lords ~= nil then
-        registers.EAX = math.max(0, math.min(unitlimits.value(policy, lords), registers.EAX))
+      local lords = nil
+      if policy ~= nil and singlePlayer then
+        lords = scenarioLords(b)
+      elseif policy ~= nil then
+        lords = livingLords(registers.EAX)
+      end
+      if lords ~= nil then
+        registers.EAX = math.max(0, math.min(unitlimits.value(policy, lords), b.base // lords - b.offset))
       elseif singlePlayer then
         registers.EAX = b.singlePlayerValue
       end
@@ -224,10 +244,19 @@ local function installStore(b)
   end)
 end
 
----Single-player games count only for the trail's scenario: the scenario mode is on, its mission
----has a policy (session.cap) and the chosen map is the session's (session.sameMap). Otherwise the
----game's own compare is repeated, so its single-player store runs with the flags it had.
+---Single-player games go to the store only for the trail's scenario: the scenario mode is on, its
+---mission has a policy (session.cap) and the chosen map is the session's (session.sameMap).
+---Otherwise the game's own compare is repeated, so its single-player store runs with the flags it had.
 local function installEntry(b, s)
+  local lordSite, playerSize, lords = utils.AOBExtract(SCENARIO_LORD_AOB)
+  if lordSite == nil then
+    error("the single-player defeat check was not found")
+  end
+  local unique, reason = patches.isUnique(SCENARIO_LORD_AOB, lordSite)
+  if not unique then
+    error("the single-player defeat check " .. reason)
+  end
+  b.playerSize, b.lords = playerSize, lords
   patches.guarded({ { address = b.entry, size = ENTRY_PATCH_SIZE } }, function()
     core.insertCode(b.entry, ENTRY_PATCH_SIZE, {
       0x83, 0x3D, core.itob(b.syncMode), 0x00,               -- cmp dword [syncMode], 0
@@ -238,7 +267,7 @@ local function installEntry(b, s)
       0x0F, 0x85, core.relTo("native", -4),                  -- jne native
       core.callTo(s.sameMap),
       0x0F, 0x85, core.relTo("native", -4),                  -- jne native
-      core.jmpTo(b.entry + COUNT_OFFSET),
+      core.jmpTo(b.storeSite),
       "native",
       0x83, 0x3D, core.itob(b.syncMode), 0x00,               -- cmp dword [syncMode], 0
     })
