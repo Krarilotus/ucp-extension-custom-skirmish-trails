@@ -42,12 +42,12 @@ local SCANS = {
 local EXTRACTS = {
   -- inside Custom Scenarios' Play a Map case: "mov byte [chosenMap], 0" and "mov [difficulty], eax"
   playAMap = "C7 05 ? ? ? ? 03 00 00 00 89 35 ? ? ? ? C6 05 I(? ? ? ?) 00 A3 I(? ? ? ?)",
-  -- the Play a Map list's Prepare, opened from the menu: single-player game mode, host, the
-  -- human player's slot and the lobby's map fields
+  -- the Play a Map list's Prepare (cdecl, no arguments): it resets the game for Play a Map when
+  -- opened from the menu, including the single-player game mode and the human player's slot
   listPrepare = "53 33 DB 83 C8 FF 39 1D ? ? ? ? 89 1D ? ? ? ? 89 1D ? ? ? ? A3 ? ? ? ? 89 1D I(? ? ? ?)"
     .. " C7 05 ? ? ? ? 02 00 00 00 74 61 68 80 38 01 00 53 68 ? ? ? ? 89 1D ? ? ? ?"
-    .. " C7 05 I(? ? ? ?) 01 00 00 00 C7 05 I(? ? ? ?) 01 00 00 00 89 1D I(? ? ? ?) A3 I(? ? ? ?)"
-    .. " A3 ? ? ? ? 88 1D I(? ? ? ?)",
+    .. " C7 05 ? ? ? ? 01 00 00 00 C7 05 I(? ? ? ?) 01 00 00 00 89 1D ? ? ? ? A3 ? ? ? ?"
+    .. " A3 ? ? ? ? 88 1D ? ? ? ?",
   -- the Play a Map list's render, once it has faded out after the launcher: "mov [menuSwitchDelay], 0"
   listFaded = "C7 05 ? ? ? ? 20 00 00 00 89 1D I(? ? ? ?) 39 1D ? ? ? ? 0F 84",
 }
@@ -63,7 +63,6 @@ local WIN_WINNERS_SITE = { fn = "win", offset = 0x1B0, bytes = "A1 ? ? ? ? 66 39
 
 local GAME_MODE_SCENARIO = 2 -- custom scenario (Play a Map)
 local GAME_MODE_SKIRMISH = 3
-local SYNC_MODE_SINGLE_PLAYER = 0
 local SYNC_MODE_SKIRMISH = 99
 local PLAY_A_MAP = 4
 local LAUNCH_WITH_BRIEFING = 2
@@ -186,7 +185,7 @@ local function resolve()
   end
   local list = found.listPrepare
   -- the list and the mission finished screen must name the same game mode and human slot
-  if core.readInteger(syncModeSite + 1) ~= list[1] or core.readInteger(winnersSite + 1) ~= list[3] then
+  if core.readInteger(syncModeSite + 1) ~= list[1] or core.readInteger(winnersSite + 1) ~= list[2] then
     log(WARNING, "custom-skirmish-trails: the game's mode and player slot don't match; scenario missions are switched off")
     return nil
   end
@@ -194,15 +193,12 @@ local function resolve()
     launcher = core.exposeCode(found.launcher.address, 1, 0),
     customScenarios = core.exposeCode(found.customScenarios.address, 1, 0),
     listPrepare = list.address,
+    prepareList = core.exposeCode(list.address, 0, 0),
     saveLoaded = found.saveRead.address + SAVE_LOADED_OFFSET,
     chosenMap = found.playAMap[1],
     difficulty = found.playAMap[2],
     syncMode = list[1],
-    isHost = list[2],
-    humanSlot = list[3],
-    inGame = list[4],
-    lobbyMission = list[5],
-    lobbyMapName = list[6],
+    humanSlot = list[2],
     menuSwitchDelay = found.listFaded[1],
     gameMode = core.readInteger(branch + 1),
     winnersBranch = branch,
@@ -284,20 +280,15 @@ local function setSession(trailName, index, entry, fileName)
 end
 
 ---Starts `trailName` mission `index` (a scenario mission playing `fileName`) as Play a Map does:
----the Custom Scenarios handler's Play a Map case (it asks for the Play a Map list, which the
----launcher's next screen replaces), what the list sets when it opens, the session, the chosen
----map, Normal difficulty, the launcher, and what the list does once it has faded out: the
----launcher's next screen opens now.
+---the Custom Scenarios handler's Play a Map case, then the Prepare of the Play a Map list it asks
+---for (the launcher's next screen replaces the list, so the game doesn't run it; it ends a
+---session), the session, the chosen map, Normal difficulty, the launcher, and what the list does
+---once it has faded out: the launcher's next screen opens now.
 local function start(trailName, index, entry, fileName)
   local b = bindings
   b.customScenarios(PLAY_A_MAP)
+  b.prepareList()
   setSession(trailName, index, entry, fileName)
-  core.writeInteger(b.syncMode, SYNC_MODE_SINGLE_PLAYER)
-  core.writeInteger(b.isHost, 1)
-  core.writeInteger(b.humanSlot, 1)
-  core.writeInteger(b.inGame, 0)
-  core.writeInteger(b.lobbyMission, -1)
-  core.writeByte(b.lobbyMapName, 0)
   core.writeInteger(memory.IS_SKIRMISH_TRAIL, 0)
   writeName(b.chosenMap, fileName)
   core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
