@@ -574,10 +574,13 @@ function scenario.enable(missionsOf)
 end
 
 ---False when `entry` is a scenario mission whose map isn't the chosen map (a save from before the
----mission got another map, for example); true for a scenario mission playing it and for any other
----mission.
+---mission got another map, for example) or can't be checked (scenario missions switched off);
+---true for a scenario mission playing it and for any other mission.
 function scenario.isPlayedMission(entry)
-  return not scenario.isScenario(entry) or scenario.mapFileName(entry.map_name) == core.readString(bindings.chosenMap)
+  if not scenario.isScenario(entry) then
+    return true
+  end
+  return bindings ~= nil and scenario.mapFileName(entry.map_name) == core.readString(bindings.chosenMap)
 end
 
 ---The session for the troop limit, or nil when scenario missions are switched off: the addresses
@@ -595,7 +598,6 @@ function scenario.session()
       local current = session()
       return current and current.entry or nil
     end,
-    isPlayedMission = scenario.isPlayedMission,
   }
 end
 

@@ -478,7 +478,7 @@ return {
         end
       end
 
-      unitlimits.apply(REGISTRY, scenario.session())
+      unitlimits.apply(REGISTRY, scenario.session(), scenario.isPlayedMission)
 
       self.REGISTRY = REGISTRY -- debug line
     end)

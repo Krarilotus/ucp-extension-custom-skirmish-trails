@@ -40,6 +40,7 @@ local bindings = nil
 local difficulty = DEFAULT_DIFFICULTY
 local registry = nil
 local session = nil
+local isPlayedMission = function() return true end
 local installed = { skirmish = false, scenario = false }
 
 ---Reads one policy ("native", "formula 2400 40"), or nil and a reason.
@@ -203,10 +204,7 @@ local function playedEntry(syncMode)
   end
   local missions = registry[trailName]
   local entry = missions and missions[index] or nil
-  if entry ~= nil and session ~= nil and not session.isPlayedMission(entry) then
-    return nil
-  end
-  return entry
+  return isPlayedMission(entry) and entry or nil
 end
 
 local function installStore(b)
@@ -267,8 +265,10 @@ end
 
 ---Reads the unit_limit of every mission and installs the troop limit when a mission has a policy
 ---other than native at the difficulty that is set. Call it after the trails' missions are loaded.
----`scenarioSession` (scenario.session(), or nil) is needed for scenario missions.
-function unitlimits.apply(trails, scenarioSession)
+---`scenarioSession` (scenario.session(), or nil) is needed for scenario missions;
+---`playedMission(entry)` (scenario.isPlayedMission) is false for a scenario mission not played.
+function unitlimits.apply(trails, scenarioSession, playedMission)
+  isPlayedMission = playedMission or isPlayedMission
   registry = trails
   local any = false
   for trailName, missions in pairs(trails) do
