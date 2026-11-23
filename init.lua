@@ -116,10 +116,26 @@ local function applyTrail(trailName, path, missions, limit, languageTexts)
   for index, mapName in pairs(MAP_OVERRIDES[trailName] or {}) do
     if result[index] ~= nil then
       result[index].map_name = mapName
+    else
+      log(WARNING, string.format("custom-skirmish-trails: setMissionMap: the trail has no mission %d; %s is not used",
+        index, mapName))
     end
   end
-  for _, entry in ipairs(result) do
-    entry.map_name = scenario.gameSpelling(entry.map_name)
+  MAP_OVERRIDES[trailName] = nil
+  for index, entry in ipairs(result) do
+    local kind = scenario.kind(entry)
+    if kind == nil then
+      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unknown mission_kind '%s'",
+        trailName, index, tostring(entry.mission_kind)))
+    elseif kind == "scenario" then
+      local fileName, reason = scenario.mapFileName(entry.map_name)
+      if fileName == nil then
+        log(WARNING, string.format("custom-skirmish-trails: %s mission %d: scenario map '%s': %s",
+          trailName, index, tostring(entry.map_name), reason))
+      else
+        entry.map_name = fileName
+      end
+    end
   end
 
   local f = io.open(string.format("ucp/.cache/custom-skirmish-trails-config-%s.yml", trailName), 'w')
@@ -451,6 +467,13 @@ return {
             log(WARNING, string.format("custom-skirmish-trails: the trail csv file %s cannot be used, so the %s "
               .. "trail keeps the game's own missions: %s", path, trail.type, tostring(trailError)))
           end
+        end
+      end
+
+      for trailName, overrides in pairs(MAP_OVERRIDES) do
+        if next(overrides) ~= nil then
+          log(WARNING, string.format("custom-skirmish-trails: setMissionMap: %s has no mission data of its own; "
+            .. "its maps are not changed", trailName))
         end
       end
 

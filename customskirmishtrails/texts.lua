@@ -3,7 +3,7 @@ local winfiles = require("customskirmishtrails.winfiles")
 -- language. Every further language is one JSON file with only the texts:
 --
 --   {
---     "trail_title": "...", "trail_summary": "...",
+--     "trail_title": "...", "trail_summary": "...", "trail_locked_text": "...",
 --     "missions": {
 --       "1": { "mission_name": "...", "text_description_line_01": "...", "player2_name": "..." },
 --       "2": { ... }

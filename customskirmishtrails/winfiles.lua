@@ -1,7 +1,8 @@
 -- Writing files where UCP's io.open does not: UCP refuses to write inside ucp/plugins and
 -- ucp/modules, which is where trail csv files usually live. Export and Import therefore write
--- through Windows' own ANSI functions: LoadLibraryA through the game's own import of it, the
--- rest from kernel32's export table. Trail paths must resolve inside the game folder.
+-- through Windows' own ANSI functions: LoadLibraryA through the game's own import of it,
+-- GetProcAddress from kernel32's export table, the rest through GetProcAddress. Trail paths must
+-- resolve inside the game folder.
 
 local winfiles = {}
 
@@ -92,11 +93,9 @@ local function findExport(base, functionName, depth)
 end
 
 local initialized = false
+local failure = nil
 
-local function initialize()
-  if initialized then
-    return
-  end
+local function setUp()
   pathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
   tempPathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
   tempPrefix = core.allocate(4, true)
@@ -110,6 +109,13 @@ local function initialize()
   end
   win.LoadLibraryA = stdcallThunk(loadLibrarySlot, 1)
   local kernel32 = win.LoadLibraryA(setPath("kernel32.dll")) & 0xFFFFFFFF
+  local getProcAddress = kernel32 ~= 0 and findExport(kernel32, "GetProcAddress", 0) or nil
+  if getProcAddress == nil then
+    error("kernel32 has no GetProcAddress")
+  end
+  local getProcAddressSlot = core.allocate(4, true)
+  core.writeInteger(getProcAddressSlot, getProcAddress)
+  win.GetProcAddress = stdcallThunk(getProcAddressSlot, 2)
 
   local functions = {
     { "CreateDirectoryA", 2 }, { "FindFirstFileA", 2 }, { "FindNextFileA", 2 }, { "FindClose", 1 },
@@ -120,8 +126,8 @@ local function initialize()
   }
   for _, entry in ipairs(functions) do
     local name, argumentCount = entry[1], entry[2]
-    local address = kernel32 ~= 0 and findExport(kernel32, name, 0) or nil
-    if address == nil then
+    local address = win.GetProcAddress(kernel32, setPath(name)) & 0xFFFFFFFF
+    if address == 0 then
       error("kernel32 has no " .. name)
     end
     local slot = core.allocate(4, true)
@@ -132,6 +138,21 @@ local function initialize()
   local length = win.GetModuleFileNameA(0, pathBuffer, PATH_BUFFER_SIZE)
   assert(length > 0 and length < PATH_BUFFER_SIZE, "cannot resolve the game directory")
   gameDirectory = assert(core.readString(pathBuffer, length):gsub("/", "\\"):match("^(.*\\)"))
+end
+
+---Resolves the Windows functions once; a failure is kept and raised again on later calls.
+local function initialize()
+  if initialized then
+    return
+  end
+  if failure ~= nil then
+    error(failure, 0)
+  end
+  local ok, err = pcall(setUp)
+  if not ok then
+    failure = tostring(err)
+    error(failure, 0)
+  end
   initialized = true
 end
 
