@@ -237,20 +237,48 @@ local function codeSectionOf(address)
   return nil
 end
 
+---`aob` (as for utils.AOBExtract) without its capture marks, as core.scanForAOB and matches take it.
+function patches.plain(aob)
+  return (aob:gsub("I%(", ""):gsub("%)", ""))
+end
+
 ---True when `aob` (as for utils.AOBExtract), found at `found`, matches there and nowhere else in
----the game executable's code section; otherwise false and the reason.
+---the game executable's code section; otherwise false and the reason. The framework's scanner may
+---look beyond `max`, so hits outside the section don't count.
 function patches.isUnique(aob, found)
   local start, finish = codeSectionOf(found)
   if start == nil then
     return false, "is not in the game's code"
   end
-  local plain = aob:gsub("I%(", ""):gsub("%)", "")
+  local plain = patches.plain(aob)
+  local function inSection(hit)
+    return hit ~= nil and hit >= start and hit < finish
+  end
   local first = core.scanForAOB(plain, start, finish)
-  local again = found + 1 < finish and core.scanForAOB(plain, found + 1, finish) or 0
-  if first ~= found or (again ~= nil and again ~= 0) then
+  local again = found + 1 < finish and core.scanForAOB(plain, found + 1, finish) or nil
+  if first ~= found or inSection(again) then
     return false, "is found twice"
   end
   return true
+end
+
+---Runs `install`, which patches the game code at `sites` ({ address, size } each). When it fails,
+---every site gets its original bytes back and the error is raised again.
+function patches.guarded(sites, install)
+  local originals = {}
+  for index, site in ipairs(sites) do
+    originals[index] = core.readBytes(site.address, site.size)
+  end
+  local ok, err = pcall(install)
+  if ok then
+    return
+  end
+  for index, site in ipairs(sites) do
+    if not pcall(core.writeCode, site.address, originals[index]) then
+      err = string.format("%s; the game code at 0x%X could not be restored", tostring(err), site.address)
+    end
+  end
+  error(err, 0)
 end
 
 local function writeImmediate(address, size, value)

@@ -131,11 +131,15 @@ function missionjson.fromRow(header, cells, aiMapping)
   put(mission, "format", { raw = tostring(missionjson.FORMAT) })
   put(mission, "map_name", take("map_name"))
   put(mission, "mission_name", take("mission_name"))
-  for _, column in ipairs({ "mission_kind", "keep_start_army", "unit_limit" }) do
+  for _, column in ipairs({ "mission_kind", "unit_limit" }) do
     local value = take(column)
     if value ~= "" then
-      put(mission, column, column == "keep_start_army" and cell(value) or value)
+      put(mission, column, value)
     end
+  end
+  -- keep_start_army: 0 or 1; any other text stays in "extra"
+  if cells.keep_start_army == "0" or cells.keep_start_army == "1" then
+    put(mission, "keep_start_army", { raw = take("keep_start_army") })
   end
   local lines = { items = {} }
   for line = 1, TEXT_LINES do

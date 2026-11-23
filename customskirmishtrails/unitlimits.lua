@@ -4,8 +4,8 @@
 -- mission's policy replaces the stored value while that mission is played:
 --   native               the game's own value
 --   formula BASE OFFSET  BASE / living lords - OFFSET ("formula 2400 40" = Crusader limits)
---   by_alive L=N ...     N troops at L living lords, linear between the listed counts
---                        ("by_alive 8=250 4=500 2=1000 1=2000")
+--   by_alive L=N ...     N troops at L living lords, linear between the listed counts and
+--                        rounded down ("by_alive 8=250 4=500 2=1000 1=2000")
 -- The result never exceeds the game's skirmish formula for the living lords, also in scenarios,
 -- where the game itself has no limit (10000). The mission comes from the game's trail state
 -- (skirmish missions) or the scenario the trail started (see scenario.session), the policy from
@@ -29,7 +29,9 @@ local STORE_PATCH_SIZE = 6   -- mov [ecx + limit], eax
 local ENTRY_PATCH_SIZE = 9   -- the compare (7 bytes) and the short jne (2 bytes)
 local COUNT_OFFSET = 0x14    -- where the jne goes: the counting part
 local GAME_MODE_SCENARIO = 2
+local SYNC_MODE_SKIRMISH = 99
 local MAX_LORDS = 8
+local MAX_LIMIT = 100000 -- above every limit the game computes
 
 local DIFFICULTIES = { story = true, normal = true, hard = true, very_hard = true }
 local DEFAULT_DIFFICULTY = "normal" -- the option's default
@@ -54,14 +56,15 @@ local function parsePolicy(text)
     end
   end
   if #words >= 2 and words[1] == "by_alive" then
-    local points = {}
+    local points, seen = {}, {}
     for index = 2, #words do
       local lords, limit = words[index]:match("^(%d+)=(%d+)$")
       lords, limit = math.tointeger(tonumber(lords)), math.tointeger(tonumber(limit))
-      if lords == nil or lords < 1 or lords > MAX_LORDS or limit == nil then
+      if lords == nil or lords < 1 or lords > MAX_LORDS or seen[lords] or limit == nil or limit > MAX_LIMIT then
         points = nil
         break
       end
+      seen[lords] = true
       points[#points + 1] = { lords = lords, limit = limit }
     end
     if points ~= nil then
@@ -69,7 +72,8 @@ local function parsePolicy(text)
       return { kind = "by_alive", points = points }
     end
   end
-  return nil, string.format("'%s' is not 'native', 'formula BASE OFFSET' or 'by_alive LORDS=LIMIT ...'", text)
+  return nil, string.format("'%s' is not 'native', 'formula BASE OFFSET' or 'by_alive LORDS=LIMIT ...' "
+    .. "(each LORDS 1-8 once, LIMIT at most %d)", text, MAX_LIMIT)
 end
 
 ---Reads a unit_limit cell: one policy for every difficulty, or "story: ...; hard: ..." with an
@@ -134,10 +138,6 @@ function unitlimits.available(entry, isScenario)
   return installed.skirmish and (not isScenario or installed.scenario)
 end
 
-local function plain(aob)
-  return (aob:gsub("I%(", ""):gsub("%)", ""))
-end
-
 local function resolve()
   local okEntry, entry, syncMode, limitField, singlePlayerValue = pcall(utils.AOBExtract, ENTRY_AOB)
   local okStore, store, base, storeField = pcall(utils.AOBExtract, STORE_AOB)
@@ -171,23 +171,10 @@ end
 ---True when both sites still hold the code and operands found by resolve (another patch may
 ---have changed them since).
 local function unchanged(b)
-  return patches.matches(b.entry, plain(ENTRY_AOB)) and patches.matches(b.store, plain(STORE_AOB))
+  return patches.matches(b.entry, patches.plain(ENTRY_AOB)) and patches.matches(b.store, patches.plain(STORE_AOB))
     and core.readInteger(b.entry + 2) == b.syncMode and core.readInteger(b.entry + 11) == b.field
     and core.readInteger(b.entry + 15) == b.singlePlayerValue and core.readInteger(b.store + 1) == b.base
     and core.readInteger(b.store + 15) == b.field and core.readByte(b.store + STORE_OFFSET - 1) == b.offset
-end
-
----Runs `write`, which patches `size` bytes at `site`; puts the original bytes back when it fails.
-local function guarded(site, size, write)
-  local original = {}
-  for index, byte in ipairs(core.readBytes(site, size)) do
-    original[index] = byte & 0xFF
-  end
-  local ok, err = pcall(write)
-  if not ok then
-    pcall(core.writeCode, site, original)
-    error(err, 0)
-  end
 end
 
 ---The number of living lords the game's formula used, from its result.
@@ -201,10 +188,13 @@ local function livingLords(value)
 end
 
 ---The trail mission being played: in single-player mode only the trail's scenario reaches the
----store (the entry patch checks it), otherwise the game's trail state names it.
-local function playedEntry(singlePlayer)
-  if singlePlayer then
+---store (the entry patch checks it); in single-player skirmish the game's trail state names it.
+local function playedEntry(syncMode)
+  if syncMode == 0 then
     return session ~= nil and session.entry() or nil
+  end
+  if syncMode ~= SYNC_MODE_SKIRMISH then
+    return nil
   end
   local ok, isTrail, _, trailName, index = pcall(memory.fetchCurrentTrail)
   if not ok or not isTrail then
@@ -215,10 +205,11 @@ local function playedEntry(singlePlayer)
 end
 
 local function installStore(b)
-  guarded(b.storeSite, STORE_PATCH_SIZE, function()
+  patches.guarded({ { address = b.storeSite, size = STORE_PATCH_SIZE } }, function()
     core.detourCode(function(registers)
-      local singlePlayer = core.readInteger(b.syncMode) == 0
-      local policy = unitlimits.policy(playedEntry(singlePlayer))
+      local syncMode = core.readInteger(b.syncMode)
+      local singlePlayer = syncMode == 0
+      local policy = unitlimits.policy(playedEntry(syncMode))
       local lords = policy and livingLords(registers.EAX) or nil
       if policy ~= nil and lords ~= nil then
         registers.EAX = math.max(0, math.min(unitlimits.value(policy, lords), registers.EAX))
@@ -231,38 +222,22 @@ local function installStore(b)
 end
 
 ---Single-player games count only for the trail's scenario: the scenario mode is on, its mission
----has a policy (session.cap) and the chosen map is the one the trail started (session.map).
+---has a policy (session.cap) and the chosen map is the session's (session.sameMap). Otherwise the
+---game's own compare is repeated, so its single-player store runs with the flags it had.
 local function installEntry(b, s)
-  guarded(b.entry, ENTRY_PATCH_SIZE, function()
+  patches.guarded({ { address = b.entry, size = ENTRY_PATCH_SIZE } }, function()
     core.insertCode(b.entry, ENTRY_PATCH_SIZE, {
-      0x83, 0x3D, core.itob(b.syncMode), 0x00,             -- cmp dword [syncMode], 0
-      0x0F, 0x85, core.relTo(b.entry + COUNT_OFFSET, -4),  -- jne count
-      0x80, 0x3D, core.itob(s.cap), 0x00,                  -- cmp byte [cap], 0
-      0x0F, 0x84, core.relTo("native", -4),                -- je native
+      0x83, 0x3D, core.itob(b.syncMode), 0x00,               -- cmp dword [syncMode], 0
+      0x0F, 0x85, core.relTo(b.entry + COUNT_OFFSET, -4),    -- jne count
+      0x80, 0x3D, core.itob(s.cap), 0x00,                    -- cmp byte [cap], 0
+      0x0F, 0x84, core.relTo("native", -4),                  -- je native
       0x83, 0x3D, core.itob(s.gameMode), GAME_MODE_SCENARIO, -- cmp dword [gameMode], 2
-      0x0F, 0x85, core.relTo("native", -4),                -- jne native
-      0x50,                                                -- push eax
-      0x56,                                                -- push esi
-      0x57,                                                -- push edi
-      0xBE, core.itob(s.map),                              -- mov esi, map
-      0xBF, core.itob(s.chosenMap),                        -- mov edi, chosenMap
-      "compare",
-      0x8A, 0x06,                                          -- mov al, [esi]
-      0x3A, 0x07,                                          -- cmp al, [edi]
-      0x0F, 0x85, core.relTo("other", -4),                 -- jne other
-      0x46,                                                -- inc esi
-      0x47,                                                -- inc edi
-      0x84, 0xC0,                                          -- test al, al
-      0x0F, 0x85, core.relTo("compare", -4),               -- jnz compare
-      0x5F,                                                -- pop edi
-      0x5E,                                                -- pop esi
-      0x58,                                                -- pop eax
+      0x0F, 0x85, core.relTo("native", -4),                  -- jne native
+      0xE8, core.relTo(s.sameMap, -4),                       -- call sameMap
+      0x0F, 0x85, core.relTo("native", -4),                  -- jne native
       core.jmpTo(b.entry + COUNT_OFFSET),
-      "other",
-      0x5F,                                                -- pop edi
-      0x5E,                                                -- pop esi
-      0x58,                                                -- pop eax
       "native",
+      0x83, 0x3D, core.itob(b.syncMode), 0x00,               -- cmp dword [syncMode], 0
     })
   end)
 end

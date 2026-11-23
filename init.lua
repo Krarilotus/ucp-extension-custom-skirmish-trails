@@ -479,7 +479,6 @@ return {
       end
 
       unitlimits.apply(REGISTRY, scenario.session())
-      scenario.restore()
 
       self.REGISTRY = REGISTRY -- debug line
     end)
