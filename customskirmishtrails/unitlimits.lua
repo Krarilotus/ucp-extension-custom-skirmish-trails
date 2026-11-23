@@ -14,15 +14,18 @@
 -- The function is found by AOB, the same in both 1.41 executables, with the operands decoded.
 -- The game counts the lords of the skirmish lobby's slots, which don't describe a scenario. So
 -- the scenario the trail started, when its mission has a policy, goes straight to the store, and
--- its living lords are the players with a lord, as the game's single-player defeat check reads them.
+-- its living lords are the players with a lord (as the game's single-player defeat check reads
+-- it) that isn't marked killed (as the game's count reads it).
 
 local patches = require("customskirmishtrails.patches")
 local memory = require("customskirmishtrails.memory")
 
 local unitlimits = {}
 
--- "cmp dword [syncMode], 0 / jne count / mov dword [ecx + limit], 10000 / ret / push esi ..."
-local ENTRY_AOB = "83 3D I(? ? ? ?) 00 75 0B C7 81 I(? ? ? ?) I(? ? ? ?) C3 56 57 33 F6"
+-- "cmp dword [syncMode], 0 / jne count / mov dword [ecx + limit], 10000 / ret / push esi ... /
+-- mov edx, players / ... / cmp dword [edx + killed], 0" (the lord-killed marker of player 1)
+local ENTRY_AOB = "83 3D I(? ? ? ?) 00 75 0B C7 81 I(? ? ? ?) I(? ? ? ?) C3 56 57 33 F6 BA I(? ? ? ?) "
+  .. "B8 ? ? ? ? 83 CF FF 39 78 94 75 05 83 38 00 74 0C 83 BA I(? ? ? ?) 00"
 -- "mov eax, base / cdq / idiv esi / pop edi / pop esi / sub eax, offset / mov [ecx + limit], eax / ret"
 local STORE_AOB = "B8 I(? ? ? ?) 99 F7 FE 5F 5E 83 E8 ? 89 81 I(? ? ? ?) C3 5F C7 81 ? ? ? ? ? ? ? ? 5E C3"
 local STORE_OFFSET = 0x0D
@@ -144,7 +147,8 @@ function unitlimits.available(entry, isScenario)
 end
 
 local function resolve()
-  local okEntry, entry, syncMode, limitField, singlePlayerValue = pcall(utils.AOBExtract, ENTRY_AOB)
+  local okEntry, entry, syncMode, limitField, singlePlayerValue, players, killed =
+    pcall(utils.AOBExtract, ENTRY_AOB)
   local okStore, store, base, storeField = pcall(utils.AOBExtract, STORE_AOB)
   if not okEntry or not okStore or entry == nil or store == nil then
     log(WARNING, "custom-skirmish-trails: could not find the troop limit; unit_limit is switched off")
@@ -167,6 +171,7 @@ local function resolve()
     syncMode = syncMode,
     field = limitField,
     singlePlayerValue = singlePlayerValue,
+    firstLordKilled = players + killed,
     base = base,
     offset = core.readByte(store + STORE_OFFSET - 1),
     storeSite = store + STORE_OFFSET,
@@ -192,11 +197,12 @@ local function livingLords(value)
   return nil
 end
 
----The living lords of a scenario: players 1-8 with a lord.
+---The living lords of a scenario: players 1-8 with a lord that isn't marked killed.
 local function scenarioLords(b)
   local count = 0
-  for player = 1, MAX_LORDS do
-    if core.readInteger(b.lords + player * b.playerSize) > 0 then
+  for slot = 0, MAX_LORDS - 1 do
+    local offset = slot * b.playerSize
+    if core.readInteger(b.firstLordId + offset) > 0 and core.readInteger(b.firstLordKilled + offset) == 0 then
       count = count + 1
     end
   end
@@ -248,7 +254,7 @@ end
 ---mission has a policy (session.cap) and the chosen map is the session's (session.sameMap).
 ---Otherwise the game's own compare is repeated, so its single-player store runs with the flags it had.
 local function installEntry(b, s)
-  local lordSite, playerSize, lords = utils.AOBExtract(SCENARIO_LORD_AOB)
+  local lordSite, playerSize, lordIds = utils.AOBExtract(SCENARIO_LORD_AOB)
   if lordSite == nil then
     error("the single-player defeat check was not found")
   end
@@ -256,7 +262,7 @@ local function installEntry(b, s)
   if not unique then
     error("the single-player defeat check " .. reason)
   end
-  b.playerSize, b.lords = playerSize, lords
+  b.playerSize, b.firstLordId = playerSize, lordIds + playerSize
   patches.guarded({ { address = b.entry, size = ENTRY_PATCH_SIZE } }, function()
     core.insertCode(b.entry, ENTRY_PATCH_SIZE, {
       0x83, 0x3D, core.itob(b.syncMode), 0x00,               -- cmp dword [syncMode], 0
@@ -267,6 +273,7 @@ local function installEntry(b, s)
       0x0F, 0x85, core.relTo("native", -4),                  -- jne native
       core.callTo(s.sameMap),
       0x0F, 0x85, core.relTo("native", -4),                  -- jne native
+      0xB8, core.itob(b.singlePlayerValue),                  -- mov eax, 10000 (the detour sets it)
       core.jmpTo(b.storeSite),
       "native",
       0x83, 0x3D, core.itob(b.syncMode), 0x00,               -- cmp dword [syncMode], 0
