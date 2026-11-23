@@ -1,9 +1,10 @@
 -- Scenario missions: a trail mission with mission_kind "scenario" plays a custom scenario map
 -- (map type 0, for example an Invasion map made in the editor or saved from a game). It starts
 -- the way Custom Scenarios -> Play a Map starts a map, so the map's events, goals, invasions,
--- placed units and AI lords run as the map has them; an Invasion map opens the game's own
--- briefing. A win of the trail's selected mission is handed to the game's own trail code on the
--- mission finished screen, which advances the trail and returns to the trail map.
+-- placed units and AI lords run as they do from Play a Map; an Invasion map opens the game's own
+-- briefing. keep_start_army skips Play a Map's starting-army cut for one mission. A win of the
+-- trail's selected mission is handed to the game's own trail code on the mission finished
+-- screen, which advances the trail and returns to the trail map.
 --
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and
 -- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing, found
@@ -137,47 +138,11 @@ local function readOperand(site, offset)
   return core.readInteger(site + offset)
 end
 
-local IMAGE_ALIGNMENT = 0x10000 -- Windows maps images on 64 KB boundaries
-local MAX_IMAGE_STEPS = 0x200   -- 32 MB, far more than the game's image
-
----The bounds of the executable section that `address` lies in, read from the PE headers of its
----image (found by walking back to the "MZ" header), or nil.
-local function sectionOf(address)
-  local base = address - address % IMAGE_ALIGNMENT
-  for _ = 1, MAX_IMAGE_STEPS do
-    if core.readSmallInteger(base) & 0xFFFF == 0x5A4D then
-      local nt = base + core.readInteger(base + 0x3C)
-      if core.readInteger(nt) ~= 0x4550 then
-        return nil
-      end
-      local count = core.readSmallInteger(nt + 6) & 0xFFFF
-      local first = nt + 24 + (core.readSmallInteger(nt + 20) & 0xFFFF)
-      for index = 0, count - 1 do
-        local header = first + 40 * index
-        local start = base + core.readInteger(header + 12)
-        local finish = start + core.readInteger(header + 8)
-        if address >= start and address < finish then
-          return start, finish
-        end
-      end
-      return nil
-    end
-    base = base - IMAGE_ALIGNMENT
-  end
-  return nil
-end
-
----The address of `aob` (found at `found`), or nil when the game's code has it a second time.
+---The address of `aob` (found at `found`), or nil when it is not unique in the game's code.
 local function unique(name, aob, found)
-  local _, finish = sectionOf(found)
-  if finish == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s is not in the game's code; scenario missions are switched off", name))
-    return nil
-  end
-  local plain = aob:gsub("I%(", ""):gsub("%)", "")
-  local again = found + 1 < finish and core.scanForAOB(plain, found + 1, finish) or 0
-  if again ~= nil and again ~= 0 then
-    log(WARNING, string.format("custom-skirmish-trails: %s found twice; scenario missions are switched off", name))
+  local ok, reason = patches.isUnique(aob, found)
+  if not ok then
+    log(WARNING, string.format("custom-skirmish-trails: %s %s; scenario missions are switched off", name, reason))
     return nil
   end
   return found
@@ -236,8 +201,8 @@ local function resolve()
 end
 
 ---Starting-army cut: a Play a Map start skips it when the map it loads is the scenario the trail
----started last (Restart of it too). The trail's start writes that name; opening the Play a Map
----list clears it, so starts from the list and loads of other maps stay as they are.
+---started last with keep_start_army (Restart of it too). That start writes the name; opening the
+---Play a Map list clears it, so other starts and loads of other maps stay as they are.
 local function installArmyCutSkip(b)
   b.trailMap = core.allocate(NAME_BUFFER, true)
   local skip = b.armyCutSkip
@@ -274,9 +239,15 @@ local function writeName(address, name)
   core.writeByte(address + #name, 0)
 end
 
+---True when the mission keeps the player's whole starting army (keep_start_army 1).
+local function keepsStartArmy(entry)
+  local value = entry.keep_start_army
+  return value == 1 or value == true or value == "1"
+end
+
 ---Starts a scenario mission as Play a Map does: the Custom Scenarios handler's Play a Map case,
 ---what the list sets when it opens, the chosen map, Normal difficulty, the launcher.
-local function start(fileName)
+local function start(fileName, keepArmy)
   local b = bindings
   b.customScenarios(PLAY_A_MAP)
   core.writeInteger(b.syncMode, SYNC_MODE_SINGLE_PLAYER)
@@ -287,16 +258,16 @@ local function start(fileName)
   core.writeByte(b.lobbyMapName, 0)
   core.writeInteger(memory.IS_SKIRMISH_TRAIL, 0)
   writeName(b.chosenMap, fileName)
-  writeName(b.trailMap, fileName)
+  writeName(b.trailMap, keepArmy and fileName or "")
   core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
   b.launcher(LAUNCH_WITH_BRIEFING)
 end
 
----The trail and mission of a won scenario: the trail mission that is selected in its trail and
----plays the map the game keeps for Restart. That name is also in saved games, so a door saved and
----loaded later counts as well, and so does a win of the same map started from Play a Map. The
+---The trail and mission of the scenario being played: the trail mission that is selected in its
+---trail and plays the map the game keeps for Restart. That name is also in saved games, so a door
+---saved and loaded later counts as well, and so does the same map started from Play a Map. The
 ---current trail is asked first.
-local function wonMission()
+local function scenarioMission()
   local chosen = asciiLower(core.readString(bindings.chosenMap) or "")
   if chosen == "" then
     return nil
@@ -320,6 +291,34 @@ local function wonMission()
   return nil
 end
 
+---The trail mission being played, as (trail name, mission number, entry), or nil: a skirmish
+---trail mission (the game's trail flag, trail and progress) or a scenario mission (as above).
+function scenario.currentMission()
+  if bindings == nil then
+    return nil
+  end
+  local mode = core.readInteger(bindings.gameMode)
+  if mode == GAME_MODE_SKIRMISH and core.readInteger(memory.IS_SKIRMISH_TRAIL) == 1 then
+    local trailName = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
+    local missions = trailName and trailOf(trailName) or nil
+    if missions == nil then
+      return nil
+    end
+    local index = core.readInteger(memory.TRAIL_PROGRESS_ADDRESSES[trailName]) + 1
+    local entry = missions[index]
+    if entry == nil or scenario.isScenario(entry) then
+      return nil
+    end
+    return trailName, index, entry
+  elseif mode == GAME_MODE_SCENARIO then
+    local trailName, index = scenarioMission()
+    if trailName ~= nil then
+      return trailName, index, trailOf(trailName)[index]
+    end
+  end
+  return nil
+end
+
 local TRAIL_INDEX = {}
 for index, name in pairs(memory.TRAIL_TYPES) do
   TRAIL_INDEX[name] = index
@@ -338,7 +337,7 @@ local function installWinHandover(b)
     if slot < 1 or slot > MAX_PLAYERS then
       return registers
     end
-    local trailName, mission = wonMission()
+    local trailName, mission = scenarioMission()
     if trailName == nil then
       return registers
     end
@@ -381,7 +380,7 @@ function scenario.startIfScenario(entry)
     log(INFO, string.format("custom-skirmish-trails: %s opens on %s", fileName, tostring(from)))
     return true
   end
-  start(fileName)
+  start(fileName, keepsStartArmy(entry))
   return true
 end
 

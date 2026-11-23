@@ -136,6 +136,8 @@ local HEADERS_EXTRA = {
   "player1_lord",
   "player1_skip_start_units",
   "mission_kind",
+  "keep_start_army",
+  "unit_limit",
 }
 
 ---@alias binary 0|1
@@ -266,6 +268,8 @@ local HEADERS_TYPES = {
   ["player1_lord"] = "string",
   ["player1_skip_start_units"] = "binary",
   ["mission_kind"] = "string",
+  ["keep_start_army"] = "binary",
+  ["unit_limit"] = "string",
 }
 
 local ALLOW_NIL = {
@@ -279,6 +283,7 @@ local ALLOW_NIL = {
   ["player8_name"] = true,
   ["player1_lord"] = true,
   ["player1_skip_start_units"] = true,
+  ["keep_start_army"] = true,
   ["gold_player_1"] = true,
   ["gold_player_2"] = true,
   ["gold_player_3"] = true,

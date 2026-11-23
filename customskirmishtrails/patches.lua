@@ -194,6 +194,51 @@ patches.matches = matches
 patches.siteAddress = siteAddress
 patches.functionAddress = locate
 
+local IMAGE_ALIGNMENT = 0x10000 -- Windows maps images on 64 KB boundaries
+local MAX_IMAGE_STEPS = 0x200   -- 32 MB, far more than the game's image
+
+---The bounds of the executable section that `address` lies in, read from the PE headers of its
+---image (found by walking back to the "MZ" header), or nil.
+local function sectionOf(address)
+  local base = address - address % IMAGE_ALIGNMENT
+  for _ = 1, MAX_IMAGE_STEPS do
+    if core.readSmallInteger(base) & 0xFFFF == 0x5A4D then
+      local nt = base + core.readInteger(base + 0x3C)
+      if core.readInteger(nt) ~= 0x4550 then
+        return nil
+      end
+      local count = core.readSmallInteger(nt + 6) & 0xFFFF
+      local first = nt + 24 + (core.readSmallInteger(nt + 20) & 0xFFFF)
+      for index = 0, count - 1 do
+        local header = first + 40 * index
+        local start = base + core.readInteger(header + 12)
+        local finish = start + core.readInteger(header + 8)
+        if address >= start and address < finish then
+          return start, finish
+        end
+      end
+      return nil
+    end
+    base = base - IMAGE_ALIGNMENT
+  end
+  return nil
+end
+
+---True when `aob` (as for utils.AOBExtract), found at `found`, matches nowhere else in the rest
+---of the game's code section; otherwise false and the reason.
+function patches.isUnique(aob, found)
+  local _, finish = sectionOf(found)
+  if finish == nil then
+    return false, "is not in the game's code"
+  end
+  local plain = aob:gsub("I%(", ""):gsub("%)", "")
+  local again = found + 1 < finish and core.scanForAOB(plain, found + 1, finish) or 0
+  if again ~= nil and again ~= 0 then
+    return false, "is found twice"
+  end
+  return true
+end
+
 local function writeImmediate(address, size, value)
   if size == 1 then
     core.writeCodeByte(address, value)

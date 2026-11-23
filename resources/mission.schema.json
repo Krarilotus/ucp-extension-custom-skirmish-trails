@@ -25,6 +25,14 @@
         "scenario"
       ]
     },
+    "keep_start_army": {
+      "description": "Scenario missions: 1 keeps the player's whole starting army. Without it the game removes part of it, as Play a Map does on maps without invasion events.",
+      "enum": [0, 1]
+    },
+    "unit_limit": {
+      "description": "The player's troop limit in this mission: 'native', 'formula BASE OFFSET' (BASE / living lords - OFFSET; 'formula 2400 40' gives Crusader's limits in Extreme), or per difficulty, e.g. 'story: native; normal: formula 2400 40; hard: formula 2400 40' (story, normal, hard, very_hard, default). Never above the game's own limit.",
+      "type": "string"
+    },
     "text_description": {
       "description": "The 8 description lines of the briefing.",
       "type": "array",

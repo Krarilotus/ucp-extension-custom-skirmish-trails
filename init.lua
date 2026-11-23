@@ -19,6 +19,7 @@ local sync = require("customskirmishtrails.sync")
 local conversion = require("customskirmishtrails.conversion")
 local winfiles = require("customskirmishtrails.winfiles")
 local scenario = require("customskirmishtrails.scenario")
+local unitlimits = require("customskirmishtrails.unitlimits")
 
 local TRAIL_PROGRESS_ADDRESSES = memory.TRAIL_PROGRESS_ADDRESSES
 local REGISTRY = memory.REGISTRY
@@ -477,6 +478,8 @@ return {
         end
       end
 
+      unitlimits.apply(REGISTRY)
+
       self.REGISTRY = REGISTRY -- debug line
     end)
 
@@ -507,6 +510,7 @@ return {
     detourSwitchToMenu()
     hookPlayerNaming()
     scenario.enable(function(trailName) return REGISTRY[trailName] end)
+    unitlimits.enable(scenario.currentMission, config.difficulty)
   end,
   disable = function(self, config) end,
   getTrailProgress = function(self, trail)

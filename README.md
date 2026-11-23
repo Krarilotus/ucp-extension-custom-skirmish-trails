@@ -17,6 +17,7 @@ This tool is recommended to manipulate the csv files https://edit-csv.net/
 11. Mission data as a csv file and/or a folder of mission JSON files (resources/mission.schema.json), kept in step at every start
 12. Language files with only the texts per game language
 13. Scenario missions: a mission can be a custom scenario map, started as Play a Map starts it, with its own events, goals and players; a win moves the trail on (`mission_kind`)
+14. Troop limits per mission and difficulty, for example Crusader's limits in an Extreme trail (`unit_limit`)
 
 See `docs/trail-files.md` for the details.
 
