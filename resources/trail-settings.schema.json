@@ -25,6 +25,10 @@
       "description": "The short description under the title in the skirmish menu. Longer than 540 pixels, it wraps into a second line. A language file (trail_text_files) can give its own.",
       "type": "string"
     },
+    "trail_locked_text": {
+      "description": "Shown in the briefing instead of the mission description while a scenario mission's map is not open yet (a date in the files module's availability.json). {date} becomes the date it opens. A language file (trail_text_files) can give its own.",
+      "type": "string"
+    },
     "starting_year": {
       "description": "The year the trail's first mission starts in. The game uses 1100 for the first trail and 1130 for the Warchest and the Extreme trail.",
       "type": "integer",
@@ -101,7 +105,7 @@
       "additionalProperties": false
     },
     "trail_text_files": {
-      "description": "Texts per game language: a folder with one <language>.json file per language (english.json, german.json, ...), or an object of languages to files. A language file has \"trail_title\", \"trail_summary\" and \"missions\": { \"<mission number>\": { \"mission_name\": ..., \"text_description_line_01\": ..., \"player2_name\": ... } }. Texts it does not have keep the mission data's text. With trail_missions, <folder>/_template.json is written with the texts of the mission data, as a starting point for translators.",
+      "description": "Texts per game language: a folder with one <language>.json file per language (english.json, german.json, ...), or an object of languages to files. A language file has \"trail_title\", \"trail_summary\", \"trail_locked_text\" and \"missions\": { \"<mission number>\": { \"mission_name\": ..., \"text_description_line_01\": ..., \"player2_name\": ... } }. Texts it does not have keep the mission data's text. With trail_missions, <folder>/_template.json is written with the texts of the mission data, as a starting point for translators.",
       "oneOf": [
         {
           "type": "string"

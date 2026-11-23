@@ -131,6 +131,10 @@ function missionjson.fromRow(header, cells, aiMapping)
   put(mission, "format", { raw = tostring(missionjson.FORMAT) })
   put(mission, "map_name", take("map_name"))
   put(mission, "mission_name", take("mission_name"))
+  local kind = take("mission_kind")
+  if kind ~= "" then
+    put(mission, "mission_kind", kind)
+  end
   local lines = { items = {} }
   for line = 1, TEXT_LINES do
     table.insert(lines.items, take(string.format("text_description_line_%02d", line)))
@@ -244,6 +248,7 @@ function missionjson.toRow(data, reverseMapping, file)
   local cells = {}
   cells.map_name = cellOf(data.map_name, file .. ": map_name")
   cells.mission_name = cellOf(data.mission_name, file .. ": mission_name")
+  cells.mission_kind = cellOf(data.mission_kind, file .. ": mission_kind")
   local lines = type(data.text_description) == "table" and data.text_description or {}
   for line = 1, TEXT_LINES do
     cells[string.format("text_description_line_%02d", line)] = cellOf(lines[line], file .. ": text_description")

@@ -135,6 +135,7 @@ local HEADERS_EXTRA = {
   "player8_name",
   "player1_lord",
   "player1_skip_start_units",
+  "mission_kind",
 }
 
 ---@alias binary 0|1
@@ -264,6 +265,7 @@ local HEADERS_TYPES = {
   ["player8_name"] = "string",
   ["player1_lord"] = "string",
   ["player1_skip_start_units"] = "binary",
+  ["mission_kind"] = "string",
 }
 
 local ALLOW_NIL = {

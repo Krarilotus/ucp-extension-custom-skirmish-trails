@@ -18,6 +18,7 @@ local textsModule = require("customskirmishtrails.texts")
 local sync = require("customskirmishtrails.sync")
 local conversion = require("customskirmishtrails.conversion")
 local winfiles = require("customskirmishtrails.winfiles")
+local scenario = require("customskirmishtrails.scenario")
 
 local TRAIL_PROGRESS_ADDRESSES = memory.TRAIL_PROGRESS_ADDRESSES
 local REGISTRY = memory.REGISTRY
@@ -32,6 +33,11 @@ local TRAILS = {
 }
 
 local REQUESTS_FILE = "ucp/.cache/custom-skirmish-trails-requests.json"
+
+-- per trail: mission number -> map name given by a plugin (setMissionMap)
+local MAP_OVERRIDES = {}
+-- per trail: the briefing text of a scenario mission that is not open yet
+local LOCKED_TEXTS = {}
 
 ---The mission entry of the trail mission being prepared or played (or nil), and whether the
 ---game is in a trail mission.
@@ -107,6 +113,14 @@ local function applyTrail(trailName, path, missions, limit, languageTexts)
   if result == nil then error(err) end
   -- the game language's texts over the default texts of the csv
   textsModule.apply(languageTexts, result)
+  for index, mapName in pairs(MAP_OVERRIDES[trailName] or {}) do
+    if result[index] ~= nil then
+      result[index].map_name = mapName
+    end
+  end
+  for _, entry in ipairs(result) do
+    entry.map_name = scenario.gameSpelling(entry.map_name)
+  end
 
   local f = io.open(string.format("ucp/.cache/custom-skirmish-trails-config-%s.yml", trailName), 'w')
   if f ~= nil then
@@ -142,7 +156,7 @@ local function detourSwitchToMenu()
         return registers
       end
 
-      interface.commitTextDescription(entry)
+      interface.commitTextDescription(scenario.briefingEntry(entry, LOCKED_TEXTS[trailName]))
       interface.commitStartGoldDisplay(entry)
       patches.applyLord(entry)
 
@@ -420,6 +434,7 @@ return {
             log(INFO, string.format("custom-skirmish-trails: no %s text file for the %s trail; the default texts are shown",
               language, trail.type))
           end
+          LOCKED_TEXTS[trail.name] = (languageTexts and languageTexts.lockedText) or trailSettingsForTexts.lockedText
           local okTexts, textError = pcall(menutext.apply, trail.name,
             (languageTexts and languageTexts.title) or trailSettingsForTexts.title,
             (languageTexts and languageTexts.summary) or trailSettingsForTexts.summary)
@@ -468,6 +483,7 @@ return {
 
     detourSwitchToMenu()
     hookPlayerNaming()
+    scenario.enable(function(trailName) return REGISTRY[trailName] end)
   end,
   disable = function(self, config) end,
   getTrailProgress = function(self, trail)
@@ -487,6 +503,21 @@ return {
     end
 
     core.writeInteger(progressAddr, progress)
+  end,
+  ---A plugin gives mission `mission` (1, 2, ...) of a trail ("First", "Warchest" or "Extreme")
+  ---another map file, for example the map in the language a player chose. Call it while
+  ---extensions are enabled; it applies when the trail's missions are loaded.
+  setMissionMap = function(self, trailType, mission, mapName)
+    local trailName = settingsModule.TRAIL_TYPES[trailType]
+    if trailName == nil then
+      error(string.format("no such trail: %s", tostring(trailType)))
+    end
+    local index = math.tointeger(mission)
+    if index == nil or index < 1 or type(mapName) ~= "string" or mapName == "" then
+      error("setMissionMap: a mission number and a map name are needed")
+    end
+    MAP_OVERRIDES[trailName] = MAP_OVERRIDES[trailName] or {}
+    MAP_OVERRIDES[trailName][index] = mapName
   end,
   setText = function(self, line, text)
     description.setText(line, text)
@@ -522,6 +553,7 @@ return {
 {
   public = {
     "setTrailProgress",
+    "setMissionMap",
     "setText",
     "setTradeable",
     "setProducible",

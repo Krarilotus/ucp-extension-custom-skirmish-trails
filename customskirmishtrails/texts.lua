@@ -68,7 +68,7 @@ function texts.fileFor(textFiles, language)
   return textFiles.files[language] or (language == "american" and textFiles.files.english) or nil
 end
 
----Reads a language file. Returns { title, summary, missions = { [key] = { column = text } } },
+---Reads a language file. Returns { title, summary, lockedText, missions = { [key] = { column = text } } },
 ---or nil (with a warning) when it cannot be used.
 function texts.load(path)
   local ok, text = pcall(settingsModule.readText, path)
@@ -88,6 +88,9 @@ function texts.load(path)
   end
   if type(data.trail_summary) == "string" and data.trail_summary ~= "" then
     result.summary = data.trail_summary
+  end
+  if type(data.trail_locked_text) == "string" and data.trail_locked_text ~= "" then
+    result.lockedText = data.trail_locked_text
   end
   local problems = 0
   if type(data.missions) == "table" then

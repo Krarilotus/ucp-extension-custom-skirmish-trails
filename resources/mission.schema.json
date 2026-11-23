@@ -17,6 +17,14 @@
     "mission_name": {
       "type": "string"
     },
+    "mission_kind": {
+      "description": "How the mission starts: skirmish (the default) sets up a skirmish on the map; scenario plays a custom scenario map as Custom Scenarios -> Play a Map does, with its own events, goals and players.",
+      "type": "string",
+      "enum": [
+        "skirmish",
+        "scenario"
+      ]
+    },
     "text_description": {
       "description": "The 8 description lines of the briefing.",
       "type": "array",

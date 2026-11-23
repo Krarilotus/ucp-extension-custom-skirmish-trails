@@ -190,6 +190,10 @@ local function siteAddress(site, purpose)
   return address
 end
 
+patches.matches = matches
+patches.siteAddress = siteAddress
+patches.functionAddress = locate
+
 local function writeImmediate(address, size, value)
   if size == 1 then
     core.writeCodeByte(address, value)

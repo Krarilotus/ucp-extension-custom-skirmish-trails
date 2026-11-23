@@ -9,12 +9,24 @@ Optional csv columns, best placed at the end:
 - `player1_lord`: `Arab` or `Europ` gives the human player the Arabian or the European lord for this mission, and the starting troops of that lord. Empty keeps the player's own choice.
 - `player1_skip_start_units`: `1` gives the human player no starting troops in this mission (the lord still comes). Empty or `0` keeps them.
 
+## Scenario missions
+The optional csv column `mission_kind` (`"mission_kind"` in a mission file) says how a mission starts:
+- `skirmish` (or empty): as before, the trail sets up a skirmish on the map with the mission's players, teams, gold and goods.
+- `scenario`: the mission's map is a custom scenario, for example an Invasion map made in the map editor or a saved game turned into a map. It starts the way Custom Scenarios → Play a Map starts it, so its events, goals, invasions, placed units and AI lords run as the map has them, and the game shows the map's own briefing. Such a mission only needs `map_name`, `mission_name` and the 8 description lines; the other columns are not used. The map is looked up like any other map: in the game's `maps` folder, the Documents `Maps` folder, or an extra map folder a plugin registered with the files module.
+  - The engine difficulty stays Normal, as for Play a Map. Units placed in the map stay as they are: the cut Play a Map makes to the player's starting army on maps without invasion events is not made for scenario missions. (Easy, Hard and Very hard are not used.)
+  - Winning the mission counts for the trail as winning a skirmish mission does: the trail moves on and the trail map opens. This also works for a game of the mission that was saved and loaded later, as long as the mission is still the trail's selected one.
+  - Restart in the game restarts the scenario. Quit leads to Custom Scenarios, as for Play a Map.
+  - A map with a date in an `availability.json` of the files module (files 1.5.0) can be started only from its date on. Until then the briefing shows the trail settings file's `trail_locked_text` (a language file can give its own), in which `{date}` becomes the date. Without that text the mission's own description is shown, and Start does nothing.
+
+A plugin can give a mission another map, for example the map in the language a player chose, from its `init.lua`: `modules["custom-skirmish-trails"]:setMissionMap("Warchest", 5, "Türchen05")` (trail `First`, `Warchest` or `Extreme`, the mission number, the map name). Call it while extensions are enabled; it applies when the trail's missions are loaded.
+
 ## Trail settings file
 Each trail can have a trail settings file (a .json file, set in the GUI) with everything about the trail. `resources/trail-settings.schema.json` describes it, and `resources/trails/template-*-settings.json` hold the game's own values. Every entry is optional:
 - `trail_type`: `First`, `Warchest` or `Extreme`.
 - `trail_missions`: the trail's mission data, see below.
 - `trail_text_files`: the trail's language files, see below.
 - `trail_title`, `trail_summary`: the texts under the trail's button in the skirmish menu. A summary wider than 540 pixels wraps into a second line; both texts then sit 10 pixels higher.
+- `trail_locked_text`: the briefing of a scenario mission whose map isn't open yet (see Scenario missions); `{date}` becomes the date.
 - `starting_year`: the year the first mission starts in.
 - `trail_visuals`: `trail_button_idle` and `trail_button_highlighted` (pictures, for example .png, for the trail's button in the skirmish menu), and `trail_background` (the trail screen's background: a .tgx file, or a .png/.jpg/.bmp that the game turns into a .tgx once and keeps in `ucp/.cache`; use the size of the game's own file).
 - `trail_mission_positions`: a list of `{ "x": .., "y": .. }` points on the 800 x 600 trail screen, one per mission. Their number is the trail's number of missions (at most 50 for the first trail, 30 for the Warchest and the Extreme trail).

@@ -244,7 +244,7 @@ function settings.load(path, trailName)
   local directory = settings.directoryOf(path)
   local result = { path = path, trail = trailName }
 
-  for key, field in pairs({ trail_title = "title", trail_summary = "summary" }) do
+  for key, field in pairs({ trail_title = "title", trail_summary = "summary", trail_locked_text = "lockedText" }) do
     local value = data[key]
     if nonEmptyString(value) then
       result[field] = value
