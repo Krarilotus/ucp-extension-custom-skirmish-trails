@@ -260,6 +260,14 @@ local function keepsStartArmy(entry)
   return value == 1 or value == true or value == "1"
 end
 
+---The session, or nil when there is none or the Play a Map list ended it.
+local function session()
+  if active ~= nil and core.readByte(bindings.trailMap) ~= 0 then
+    return active
+  end
+  return nil
+end
+
 ---Makes `trailName` mission `index` (a scenario mission playing `fileName`) the session, or ends
 ---the session (no arguments).
 local function setSession(trailName, index, entry, fileName)
@@ -270,11 +278,14 @@ local function setSession(trailName, index, entry, fileName)
   core.writeByte(b.cap, active and unitlimits.policy(entry) ~= nil and 1 or 0)
 end
 
----Starts a scenario mission as Play a Map does: the Custom Scenarios handler's Play a Map case,
----what the list sets when it opens, the chosen map, Normal difficulty, the launcher.
-local function start(fileName)
+---Starts `trailName` mission `index` (a scenario mission playing `fileName`) as Play a Map does:
+---the Custom Scenarios handler's Play a Map case (it opens the Play a Map list, which ends a
+---session), what the list sets when it opens, the session, the chosen map, Normal difficulty, the
+---launcher.
+local function start(trailName, index, entry, fileName)
   local b = bindings
   b.customScenarios(PLAY_A_MAP)
+  setSession(trailName, index, entry, fileName)
   core.writeInteger(b.syncMode, SYNC_MODE_SINGLE_PLAYER)
   core.writeInteger(b.isHost, 1)
   core.writeInteger(b.humanSlot, 1)
@@ -296,14 +307,15 @@ local function wonMission()
   if chosen == "" then
     return nil
   end
-  if active ~= nil and active.fileName == chosen then
-    return active.trailName, active.index
+  local current = session()
+  if current ~= nil and current.fileName == chosen then
+    return current.trailName, current.index
   end
   chosen = asciiLower(chosen)
-  local current = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
-  local order = { current }
+  local selected = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
+  local order = { selected }
   for _, name in pairs(memory.TRAIL_TYPES) do
-    if name ~= current then table.insert(order, name) end
+    if name ~= selected then table.insert(order, name) end
   end
   for _, trailName in ipairs(order) do
     local missions = trailOf(trailName)
@@ -353,14 +365,14 @@ local function installWinHandover(b)
   end, b.winnersBranch, 5)
 end
 
----Opening the Play a Map list ends the session.
+---Opening the Play a Map list ends the session. The Custom Scenarios handler opens the list
+---from inside the trail's Start (Lua), so this is code, not a Lua detour.
 local function installSessionEnd(b)
-  core.detourCode(function(registers)
-    if bindings ~= nil and (active ~= nil or core.readByte(b.trailMap) ~= 0) then
-      setSession()
-    end
-    return registers
-  end, b.listPrepare, 6)
+  core.insertCode(b.listPrepare, 6, {
+    0xC6, 0x05, core.itob(b.trailMap), 0x00, -- mov byte [trailMap], 0
+    0xC6, 0x05, core.itob(b.keepArmy), 0x00, -- mov byte [keepArmy], 0
+    0xC6, 0x05, core.itob(b.cap), 0x00,      -- mov byte [cap], 0
+  }, nil, "after")
 end
 
 ---Starts `entry` (`trailName` mission `index`) when it is a scenario mission. Returns true when
@@ -402,8 +414,7 @@ function scenario.startIfScenario(trailName, index, entry)
       .. "is switched off; the mission doesn't start", fileName))
     return true
   end
-  setSession(trailName, index, entry, fileName)
-  start(fileName)
+  start(trailName, index, entry, fileName)
   return true
 end
 
@@ -441,7 +452,7 @@ local function installStartHook()
     local trailName = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
     local missions = trailName and trailOf(trailName) or nil
     local entry = missions and missions[index + 1] or nil
-    if bindings ~= nil and active ~= nil then
+    if active ~= nil then
       setSession()
     end
     local ok, handled = pcall(scenario.startIfScenario, trailName, index + 1, entry)
@@ -507,7 +518,10 @@ function scenario.session()
     sameMap = bindings.sameMap,
     gameMode = bindings.gameMode,
     cap = bindings.cap,
-    entry = function() return active and active.entry or nil end,
+    entry = function()
+      local current = session()
+      return current and current.entry or nil
+    end,
   }
 end
 
