@@ -188,7 +188,8 @@ local function livingLords(value)
 end
 
 ---The trail mission being played: in single-player mode only the trail's scenario reaches the
----store (the entry patch checks it); in single-player skirmish the game's trail state names it.
+---store (the entry patch checks it); in single-player skirmish the game's trail state names it,
+---unless it is a scenario mission whose map isn't the one played.
 local function playedEntry(syncMode)
   if syncMode == 0 then
     return session ~= nil and session.entry() or nil
@@ -201,7 +202,11 @@ local function playedEntry(syncMode)
     return nil
   end
   local missions = registry[trailName]
-  return missions and missions[index] or nil
+  local entry = missions and missions[index] or nil
+  if entry ~= nil and session ~= nil and not session.isPlayedMission(entry) then
+    return nil
+  end
+  return entry
 end
 
 local function installStore(b)

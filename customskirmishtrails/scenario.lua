@@ -56,10 +56,11 @@ local EXTRACTS = {
   listFaded = "C7 05 ? ? ? ? 20 00 00 00 89 1D I(? ? ? ?) 39 1D I(? ? ? ?) 0F 84",
   -- Restart of a Play a Map game: "mov [currentMenuView], 0x31 / call ResetSomeValues (cdecl, no
   -- arguments)", then the launcher with 1
-  restart = "C7 05 I(? ? ? ?) 31 00 00 00 @(E8 ? ? ? ?) 0F B7 05",
+  restart = "C7 05 I(? ? ? ?) 31 00 00 00 E8 I(? ? ? ?) 0F B7 05",
 }
 
 local ARMY_CUT_JE_OFFSET = 0x0F
+local RESTART_CALL_END = 15 -- the end of the restart AOB's call, from which its operand counts
 local TRAIL_BRIEFING_VIEW = 0x38 -- the trail's mission briefing (CrusadeMissionIntro)
 local RESTART_VIEW = 0x31
 local SAVE_LOADED_OFFSET = 0x19
@@ -72,6 +73,7 @@ local WIN_WINNERS_SITE = { fn = "win", offset = 0x1B0, bytes = "A1 ? ? ? ? 66 39
 
 local GAME_MODE_SCENARIO = 2 -- custom scenario (Play a Map)
 local GAME_MODE_SKIRMISH = 3
+local SYNC_MODE_SINGLE_PLAYER = 0
 local SYNC_MODE_SKIRMISH = 99
 local PLAY_A_MAP = 4
 local LAUNCH_WITH_BRIEFING = 2
@@ -211,7 +213,7 @@ local function resolve()
     humanSlot = list[2],
     menuSwitchDelay = found.listFaded[1],
     currentView = found.restart[1],
-    resetGame = core.exposeCode(found.restart[2], 0, 0),
+    resetGame = core.exposeCode(found.restart.address + RESTART_CALL_END + found.restart[2], 0, 0),
     listReparse = found.listFaded[2],
     gameMode = core.readInteger(branch + 1),
     winnersBranch = branch,
@@ -352,10 +354,11 @@ local function installListStart(b)
       return registers
     end
     pending = nil
-    local ok, err = pcall(launch, b, mission, LAUNCH_WITH_BRIEFING)
-    if ok then
+    local ok, err = pcall(function()
+      launch(b, mission, LAUNCH_WITH_BRIEFING)
       core.writeInteger(b.listReparse, 0)
-    else
+    end)
+    if not ok then
       log(WARNING, "custom-skirmish-trails: starting a scenario mission failed: " .. tostring(err))
       setSession()
     end
@@ -363,20 +366,22 @@ local function installListStart(b)
   end, b.listFrame, 6)
 end
 
----The trail and mission of a won scenario: the session's. A chosen map name must be the
----session's map (the Play a Map list empties it when it selects a map).
+---The trail and mission of a won scenario. A map saved from a skirmish game (sync 99): the trail
+---mission the game's trail state names, when it is the scenario played. Otherwise the session's;
+---a chosen map name must be the session's map (the Play a Map list empties it when it selects one).
 local function wonMission()
-  if core.readInteger(bindings.syncMode) == SYNC_MODE_SKIRMISH then
-    -- a map saved from a skirmish game: the trail mission the game's trail state names, when it
-    -- is a scenario mission playing the chosen map
+  local syncMode = core.readInteger(bindings.syncMode)
+  if syncMode == SYNC_MODE_SKIRMISH then
     local ok, isTrail, _, trailName, mission = pcall(memory.fetchCurrentTrail)
     local missions = ok and isTrail and trailOf(trailName) or nil
     local entry = missions and missions[mission] or nil
-    if entry == nil or not scenario.isScenario(entry)
-        or scenario.mapFileName(entry.map_name) ~= core.readString(bindings.chosenMap) then
+    if not scenario.isScenario(entry) or not scenario.isPlayedMission(entry) then
       return nil
     end
     return trailName, mission
+  end
+  if syncMode ~= SYNC_MODE_SINGLE_PLAYER then
+    return nil
   end
   local current = session()
   if current == nil then
@@ -568,6 +573,13 @@ function scenario.enable(missionsOf)
   return true
 end
 
+---False when `entry` is a scenario mission whose map isn't the chosen map (a save from before the
+---mission got another map, for example); true for a scenario mission playing it and for any other
+---mission.
+function scenario.isPlayedMission(entry)
+  return not scenario.isScenario(entry) or scenario.mapFileName(entry.map_name) == core.readString(bindings.chosenMap)
+end
+
 ---The session for the troop limit, or nil when scenario missions are switched off: the addresses
 ---of the routine "the chosen map is the session's" (sameMap), the game mode and the flag "the
 ---session's mission has a troop limit", and entry() for the session's mission.
@@ -583,6 +595,7 @@ function scenario.session()
       local current = session()
       return current and current.entry or nil
     end,
+    isPlayedMission = scenario.isPlayedMission,
   }
 end
 
