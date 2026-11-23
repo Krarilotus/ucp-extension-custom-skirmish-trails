@@ -4,6 +4,8 @@
 -- mission's policy replaces the stored value while that mission is played:
 --   native               the game's own value
 --   formula BASE OFFSET  BASE / living lords - OFFSET ("formula 2400 40" = Crusader limits)
+--   by_alive L=N ...     N troops at L living lords, linear between the listed counts
+--                        ("by_alive 8=250 4=500 2=1000 1=2000")
 -- The result never exceeds the game's own formula value, so the unit pool can't fill up. The value
 -- follows from the game state each tick (the mission being played, the living lords) and the
 -- difficulty option, so saving, loading and replays give the same limit, and it goes back to the
@@ -45,7 +47,23 @@ local function parsePolicy(text)
       return { kind = "formula", base = base, offset = offset }
     end
   end
-  return nil, string.format("'%s' is not 'native' or 'formula BASE OFFSET'", text)
+  if #words >= 2 and words[1] == "by_alive" then
+    local points = {}
+    for index = 2, #words do
+      local lords, limit = words[index]:match("^(%d+)=(%d+)$")
+      lords, limit = math.tointeger(tonumber(lords)), math.tointeger(tonumber(limit))
+      if lords == nil or lords < 1 or lords > MAX_LORDS or limit == nil then
+        points = nil
+        break
+      end
+      points[#points + 1] = { lords = lords, limit = limit }
+    end
+    if points ~= nil then
+      table.sort(points, function(a, b) return a.lords < b.lords end)
+      return { kind = "by_alive", points = points }
+    end
+  end
+  return nil, string.format("'%s' is not 'native', 'formula BASE OFFSET' or 'by_alive LORDS=LIMIT ...'", text)
 end
 
 ---Reads a unit_limit cell: one policy for every difficulty, or "story: ...; hard: ..." with an
@@ -75,6 +93,25 @@ function unitlimits.parse(text)
     result[key] = policy
   end
   return result
+end
+
+---A policy's limit for `lords` living lords. by_alive interpolates linearly between the listed
+---counts and keeps the nearest listed limit outside them.
+function unitlimits.value(policy, lords)
+  if policy.kind == "formula" then
+    return policy.base // lords - policy.offset
+  end
+  local points = policy.points
+  if lords <= points[1].lords then
+    return points[1].limit
+  end
+  for index = 2, #points do
+    local low, high = points[index - 1], points[index]
+    if lords <= high.lords then
+      return low.limit + (high.limit - low.limit) * (lords - low.lords) // (high.lords - low.lords)
+    end
+  end
+  return points[#points].limit
 end
 
 ---The policy of a mission for the difficulty that is set, or nil for the game's own value.
@@ -145,7 +182,7 @@ local function install(b)
     local lords = policy and livingLords(registers.EAX) or nil
     if policy ~= nil and lords ~= nil then
       local formula = registers.EAX -- the game's own formula for these lords
-      value = math.max(0, math.min(policy.base // lords - policy.offset, formula))
+      value = math.max(0, math.min(unitlimits.value(policy, lords), formula))
     end
     registers.EAX = value
     return registers

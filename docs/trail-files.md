@@ -25,7 +25,8 @@ A plugin can give a mission of a trail's mission data (csv or mission files) ano
 The game limits each player's troops: in Crusader to 2400 / living lords - 40, in Extreme to 9900 / living lords - 40, and not at all in custom scenarios. The optional column `unit_limit` (`"unit_limit"` in a mission file) sets the limit for this mission:
 - `native`: the game's own limit (also when the column is empty);
 - `formula BASE OFFSET`: BASE / living lords - OFFSET. `formula 2400 40` gives Crusader's limits in Extreme; in a scenario mission it gives a limit where the game has none.
-- per difficulty: `story: native; normal: formula 3000 40; hard: formula 2400 40`, with `story`, `normal`, `hard`, `very_hard` and `default` (for every difficulty not named).
+- `by_alive LORDS=LIMIT ...`: a limit per number of living lords, for example `by_alive 8=250 4=500 2=1000 1=2000`; counts between two listed ones are interpolated (6 living lords: 375), counts outside them take the nearest listed limit.
+- per difficulty: `story: native; normal: by_alive 8=400 4=800 1=3000; hard: formula 2400 40`, with `story`, `normal`, `hard`, `very_hard` and `default` (for every difficulty not named).
 
 The limit is never higher than the game's own formula, so the unit pool can't fill up. It applies while the mission is played and follows the game state, so a saved and loaded game and a replay get the same limit; outside trail missions the game's own limit is used. The difficulty is the module setting `custom-skirmish-trails.difficulty` (`story`, `normal` (the default), `hard`, `very_hard`), which has no launcher control: a plugin, for example a difficulty preset, suggests it. The AI's troops are not limited by it.
 
