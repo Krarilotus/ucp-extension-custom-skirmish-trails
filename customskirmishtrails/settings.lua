@@ -243,6 +243,7 @@ function settings.load(path, trailName)
 
   local directory = settings.directoryOf(path)
   local result = { path = path, trail = trailName }
+  result.progressByDifficulty = data.progress_by_difficulty == true
 
   for key, field in pairs({ trail_title = "title", trail_summary = "summary", trail_locked_text = "lockedText" }) do
     local value = data[key]

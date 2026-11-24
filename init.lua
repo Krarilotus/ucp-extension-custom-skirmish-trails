@@ -18,6 +18,7 @@ local textsModule = require("customskirmishtrails.texts")
 local sync = require("customskirmishtrails.sync")
 local conversion = require("customskirmishtrails.conversion")
 local winfiles = require("customskirmishtrails.winfiles")
+local progress = require("customskirmishtrails.progress")
 local scenario = require("customskirmishtrails.scenario")
 local unitlimits = require("customskirmishtrails.unitlimits")
 
@@ -415,6 +416,9 @@ return {
       local budget = settings and settings.chickens and settings.chickens[difficulty]
       -- One more than the number of rows keeps a chicken available after every possible skip.
       chickenBudgets[index] = budget == "unlimited" and patches.CAPACITY[trailName] + 1 or budget
+      if settings and settings.progressByDifficulty then
+        progress.install(trailName, difficulty, missionCounts[trailName])
+      end
     end
     patches.setChickenBudgets(chickenBudgets)
 

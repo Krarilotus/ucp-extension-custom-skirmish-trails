@@ -37,6 +37,10 @@
       "description": "Shown in the briefing instead of the mission description while a scenario mission's map is not open yet (a date in the files module's availability.json). {date} becomes the date it opens. A language file (trail_text_files) can give its own.",
       "type": "string"
     },
+    "progress_by_difficulty": {
+      "type": "boolean",
+      "description": "Store the furthest mission separately for each launcher difficulty."
+    },
     "chickens": {
       "description": "Total skip tokens per Trails difficulty. Omitted difficulties use the native budget.",
       "type": "object",
