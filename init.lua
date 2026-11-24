@@ -405,6 +405,19 @@ return {
     end
     patches.setStartYears(startYears)
 
+    local chickenBudgets = {}
+    local difficulty = type(config.difficulty) == "string" and config.difficulty:lower() or "normal"
+    if difficulty ~= "story" and difficulty ~= "hard" and difficulty ~= "very_hard" then
+      difficulty = "normal"
+    end
+    for index, trailName in pairs(memory.TRAIL_TYPES) do
+      local settings = trailSettings[trailName]
+      local budget = settings and settings.chickens and settings.chickens[difficulty]
+      -- One more than the number of rows keeps a chicken available after every possible skip.
+      chickenBudgets[index] = budget == "unlimited" and patches.CAPACITY[trailName] + 1 or budget
+    end
+    patches.setChickenBudgets(chickenBudgets)
+
     -- trail_missions: csv file and mission files kept in step
     for _, trail in ipairs(TRAILS) do
       local settings = trailSettings[trail.name]

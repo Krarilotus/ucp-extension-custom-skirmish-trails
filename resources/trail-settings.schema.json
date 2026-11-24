@@ -4,6 +4,14 @@
   "title": "Custom Skirmish Trails: trail settings",
   "description": "Settings for one skirmish trail as a whole. Every entry is optional; a missing or empty entry keeps the game's own value. Relative file paths are taken from the folder of this file.",
   "type": "object",
+  "definitions": {
+    "chickenBudget": {
+      "oneOf": [
+        { "type": "integer", "minimum": 0, "maximum": 2147483647 },
+        { "const": "unlimited" }
+      ]
+    }
+  },
   "properties": {
     "$schema": {
       "type": "string"
@@ -28,6 +36,17 @@
     "trail_locked_text": {
       "description": "Shown in the briefing instead of the mission description while a scenario mission's map is not open yet (a date in the files module's availability.json). {date} becomes the date it opens. A language file (trail_text_files) can give its own.",
       "type": "string"
+    },
+    "chickens": {
+      "description": "Total skip tokens per Trails difficulty. Omitted difficulties use the native budget.",
+      "type": "object",
+      "properties": {
+        "story": { "$ref": "#/definitions/chickenBudget" },
+        "normal": { "$ref": "#/definitions/chickenBudget" },
+        "hard": { "$ref": "#/definitions/chickenBudget" },
+        "very_hard": { "$ref": "#/definitions/chickenBudget" }
+      },
+      "additionalProperties": false
     },
     "starting_year": {
       "description": "The year the trail's first mission starts in. The game uses 1100 for the first trail and 1130 for the Warchest and the Extreme trail.",

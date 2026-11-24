@@ -33,3 +33,20 @@ row.keep_start_army = " 1 "
 assert(missionjson.startArmyFlag(row.keep_start_army) == 1)
 exported = missionjson.fromRow(headers, row)
 assert(exported:find('"keep_start_army": " 1 "', 1, true))
+
+-- Reconquista Extreme mission 1: each start position stays with its player slot.
+local reconquista = missionjson.toRow({
+  format = 1, map_name = "Reconquista_Trail_1",
+  players = {
+    { start_position = 1 },
+    { ai = "SK_SALADIN", start_position = 2 },
+    { ai = "SK_RAT", start_position = 3 },
+    { ai = "SK_WOLF", start_position = 4 },
+  },
+}, nil, "Reconquista_Trail_mission_01.json")
+assert(reconquista.player4 == "SK_WOLF" and reconquista.start_position4 == "4")
+local reconquistaJson = missionjson.fromRow({ "map_name", "num_players",
+  "player1", "player2", "player3", "player4",
+  "start_position1", "start_position2", "start_position3", "start_position4",
+}, reconquista)
+assert(reconquistaJson:find('"ai": "SK_WOLF",\n      "start_position": 4', 1, true))

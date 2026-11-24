@@ -84,3 +84,14 @@ Miscellaneous: logs every problem in the csv, mission, language and trail settin
 
 ## Export and Import CSV Data
 Each trail's "CSV data" panel in the GUI has an Export and an Import button, for converting by hand (`trail_missions` does it at every start on its own). Export writes every csv line into a mission file, Import puts the mission files back together into the csv file. The GUI cannot write files itself, so a button records the request and the game carries it out at its next start; the panel then shows what was done.
+
+### Skip tokens by difficulty
+
+Set `chickens` in the trail settings JSON to change its total skip budget. The
+game subtracts spent tokens when it opens the trail screen. An omitted
+difficulty uses the game’s default. `"unlimited"` supplies enough tokens to
+skip every mission on that trail.
+
+```json
+"chickens": { "story": "unlimited", "normal": 6, "hard": 3, "very_hard": 0 }
+```

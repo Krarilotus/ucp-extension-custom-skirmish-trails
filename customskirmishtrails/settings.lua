@@ -253,6 +253,21 @@ function settings.load(path, trailName)
     end
   end
 
+  if type(data.chickens) == "table" then
+    result.chickens = {}
+    for _, level in ipairs({ "story", "normal", "hard", "very_hard" }) do
+      local value = data.chickens[level]
+      if value == "unlimited" or (type(value) == "number" and math.tointeger(value)
+          and value >= 0 and value <= 2147483647) then
+        result.chickens[level] = value
+      elseif value ~= nil then
+        warn(path, "chickens.%s must be a non-negative 32-bit integer or 'unlimited'", level)
+      end
+    end
+  elseif data.chickens ~= nil then
+    warn(path, "chickens must be an object")
+  end
+
   if data.starting_year ~= nil then
     local year = integer(data.starting_year)
     if year == nil or year < 1 or year > 9999 then

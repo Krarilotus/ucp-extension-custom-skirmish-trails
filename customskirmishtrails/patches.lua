@@ -283,6 +283,33 @@ function patches.guarded(sites, install)
   error(err, 0)
 end
 
+---The trail screen starts its chicken tally at 3 and subtracts a token for each
+---skipped mission. Supply the configured budget before that native tally.
+function patches.setChickenBudgets(budgets)
+  if next(budgets) == nil then return end
+  local site = siteAddress({
+    fn = "open", offset = 0x93,
+    bytes = "BA 03 00 00 00 89 15 ? ? ? ? 75 2A 8B 0D ? ? ? ? 33 C0",
+  }, "difficulty-specific chicken budgets")
+  if site == nil then return end
+  local tableAddress = core.allocate(12, true)
+  for index = 0, 2 do
+    core.writeInteger(tableAddress + index * 4, budgets[index] or 3)
+  end
+  -- EAX holds the trail selector. Keep the flags from cmp eax, edi for the native jne.
+  patches.guarded({ { address = site, size = 5 } }, function()
+    core.insertCode(site, 5, {
+      0x9C,                                      -- pushfd
+      0xBA, 0x03, 0x00, 0x00, 0x00,              -- mov edx, 3
+      0x83, 0xF8, 0x02,                          -- cmp eax, 2
+      0x0F, 0x87, core.relTo("done", -4),        -- ja done
+      0x8B, 0x14, 0x85, core.itob(tableAddress), -- mov edx, [eax*4 + tableAddress]
+      "done",
+      0x9D,                                      -- popfd
+    })
+  end)
+end
+
 local function writeImmediate(address, size, value)
   if size == 1 then
     core.writeCodeByte(address, value)
