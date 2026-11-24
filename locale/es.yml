@@ -47,3 +47,5 @@ option_4_header: 'Modo estricto: comprobar en detalle los archivos CSV y JSON de
 option_4_text: |-
   Registra cada problema en los archivos de la senda. Puede mostrar cuadros de error al iniciar el juego. Sin él, aparece una sola advertencia por archivo con problemas.
 misc: Varios
+tags.scenarios: Escenarios
+tags.maps: Mapas

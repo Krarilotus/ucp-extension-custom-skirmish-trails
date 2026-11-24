@@ -47,3 +47,5 @@ option_4_header: 'Szigorú mód: a hadjárat CSV- és JSON-fájljainak részlete
 option_4_text: |-
   Naplóz minden hibát a hadjárat fájljaiban. A játék indításakor hibaablakokat jeleníthet meg. Enélkül fájlonként csak egy figyelmeztetés jelenik meg.
 misc: Egyéb
+tags.scenarios: Forgatókönyvek
+tags.maps: Térképek

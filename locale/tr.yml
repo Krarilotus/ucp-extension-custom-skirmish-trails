@@ -47,3 +47,5 @@ option_4_header: 'Katı mod: sefer CSV ve JSON dosyalarını ayrıntılı denetl
 option_4_text: |-
   Sefer dosyalarındaki her sorunu günlüğe kaydeder. Oyun başlangıcında hata pencereleri gösterebilir. Kapalıyken sorunlu dosya başına bir uyarı gösterilir.
 misc: Diğer
+tags.scenarios: Senaryolar
+tags.maps: Haritalar

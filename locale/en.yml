@@ -38,3 +38,5 @@ option_4_header: 'Strict mode: check the trail csv and json files in detail'
 option_4_text: Logs every problem in the trail files. May show error message boxes at game start. Without it,
   one warning per file with problems.
 misc: Miscellaneous
+tags.scenarios: Scenarios
+tags.maps: Maps

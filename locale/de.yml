@@ -47,3 +47,5 @@ option_4_header: 'Strikter Modus: CSV- und JSON-Dateien der Märsche im Detail p
 option_4_text: |-
   Protokolliert jedes Problem in den Marsch-Dateien. Kann beim Spielstart Fehlermeldungen anzeigen. Ohne diese Option erscheint eine Warnung pro fehlerhafter Datei.
 misc: Sonstiges
+tags.scenarios: Szenarien
+tags.maps: Karten
