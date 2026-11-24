@@ -411,7 +411,7 @@ return {
       if settings ~= nil and settings.missions ~= nil then
         local textFolder = settings.textFiles ~= nil and settings.textFiles.folder or nil
         local okSync, messages = pcall(sync.run, trail.name, settings.missions,
-          settings.hasAiMapping and settings.aiMapping or nil, knownHeaders(), textFolder, settings.lockedText)
+          settings.hasAiMapping and settings.aiMapping or nil, knownHeaders(), textFolder, settings)
         if not okSync then
           log(WARNING, string.format("custom-skirmish-trails: %s trail missions: %s", trail.type, tostring(messages)))
         else

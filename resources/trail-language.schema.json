@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Custom Skirmish Trails language file",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "trail_title": {
+      "type": "string"
+    },
+    "trail_summary": {
+      "type": "string"
+    },
+    "trail_locked_text": {
+      "type": "string"
+    },
+    "missions": {
+      "type": "object",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^[1-9][0-9]*$": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "mission_name": {
+              "type": "string"
+            },
+            "text_description_line_01": {
+              "type": "string"
+            },
+            "text_description_line_02": {
+              "type": "string"
+            },
+            "text_description_line_03": {
+              "type": "string"
+            },
+            "text_description_line_04": {
+              "type": "string"
+            },
+            "text_description_line_05": {
+              "type": "string"
+            },
+            "text_description_line_06": {
+              "type": "string"
+            },
+            "text_description_line_07": {
+              "type": "string"
+            },
+            "text_description_line_08": {
+              "type": "string"
+            },
+            "player1_name": {
+              "type": "string"
+            },
+            "player2_name": {
+              "type": "string"
+            },
+            "player3_name": {
+              "type": "string"
+            },
+            "player4_name": {
+              "type": "string"
+            },
+            "player5_name": {
+              "type": "string"
+            },
+            "player6_name": {
+              "type": "string"
+            },
+            "player7_name": {
+              "type": "string"
+            },
+            "player8_name": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

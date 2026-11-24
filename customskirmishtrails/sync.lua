@@ -96,7 +96,7 @@ end
 
 ---Runs the sync of one trail. `missions` = { csv, folder, name, mode } from the trail settings
 ---file. Returns a list of messages (empty when nothing had to be done).
-function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, lockedText)
+function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, trailSettings)
   local messages = {}
   local function say(message, ...)
     table.insert(messages, string.format(message, ...))
@@ -309,7 +309,7 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, lock
       local written, writeError = false, folderError
       if folderMade then
         written, writeError = winfiles.writeFile(textFolder .. "_template.json",
-          texts.format(current.missions, nil, nil, lockedText))
+          texts.format(current.missions, trailSettings.title, trailSettings.summary, trailSettings.lockedText))
       end
       if not written then
         say("the translation template %s_template.json is not written: %s", textFolder, tostring(writeError))

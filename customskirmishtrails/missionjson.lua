@@ -159,11 +159,15 @@ function missionjson.fromRow(header, cells, aiMapping)
   put(mission, "text_description", lines)
 
   local fairness = take("fairness")
-  put(mission, "advantage", ADVANTAGE[tonumber(fairness) or 0] ~= nil and isPlainInteger(fairness)
-    and ADVANTAGE[tonumber(fairness)] or cell(fairness))
+  if fairness ~= "" then
+    put(mission, "advantage", ADVANTAGE[tonumber(fairness) or 0] ~= nil and isPlainInteger(fairness)
+      and ADVANTAGE[tonumber(fairness)] or cell(fairness))
+  end
   local startLevels = take("start_levels")
-  put(mission, "start_mode", START_MODE[tonumber(startLevels) or 0] ~= nil and isPlainInteger(startLevels)
-    and START_MODE[tonumber(startLevels)] or cell(startLevels))
+  if startLevels ~= "" then
+    put(mission, "start_mode", START_MODE[tonumber(startLevels) or 0] ~= nil and isPlainInteger(startLevels)
+      and START_MODE[tonumber(startLevels)] or cell(startLevels))
+  end
 
   local extra = object()
   local numPlayers = math.tointeger(tonumber(take("num_players"))) or 1
@@ -273,7 +277,7 @@ local function checkArray(values, limit, where)
   end
 end
 
-local function readColumns(cells, values, prefix, where)
+local function readColumns(cells, values, prefix, where, warnOnConflict)
   if type(values) ~= "table" then
     error(where .. " must be an object")
   end
@@ -281,7 +285,13 @@ local function readColumns(cells, values, prefix, where)
     if type(key) ~= "string" then
       error(where .. " must contain named fields")
     end
-    cells[prefix .. key] = cellOf(value, where .. "." .. key)
+    local column = prefix .. key
+    local text = cellOf(value, where .. "." .. key)
+    local structured = cells[column] or ""
+    if warnOnConflict and structured ~= "" and structured ~= text then
+      log(WARNING, string.format("custom-skirmish-trails: %s.%s overrides a conflicting structured value", where, key))
+    end
+    cells[column] = text
   end
 end
 
@@ -373,7 +383,7 @@ function missionjson.toRow(data, reverseMapping, file)
     end
   end
   if data.extra ~= nil then
-    readColumns(cells, data.extra, "", file .. ": extra")
+    readColumns(cells, data.extra, "", file .. ": extra", true)
   end
   return cells
 end

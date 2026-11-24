@@ -51,12 +51,12 @@ Relative paths in the file are taken from the file's own folder.
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; the csv's fairness 1-5) and `start_mode` (`normal`, `crusader`, `deathmatch`; the csv's start_levels 1-3). Numbers work too;
 - `players`: one entry per player, so their number is the mission's number of players. `players[0]` is the human player: it may have `lord` and `skip_start_units`, never `ai`. The others always have `ai`, never `lord`. All have `name`, `start_position`, `team`, `aiv_type` and `gold` as needed;
 - `producible`, `recruitable`, `resources`, `tradeable`: the csv's prefixed columns as objects;
-- `extra`: any csv value that has no place above, so that nothing gets lost.
+- `extra`: any csv value that has no place above, so that nothing gets lost. A conflicting value in `extra` takes precedence and logs a warning before it can be written to CSV.
 
 `data_mode` says which one is the ground truth. It is applied at every game start:
 - `csv`: the game loads the csv file and writes the mission files from it.
 - `json_folder`: the game writes the csv file from the mission files, then loads it.
-- `automatic`: per mission, whichever was edited last wins: newer mission files go into the csv, newer csv lines into the mission files.
+- `automatic`: each mission JSON file is compared against the modification time of the entire CSV. The newer file wins, with ties going to the CSV. A malformed mission JSON file stops sync, including in CSV mode.
 
 Before files are changed, the previous csv is kept as `<csv>.bak` and the previous mission files in `<folder>/.bak` (one previous version each). When no file changed since the last start, nothing is read or written. Without a trail settings file, the csv file set in the GUI is used as before.
 
@@ -74,7 +74,7 @@ The mission data holds one set of texts, the default language. Each further lang
 }
 ```
 
-Missions are found by their number. A text a language file does not have shows the mission data's text; strict mode lists those. With `trail_missions`, `texts/_template.json` is written with all texts of the mission data, as a starting point for translators.
+Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number. A text a language file does not have shows the mission data's text; strict mode lists those. With `trail_missions`, `texts/_template.json` is written with all texts of the mission data, as a starting point for translators.
 
 ## File paths
 Each trail's "File paths" panel lists the files set for it and clears them (the GUI's own reset only works right after a path was set).
