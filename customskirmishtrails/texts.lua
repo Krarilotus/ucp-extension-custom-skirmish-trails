@@ -155,7 +155,7 @@ end
 -- Writing language files -------------------------------------------------------------------
 
 ---The JSON text of a language file with the texts of `entries` (only non-empty texts).
-function texts.format(entries, title, summary)
+function texts.format(entries, title, summary, lockedText)
   local q = conversion.jsonString
   local lines = { "{" }
   if title ~= nil then
@@ -163,6 +163,9 @@ function texts.format(entries, title, summary)
   end
   if summary ~= nil then
     table.insert(lines, '  "trail_summary": ' .. q(summary) .. ",")
+  end
+  if lockedText ~= nil then
+    table.insert(lines, '  "trail_locked_text": ' .. q(lockedText) .. ",")
   end
   table.insert(lines, '  "missions": {')
   local missions = {}

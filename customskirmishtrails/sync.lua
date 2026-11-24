@@ -96,7 +96,7 @@ end
 
 ---Runs the sync of one trail. `missions` = { csv, folder, name, mode } from the trail settings
 ---file. Returns a list of messages (empty when nothing had to be done).
-function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder)
+function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, lockedText)
   local messages = {}
   local function say(message, ...)
     table.insert(messages, string.format(message, ...))
@@ -110,17 +110,11 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder)
   local csv = conversion.readTable(missions.csv)
   local reverse = conversion.reverseMapping(aiMapping)
   local files = conversion.listMissionFiles(missions.folder, missions.name)
-  local byNumber, broken, highest = {}, false, 0
+  local byNumber, highest = {}, 0
   for _, file in ipairs(files) do
     local path = missions.folder .. "/" .. file.name
-    local ok, cells = pcall(conversion.readMission, path, reverse)
-    if ok then
-      byNumber[file.number] = { cells = cells, path = path, time = winfiles.fileTime(path) or 0, name = file.name }
-    else
-      broken = true
-      byNumber[file.number] = { broken = true, path = path, name = file.name }
-      say("%s cannot be read and is left as it is: %s", path, tostring(cells))
-    end
+    local cells = conversion.readMission(path, reverse)
+    byNumber[file.number] = { cells = cells, path = path, time = winfiles.fileTime(path) or 0, name = file.name }
     highest = math.max(highest, file.number)
   end
 
@@ -168,10 +162,6 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder)
       say("there are no mission files in %s; with data_mode \"json_folder\" the csv stays as it is", missions.folder)
       return messages
     end
-    if broken then
-      say("%s is not written while a mission file cannot be read", missions.csv)
-      return messages
-    end
     newRows = {}
     for number = 1, highest do
       if byNumber[number] ~= nil then
@@ -185,11 +175,7 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder)
     for number = 1, math.max(#csv.missions, highest) do
       local row = csv.missions[number]
       local file = byNumber[number]
-      if file ~= nil and file.broken then
-        if row ~= nil then
-          table.insert(newRows, row)
-        end
-      elseif row ~= nil and file == nil then
+      if row ~= nil and file == nil then
         table.insert(newRows, row)
         writes[number] = exportText(row)
       elseif row == nil and file ~= nil then
@@ -322,7 +308,8 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder)
       local folderMade, folderError = winfiles.createDirectory((textFolder:gsub("[/\\]$", "")))
       local written, writeError = false, folderError
       if folderMade then
-        written, writeError = winfiles.writeFile(textFolder .. "_template.json", texts.format(current.missions))
+        written, writeError = winfiles.writeFile(textFolder .. "_template.json",
+          texts.format(current.missions, nil, nil, lockedText))
       end
       if not written then
         say("the translation template %s_template.json is not written: %s", textFolder, tostring(writeError))
