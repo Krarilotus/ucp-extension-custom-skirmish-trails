@@ -39,7 +39,7 @@ Each trail can have a trail settings file (a .json file, set in the GUI) with ev
 - `trail_title`, `trail_summary`: the texts under the trail's button in the skirmish menu. A summary wider than 540 pixels wraps into a second line; both texts then sit 10 pixels higher.
 - `trail_locked_text`: the briefing of a scenario mission whose map isn't open yet (see Scenario missions); `{date}` becomes the date.
 - `starting_year`: the year the first mission starts in.
-- `trail_visuals`: `trail_button_idle` and `trail_button_highlighted` (pictures, for example .png, for the trail's button in the skirmish menu), and `trail_background` (the trail screen's background: a .tgx file, or a .png/.jpg/.bmp that the game turns into a .tgx once and keeps in `ucp/.cache`; use the size of the game's own file).
+- `trail_visuals`: `trail_button_idle` and `trail_button_highlighted` (pictures, for example .png, for the trail's button in the skirmish menu), and `trail_background` (the trail screen's background: a .tgx file, or a .png/.jpg/.bmp that the game turns into a .tgx once and keeps in `ucp/.cache`; use the size of the game's own file), and `trail_marker_sheet` (door pictures, see below).
 - `trail_mission_positions`: a list of `{ "x": .., "y": .. }` points on the 800 x 600 trail screen, one per mission. Their number is the trail's number of missions (at most 50 for the first trail, 30 for the Warchest and the Extreme trail).
 - `ai_character_mapping`: your own names for the AI keys (`"SK_RICHARD": "Robert"`). Mission files use them, and the csv file may use them in player1 to player8.
 
@@ -51,6 +51,7 @@ Relative paths in the file are taken from the file's own folder.
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; the csv's fairness 1-5) and `start_mode` (`normal`, `crusader`, `deathmatch`; the csv's start_levels 1-3). Numbers work too;
 - `players`: one entry per player, so their number is the mission's number of players. `players[0]` is the human player: it may have `lord` and `skip_start_units`, never `ai`. The others always have `ai`, never `lord`. All have `name`, `start_position`, `team`, `aiv_type` and `gold` as needed;
 - `producible`, `recruitable`, `resources`, `tradeable`: the csv's prefixed columns as objects;
+- `marker`: `locked`, `available` and `won`, the csv's `marker_locked`, `marker_available` and `marker_won` (door pictures, see below);
 - `extra`: any csv value that has no place above, so that nothing gets lost. A conflicting value in `extra` takes precedence and logs a warning before it can be written to CSV.
 
 `data_mode` says which one is the ground truth. It is applied at every game start:
@@ -94,4 +95,25 @@ skip every mission on that trail.
 
 ```json
 "chickens": { "story": "unlimited", "normal": 6, "hard": 3, "very_hard": 0 }
+```
+
+### Door pictures
+
+`trail_visuals.trail_marker_sheet` names a .gm1 file laid out like the game's
+`skirmish_trail_icons.gm1`: 130 pictures of 100 x 100, the same GM1 type. A mission
+with a `marker` shows its pictures (numbered from 0) in place of the game's flag,
+drawn where the game draws its flag:
+
+- `locked`: the mission can't be clicked yet. It is open once the trail has reached
+  it, its date has come (see Scenario missions) and its map is installed.
+- `available`: an open mission; it can be clicked.
+- `won`: drawn over the closed picture once the mission is won (not when a chicken
+  skipped it).
+
+The game's chicken stays on the selected mission. Missions without a `marker` and
+trails without a sheet keep the game's markers.
+
+```json
+"trail_visuals": { "trail_marker_sheet": "doors.gm1" }
+"marker": { "locked": 0, "available": 1, "won": 2 }
 ```

@@ -32,6 +32,7 @@ local GROUPS = {
   { prefix = "recruitable_", key = "recruitable" },
   { prefix = "resource_", key = "resources" },
   { prefix = "tradeable_", key = "tradeable" },
+  { prefix = "marker_", key = "marker", optional = true }, -- left out when empty
 }
 local TEXT_LINES = 8
 
@@ -213,7 +214,9 @@ function missionjson.fromRow(header, cells, aiMapping)
         end
       end
     end
-    put(mission, group.key, values)
+    if #values.order > 0 or not group.optional then
+      put(mission, group.key, values)
+    end
   end
 
   for _, column in ipairs(header) do

@@ -270,6 +270,9 @@ local HEADERS_TYPES = {
   ["mission_kind"] = "string",
   ["keep_start_army"] = "binary",
   ["unit_limit"] = "string",
+  ["marker_locked"] = "integer",
+  ["marker_available"] = "integer",
+  ["marker_won"] = "integer",
 }
 
 local ALLOW_NIL = {
@@ -284,6 +287,9 @@ local ALLOW_NIL = {
   ["player1_lord"] = true,
   ["player1_skip_start_units"] = true,
   ["keep_start_army"] = true,
+  ["marker_locked"] = true,
+  ["marker_available"] = true,
+  ["marker_won"] = true,
   ["gold_player_1"] = true,
   ["gold_player_2"] = true,
   ["gold_player_3"] = true,

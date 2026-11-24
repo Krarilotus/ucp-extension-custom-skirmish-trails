@@ -539,6 +539,24 @@ function scenario.startIfScenario(trailName, index, entry)
   return true
 end
 
+---True when the trail's Start can play `entry` today as far as its map goes: a valid map name,
+---the date has come (scenario missions) and the map is installed. Logs nothing.
+function scenario.isOpen(entry)
+  local kind = scenario.kind(entry)
+  if kind == "skirmish" and entry.map_name == nil then
+    return true
+  end
+  if kind == nil or (kind == "scenario" and bindings == nil) or mapLookup == nil then
+    return false
+  end
+  local fileName = scenario.mapFileName(entry.map_name, kind == "skirmish")
+  if fileName == nil or (kind == "scenario" and not scenario.availability(entry)) then
+    return false
+  end
+  local ok, exists = pcall(mapLookup, fileName)
+  return ok and exists == true
+end
+
 ---The mission as its briefing shows it: a scenario mission that isn't open yet shows
 ---`lockedText` ({date} becomes the date it opens) instead of its description. Asking files also
 ---gives a dated map that is due its file redirect, which the trail's Start needs to find the map.

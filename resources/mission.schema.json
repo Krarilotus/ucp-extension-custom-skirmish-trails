@@ -211,6 +211,21 @@
         ]
       }
     },
+    "marker": {
+      "description": "Door pictures of the trail settings file's trail_marker_sheet, numbered from 0 (csv: marker_locked, marker_available, marker_won).",
+      "type": "object",
+      "properties": {
+        "locked": { "type": "integer", "minimum": 0, "maximum": 129 },
+        "available": { "type": "integer", "minimum": 0, "maximum": 129 },
+        "won": { "type": "integer", "minimum": 0, "maximum": 129 }
+      },
+      "required": [
+        "locked",
+        "available",
+        "won"
+      ],
+      "additionalProperties": false
+    },
     "extra": {
       "description": "Csv columns that have no place above, kept so that nothing is lost.",
       "type": "object",

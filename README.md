@@ -20,6 +20,7 @@ This tool is recommended to manipulate the csv files https://edit-csv.net/
 12. Language files with only the texts per game language
 13. Scenario missions: a mission can be a custom scenario map, started as Play a Map starts it, with its own events, goals and players; a win moves the trail on (`mission_kind`)
 14. Troop limits per mission and difficulty, for example Crusader's limits in an Extreme trail (`unit_limit`)
+15. Door pictures per mission: locked, available and won, with locked missions not clickable (`trail_marker_sheet`, `marker`)
 
 See `docs/trail-files.md` for the details.
 

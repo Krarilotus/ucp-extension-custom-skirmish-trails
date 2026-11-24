@@ -73,6 +73,10 @@
         "trail_background": {
           "description": "The trail screen's background, in place of skirmish_trail.tgx, skirmish_trail2.tgx or SHCX_Map.tgx: a .tgx file, or a picture (.png, .jpg, .bmp, .gif) that the game turns into a .tgx once (kept in ucp/.cache). Use the size of the game's own file.",
           "type": "string"
+        },
+        "trail_marker_sheet": {
+          "description": "Door pictures: a .gm1 file laid out like the game's skirmish_trail_icons.gm1 (130 pictures of 100 x 100, the same GM1 type). A mission with a marker (mission files: marker; csv: marker_locked, marker_available, marker_won) shows its pictures in place of the game's flag, drawn where the game draws it. Locked: not clickable until the trail reaches the mission, its date has come and its map is installed. Won: the won picture over the closed one.",
+          "type": "string"
         }
       },
       "additionalProperties": false

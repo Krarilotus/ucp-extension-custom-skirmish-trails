@@ -21,6 +21,7 @@ local winfiles = require("customskirmishtrails.winfiles")
 local progress = require("customskirmishtrails.progress")
 local scenario = require("customskirmishtrails.scenario")
 local unitlimits = require("customskirmishtrails.unitlimits")
+local markers = require("customskirmishtrails.markers")
 
 local TRAIL_PROGRESS_ADDRESSES = memory.TRAIL_PROGRESS_ADDRESSES
 local REGISTRY = memory.REGISTRY
@@ -398,6 +399,13 @@ return {
         local okVisuals, visualsError = pcall(visuals.applyVisuals, trail.name, settings.visuals)
         if not okVisuals then
           log(WARNING, string.format("custom-skirmish-trails: %s trail visuals: %s", trail.type, tostring(visualsError)))
+        end
+        if settings.visuals.markerSheet ~= nil then
+          local okMarkers, markersError = pcall(markers.install, trail.name, settings.visuals.markerSheet,
+            missionCounts[trail.name])
+          if not okMarkers then
+            log(WARNING, string.format("custom-skirmish-trails: %s door pictures: %s", trail.type, tostring(markersError)))
+          end
         end
         if settings.hasAiMapping then
           interface.setAiAliases(trail.name, settings.aiMapping)
