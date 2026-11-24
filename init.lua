@@ -109,7 +109,7 @@ local function insertPostSkirmishSetupDetour()
   end, core.AOBScan("A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? 89 44 24 10 "), 5)
 end
 
-local function applyTrail(trailName, path, missions, limit, languageTexts)
+local function applyTrail(trailName, path, missions, limit, languageTexts, startInstalled)
   local result, err = cst_io.readCSV(path, limit + 1) -- one for the header
   if result == nil then error(err) end
   -- the game language's texts over the default texts of the csv
@@ -128,6 +128,8 @@ local function applyTrail(trailName, path, missions, limit, languageTexts)
     if kind == nil then
       log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unknown mission_kind '%s'",
         trailName, index, tostring(entry.mission_kind)))
+    elseif kind == "scenario" and not startInstalled then
+      result[index] = nil
     elseif kind == "scenario" then
       local fileName, reason = scenario.mapFileName(entry.map_name)
       if fileName == nil then
@@ -426,6 +428,7 @@ return {
       log(WARNING, "custom-skirmish-trails: Export / Import CSV Data: " .. tostring(err))
     end
 
+    local startInstalled
     hooks.registerHookCallback("afterInit", function()
       local language = ""
       local texts = modules.textResourceModifier
@@ -463,7 +466,7 @@ return {
         if nonEmpty(path) then
           log(INFO, string.format("custom-skirmish-trails: %s trail (%s): %s", trail.type, language, path))
           local okTrail, trailError = pcall(applyTrail, trail.name, path, missionTables[trail.name],
-            missionCounts[trail.name], languageTexts)
+            missionCounts[trail.name], languageTexts, startInstalled)
           if not okTrail then
             log(WARNING, string.format("custom-skirmish-trails: the trail csv file %s cannot be used, so the %s "
               .. "trail keeps the game's own missions: %s", path, trail.type, tostring(trailError)))
@@ -509,7 +512,8 @@ return {
     
     detourSwitchToMenu()
     hookPlayerNaming()
-    scenario.enable(function(trailName) return REGISTRY[trailName] end)
+    local _, installed = scenario.enable(function(trailName) return REGISTRY[trailName] end)
+    startInstalled = installed
     unitlimits.enable(config.difficulty)
   end,
   disable = function(self, config) end,

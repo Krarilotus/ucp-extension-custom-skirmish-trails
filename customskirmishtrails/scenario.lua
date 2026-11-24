@@ -84,8 +84,13 @@ local MAX_PLAYERS = 8
 -- into 1001-byte path buffers, so names stay well below that.
 local MAX_MAP_NAME = 200
 local NAME_BUFFER = MAX_MAP_NAME + 1
+local MAP_RESOURCE = 15
+local RESOURCE_PATH_SIZE = 1001
+local RESOURCE_TYPE_OFFSET = 0xBC4
+local MAP_PATH_OFFSET = 0x7AEE0 + MAP_RESOURCE * RESOURCE_PATH_SIZE
 
 local bindings = nil
+local mapLookup = nil
 local trailOf = nil -- function(trailName) -> missions of that trail, set by enable
 local active = nil  -- the session: { trailName, index, entry, fileName }
 
@@ -97,17 +102,17 @@ end
 ---Map files in the game's folders have Windows code page names; a UTF-8 name from a csv,
 ---mission or plugin file is written in its Latin-1 form, the same rule the files module uses for
 ---availability.json. A trailing ".map" is dropped, because the launcher adds it.
-function scenario.mapFileName(name)
+function scenario.mapFileName(name, skirmish)
   if type(name) ~= "string" then
     return nil, "no map name"
   end
-  if name:lower():sub(-4) == ".map" then
+  if not skirmish and name:lower():sub(-4) == ".map" then
     name = name:sub(1, -5)
   end
   if name == "" or name:find("[%c/\\:*?\"<>|]") then
     return nil, "not a map file name"
   end
-  if name:find("[\128-\255]") and utf8 ~= nil and utf8.len(name) ~= nil then
+  if not skirmish and name:find("[\128-\255]") and utf8 ~= nil and utf8.len(name) ~= nil then
     local bytes = {}
     for _, codepoint in utf8.codes(name) do
       if codepoint > 255 then
@@ -150,7 +155,8 @@ function scenario.availability(entry)
   if files == nil or files.getMapAvailability == nil then
     return true, nil
   end
-  local ok, result = pcall(function() return files:getMapAvailability(entry.map_name, "crusader") end)
+  local game = data.version.isExtreme() and "extreme" or "crusader"
+  local ok, result = pcall(function() return files:getMapAvailability(entry.map_name, game) end)
   if not ok or type(result) ~= "table" or type(result.available) ~= "boolean" then
     log(WARNING, string.format("custom-skirmish-trails: map availability of %s: %s", tostring(entry.map_name),
       tostring(ok and "no answer" or result)))
@@ -270,6 +276,39 @@ local function writeName(address, name)
   core.writeByte(address + #name, 0)
 end
 
+local function bindMapLookup()
+  -- ResourceManager: resolve a map through the game folder and Documents. The native
+  -- existence check opens through the Files module's existing redirect.
+  local managerPattern = "A1 I(? ? ? ?) 89 46 74 33 C0 39 ? ? ? ? ? 7E 15"
+  local resolvePattern = "83 EC 24 A1 ? ? ? ? 33 C4 89 44 24 20 53 55 8B 6C 24 34 56 8B 74 24 34"
+    .. " 8D 46 FF 83 F8 12 8B D9 57 89 B3 C4 0B 00 00"
+  local existsPattern = "8B 44 24 04 6A 00 68 00 80 00 00 50 E8 ? ? ? ? 83 C4 0C 83 F8 FF 75 05 33 C0 C2 04 00 50"
+  local found, manager = utils.AOBExtract(managerPattern)
+  local resolveAddress = core.AOBScan(resolvePattern)
+  local existsAddress = core.AOBScan(existsPattern)
+  assert(patches.isUnique(managerPattern, found))
+  assert(patches.isUnique(resolvePattern, resolveAddress))
+  assert(patches.isUnique(existsPattern, existsAddress))
+  local resolveMap = core.exposeCode(resolveAddress, 3, 1)
+  local fileExists = core.exposeCode(existsAddress, 2, 1)
+  local nameBuffer = core.allocate(NAME_BUFFER + #".map", true)
+  local resourceType = manager + RESOURCE_TYPE_OFFSET
+  local mapPath = manager + MAP_PATH_OFFSET
+  return function(name)
+    writeName(nameBuffer, name .. ".map")
+    local savedType = core.readInteger(resourceType)
+    local savedPath = core.readBytes(mapPath, RESOURCE_PATH_SIZE)
+    local ok, exists = pcall(function()
+      resolveMap(manager, MAP_RESOURCE, nameBuffer)
+      return fileExists(manager, mapPath) == 1
+    end)
+    core.writeBytes(mapPath, savedPath)
+    core.writeInteger(resourceType, savedType)
+    if not ok then error(exists, 0) end
+    return exists
+  end
+end
+
 ---True when the mission keeps the player's whole starting army (keep_start_army 1).
 local function keepsStartArmy(entry)
   local value = entry.keep_start_army
@@ -327,6 +366,14 @@ end
 -- the scenario mission the Play a Map list starts when it opens: { trailName, index, entry, fileName }
 local pending = nil
 
+local function hasMap(fileName)
+  if mapLookup ~= nil and mapLookup(fileName) then
+    return true
+  end
+  log(WARNING, string.format("custom-skirmish-trails: cannot find map '%s'; the mission doesn't start", fileName))
+  return false
+end
+
 ---Starts `trailName` mission `index` (a scenario mission playing `fileName`) as Play a Map does.
 ---From the trail's briefing, which loads its own mission every frame until it closes, the Custom
 ---Scenarios handler's Play a Map case opens the Play a Map list, whose first frame launches it.
@@ -378,7 +425,7 @@ local function wonMission()
     if not scenario.isScenario(entry) or not scenario.isPlayedMission(entry) then
       return nil
     end
-    return trailName, mission
+    return trailName, mission, syncMode
   end
   if syncMode ~= SYNC_MODE_SINGLE_PLAYER then
     return nil
@@ -391,7 +438,7 @@ local function wonMission()
   if chosen ~= "" and chosen ~= current.fileName then
     return nil
   end
-  return current.trailName, current.index
+  return current.trailName, current.index, syncMode
 end
 
 ---On the mission finished screen of a scenario (it opens only for a victory): a won trail mission
@@ -408,13 +455,15 @@ local function installWinHandover(b)
     if slot < 1 or slot > MAX_PLAYERS then
       return registers
     end
-    local trailName, mission = wonMission()
+    local trailName, mission, syncMode = wonMission()
     if trailName == nil then
       return registers
     end
     log(INFO, string.format("custom-skirmish-trails: %s mission %d won", trailName, mission))
-    selectTrailMission(trailName, mission)
-    core.writeInteger(b.syncMode, SYNC_MODE_SKIRMISH)
+    if syncMode ~= SYNC_MODE_SKIRMISH then
+      selectTrailMission(trailName, mission)
+      core.writeInteger(b.syncMode, SYNC_MODE_SKIRMISH)
+    end
     core.writeSmallInteger(b.winners + 2 * slot, 1)
     core.writeInteger(b.gameMode, GAME_MODE_SKIRMISH)
     return registers
@@ -443,6 +492,15 @@ end
 function scenario.startIfScenario(trailName, index, entry)
   local kind = scenario.kind(entry)
   if kind == "skirmish" then
+    if entry ~= nil and entry.map_name ~= nil then
+      local fileName, reason = scenario.mapFileName(entry.map_name, true)
+      if fileName == nil then
+        log(WARNING, string.format("custom-skirmish-trails: skirmish map '%s': %s",
+          tostring(entry.map_name), reason))
+        return true
+      end
+      if not hasMap(fileName) then return true end
+    end
     if not unitlimits.available(entry, false) then
       log(WARNING, string.format("custom-skirmish-trails: %s has a unit_limit, and the troop limit is switched off; "
         .. "the mission doesn't start", tostring(entry.map_name)))
@@ -471,6 +529,7 @@ function scenario.startIfScenario(trailName, index, entry)
     log(INFO, string.format("custom-skirmish-trails: %s opens on %s", fileName, tostring(from)))
     return true
   end
+  if not hasMap(fileName) then return true end
   if not unitlimits.available(entry, true) then
     log(WARNING, string.format("custom-skirmish-trails: %s has a unit_limit, and the troop limit of scenario missions "
       .. "is switched off; the mission doesn't start", fileName))
@@ -510,7 +569,7 @@ local function installStartHook()
     return false
   end
   local original
-  original = core.hookCode(function(index)
+  local function onStart(index)
     local trailName = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
     local missions = trailName and trailOf(trailName) or nil
     local entry = missions and missions[index + 1] or nil
@@ -528,25 +587,36 @@ local function installStartHook()
       return 0
     end
     return original(index)
-  end, setup, 1, 0, 10)
+  end
+  patches.guarded({ { address = setup, size = 10 } }, function()
+    original = core.hookCode(onStart, setup, 1, 0, 10)
+    assert(original ~= nil, "the trail's Start has no original handler")
+  end)
   return true
 end
 
 ---Installs scenario missions. `missionsOf(trailName)` gives a trail's missions (1-based).
----Returns true when they can be played.
+---Returns true when they can be played and whether the Start hook was installed.
 function scenario.enable(missionsOf)
   trailOf = missionsOf
   -- without the Start hook a scenario mission would run the skirmish setup on its map
-  if not installStartHook() then
-    log(WARNING, "custom-skirmish-trails: unexpected game code at the trail's Start; scenario missions run as skirmishes")
-    return false
+  local checked, installed = pcall(installStartHook)
+  if not checked or not installed then
+    log(WARNING, "custom-skirmish-trails: unexpected game code at the trail's Start; scenario rows are withheld")
+    return false, false
+  end
+  local lookupOk, lookup = pcall(bindMapLookup)
+  if lookupOk then
+    mapLookup = lookup
+  else
+    log(WARNING, "custom-skirmish-trails: custom map lookup is unavailable: " .. tostring(lookup))
   end
   local ok, result = pcall(resolve)
   if not ok or result == nil then
     if not ok then
       log(WARNING, "custom-skirmish-trails: scenario missions are switched off: " .. tostring(result))
     end
-    return false
+    return false, true
   end
   result.trailMap = core.allocate(NAME_BUFFER, true)
   result.keepArmy = core.allocate(1, true)
@@ -567,10 +637,10 @@ function scenario.enable(missionsOf)
   end)
   if not installed then
     log(WARNING, "custom-skirmish-trails: scenario missions are switched off: " .. tostring(err))
-    return false
+    return false, true
   end
   bindings = result
-  return true
+  return true, true
 end
 
 ---False when `entry` is a scenario mission whose map isn't the chosen map (a save from before the
