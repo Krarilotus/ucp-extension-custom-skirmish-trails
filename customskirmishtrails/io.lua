@@ -387,7 +387,8 @@ end
 
 local function numberify(name, index, expected, received, value)
   local nvalue = tonumber(value)
-  if nvalue == nil and ALLOW_NIL[name] and (value == nil or tostring(value):match("^%s*$")) then
+  if nvalue == nil and ALLOW_NIL[name]
+      and (name ~= "keep_start_army" or value == nil or tostring(value):match("^%s*$")) then
     return nil
   end
 

@@ -94,36 +94,9 @@ end
 
 local initialized = false
 local failure = nil
+local kernel32
 
-local function setUp()
-  pathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
-  tempPathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
-  tempPrefix = core.allocate(4, true)
-  writeCString(tempPrefix, "cst")
-  findData = core.allocate(FIND_DATA_SIZE, true)
-  writtenBuffer = core.allocate(4, true)
-
-  local found, _, loadLibrarySlot = pcall(utils.AOBExtract, LOAD_LIBRARY_CALL)
-  if not found or loadLibrarySlot == nil then
-    error("cannot find the game's LoadLibraryA import")
-  end
-  win.LoadLibraryA = stdcallThunk(loadLibrarySlot, 1)
-  local kernel32 = win.LoadLibraryA(setPath("kernel32.dll")) & 0xFFFFFFFF
-  local getProcAddress = kernel32 ~= 0 and findExport(kernel32, "GetProcAddress", 0) or nil
-  if getProcAddress == nil then
-    error("kernel32 has no GetProcAddress")
-  end
-  local getProcAddressSlot = core.allocate(4, true)
-  core.writeInteger(getProcAddressSlot, getProcAddress)
-  win.GetProcAddress = stdcallThunk(getProcAddressSlot, 2)
-
-  local functions = {
-    { "CreateDirectoryA", 2 }, { "FindFirstFileA", 2 }, { "FindNextFileA", 2 }, { "FindClose", 1 },
-    { "GetModuleFileNameA", 3 }, { "CreateFileA", 7 }, { "WriteFile", 5 }, { "CloseHandle", 1 },
-    { "GetLastError", 0 }, { "MultiByteToWideChar", 6 }, { "GetFileAttributesExA", 3 },
-    { "DeleteFileA", 1 }, { "GetFileAttributesA", 1 },
-    { "GetTempFileNameA", 4 }, { "MoveFileExA", 3 },
-  }
+local function bindFunctions(functions)
   for _, entry in ipairs(functions) do
     local name, argumentCount = entry[1], entry[2]
     local address = win.GetProcAddress(kernel32, setPath(name)) & 0xFFFFFFFF
@@ -134,10 +107,57 @@ local function setUp()
     core.writeInteger(slot, address)
     win[name] = stdcallThunk(slot, argumentCount)
   end
+end
+
+local function setUp()
+  pathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
+  findData = core.allocate(FIND_DATA_SIZE, true)
+
+  local found, _, loadLibrarySlot = pcall(utils.AOBExtract, LOAD_LIBRARY_CALL)
+  if not found or loadLibrarySlot == nil then
+    error("cannot find the game's LoadLibraryA import")
+  end
+  win.LoadLibraryA = stdcallThunk(loadLibrarySlot, 1)
+  kernel32 = win.LoadLibraryA(setPath("kernel32.dll")) & 0xFFFFFFFF
+  local getProcAddress = kernel32 ~= 0 and findExport(kernel32, "GetProcAddress", 0) or nil
+  if getProcAddress == nil then
+    error("kernel32 has no GetProcAddress")
+  end
+  local getProcAddressSlot = core.allocate(4, true)
+  core.writeInteger(getProcAddressSlot, getProcAddress)
+  win.GetProcAddress = stdcallThunk(getProcAddressSlot, 2)
+
+  bindFunctions({
+    { "FindFirstFileA", 2 }, { "FindNextFileA", 2 }, { "FindClose", 1 },
+    { "GetModuleFileNameA", 3 },
+    { "GetLastError", 0 }, { "MultiByteToWideChar", 6 }, { "GetFileAttributesExA", 3 },
+    { "GetFileAttributesA", 1 },
+  })
 
   local length = win.GetModuleFileNameA(0, pathBuffer, PATH_BUFFER_SIZE)
   assert(length > 0 and length < PATH_BUFFER_SIZE, "cannot resolve the game directory")
   gameDirectory = assert(core.readString(pathBuffer, length):gsub("/", "\\"):match("^(.*\\)"))
+end
+
+local writerFailure
+local function initializeWriter()
+  if writerFailure ~= nil then error(writerFailure, 0) end
+  if writtenBuffer ~= nil then return end
+  local ok, err = pcall(function()
+    bindFunctions({
+      { "CreateDirectoryA", 2 }, { "DeleteFileA", 1 },
+      { "GetTempFileNameA", 4 }, { "MoveFileExA", 3 },
+      { "CreateFileA", 7 }, { "WriteFile", 5 }, { "CloseHandle", 1 },
+    })
+    tempPathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
+    tempPrefix = core.allocate(4, true)
+    writeCString(tempPrefix, "cst")
+    writtenBuffer = core.allocate(4, true)
+  end)
+  if not ok then
+    writerFailure = tostring(err)
+    error(writerFailure, 0)
+  end
 end
 
 ---Resolves the Windows functions once; a failure is kept and raised again on later calls.
@@ -227,6 +247,7 @@ end
 ---True when it exists afterwards.
 function winfiles.createDirectory(path)
   initialize()
+  initializeWriter()
   local relative, absolute = winfiles.scopedPath(path)
   if relative == nil then error(absolute, 2) end
   if relative == "." then
@@ -333,6 +354,7 @@ end
 ---Deletes the file `path`. True when it is gone afterwards.
 function winfiles.deleteFile(path)
   initialize()
+  initializeWriter()
   if win.DeleteFileA(setPath(checkedEntryPath(path))) ~= 0 then
     return true
   end
@@ -342,6 +364,7 @@ end
 ---Writes `contents` (any bytes) to the file `path`, replacing it.
 function winfiles.writeFile(path, contents)
   initialize()
+  initializeWriter()
   local absolute = checkedEntryPath(path)
   local directory = absolute:match("^(.*\\)[^\\]+$")
   if directory == nil or directory:sub(1, #gameDirectory):lower() ~= gameDirectory:lower() then
