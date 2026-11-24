@@ -253,6 +253,38 @@ local function named(value, names, where)
   return cellOf(value, where)
 end
 
+local STRUCTURED_FIELDS = {
+  ["$schema"] = true, format = true, map_name = true, mission_name = true, mission_kind = true,
+  keep_start_army = true, unit_limit = true, text_description = true, advantage = true,
+  start_mode = true, players = true, extra = true,
+}
+for _, group in ipairs(GROUPS) do
+  STRUCTURED_FIELDS[group.key] = true
+end
+
+local function checkArray(values, limit, where)
+  if type(values) ~= "table" or #values > limit then
+    error(string.format("%s must be an array of at most %d entries", where, limit))
+  end
+  for index in pairs(values) do
+    if type(index) ~= "number" or math.tointeger(index) == nil or index < 1 or index > #values then
+      error(where .. " must be an array")
+    end
+  end
+end
+
+local function readColumns(cells, values, prefix, where)
+  if type(values) ~= "table" then
+    error(where .. " must be an object")
+  end
+  for key, value in pairs(values) do
+    if type(key) ~= "string" then
+      error(where .. " must contain named fields")
+    end
+    cells[prefix .. key] = cellOf(value, where .. "." .. key)
+  end
+end
+
 ---The csv cells (column -> text) of a decoded mission JSON file. `reverseMapping` (optional) maps
 ---the names shown in the JSON back to AI keys. Raises an error for a malformed file.
 function missionjson.toRow(data, reverseMapping, file)
@@ -262,10 +294,15 @@ function missionjson.toRow(data, reverseMapping, file)
   if data.format ~= nil and data.format ~= missionjson.FORMAT then
     error(string.format("%s has format %s; this version reads format %d", file, tostring(data.format), missionjson.FORMAT))
   end
-  if data.format == nil and data.players == nil and type(data.map_name) == "string"
+  local mapType = type(data.map_name)
+  -- The flat exporter encoded all plain integer cells as numbers, including map names.
+  if data.format == nil and data.players == nil and (mapType == "string" or mapType == "number")
       and data.fairness ~= nil and data.start_levels ~= nil and data.num_players ~= nil then
     local cells = {}
     for column, value in pairs(data) do
+      if type(column) ~= "string" or type(value) == "table" then
+        error(file .. ": flat mission columns must have scalar values")
+      end
       local cell = cellOf(value, file .. ": " .. column)
       if reverseMapping ~= nil and column:match("^player[1-8]$") then
         cell = reverseMapping[cell] or cell
@@ -274,9 +311,13 @@ function missionjson.toRow(data, reverseMapping, file)
     end
     return cells
   end
-  if data.fairness ~= nil or data.start_levels ~= nil or data.num_players ~= nil
-      or type(data.players) ~= "table" or #data.players == 0 then
+  if mapType ~= "string" or type(data.players) ~= "table" or #data.players == 0 then
     error(file .. ": expected flat mission columns or a structured mission with players")
+  end
+  for key in pairs(data) do
+    if not STRUCTURED_FIELDS[key] then
+      error(file .. ": unrecognized mission field " .. tostring(key))
+    end
   end
   local cells = {}
   cells.map_name = cellOf(data.map_name, file .. ": map_name")
@@ -284,59 +325,55 @@ function missionjson.toRow(data, reverseMapping, file)
   for _, column in ipairs({ "mission_kind", "keep_start_army", "unit_limit" }) do
     cells[column] = cellOf(data[column], file .. ": " .. column)
   end
-  local lines = type(data.text_description) == "table" and data.text_description or {}
+  local lines = data.text_description
+  if lines == nil then lines = {} end
+  checkArray(lines, TEXT_LINES, file .. ": text_description")
   for line = 1, TEXT_LINES do
     cells[string.format("text_description_line_%02d", line)] = cellOf(lines[line], file .. ": text_description")
   end
   cells.fairness = named(data.advantage, ADVANTAGE, file .. ": advantage")
   cells.start_levels = named(data.start_mode, START_MODE, file .. ": start_mode")
 
-  local players = type(data.players) == "table" and data.players or {}
-  if #players > 8 then
-    error(file .. ": at most 8 players")
-  end
+  local players = data.players
+  checkArray(players, 8, file .. ": players")
   cells.num_players = tostring(#players)
   cells.player1 = "0"
   for player = 1, 8 do
     local entry = players[player]
+    local where = string.format("%s: players[%d]", file, player)
     if player <= #players and type(entry) ~= "table" then
-      error(string.format("%s: players[%d] must be an object", file, player))
+      error(where .. " must be an object")
     end
+    local fields = {}
     for _, spec in ipairs(playerColumns(player)) do
+      fields[spec.key] = true
       if entry == nil then
         cells[spec.column] = spec.empty
       else
         local value = entry[spec.key]
         if spec.key == "ai" then
-          value = cellOf(value, string.format("%s: players[%d].ai", file, player))
+          value = cellOf(value, where .. ".ai")
           cells[spec.column] = (reverseMapping ~= nil and reverseMapping[value]) or (value ~= "" and value or "0")
         else
-          cells[spec.column] = cellOf(value, string.format("%s: players[%d].%s", file, player, spec.key))
+          cells[spec.column] = cellOf(value, where .. "." .. spec.key)
         end
       end
     end
-  end
-  if type(players[1]) == "table" and players[1].ai ~= nil then
-    error(file .. ": players[1] is the human player and has no \"ai\"")
-  end
-  for player = 2, #players do
-    if type(players[player]) == "table" and players[player].lord ~= nil then
-      error(string.format("%s: players[%d] is an AI; only players[1] has a \"lord\"", file, player))
+    for key in pairs(entry or {}) do
+      if not fields[key] then
+        error(where .. ": unrecognized player field " .. tostring(key))
+      end
     end
   end
 
   for _, group in ipairs(GROUPS) do
     local values = data[group.key]
-    if type(values) == "table" then
-      for key, value in pairs(values) do
-        cells[group.prefix .. key] = cellOf(value, string.format("%s: %s.%s", file, group.key, key))
-      end
+    if values ~= nil then
+      readColumns(cells, values, group.prefix, file .. ": " .. group.key)
     end
   end
-  if type(data.extra) == "table" then
-    for column, value in pairs(data.extra) do
-      cells[column] = cellOf(value, file .. ": extra." .. column)
-    end
+  if data.extra ~= nil then
+    readColumns(cells, data.extra, "", file .. ": extra")
   end
   return cells
 end
