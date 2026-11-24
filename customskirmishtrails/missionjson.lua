@@ -148,7 +148,7 @@ function missionjson.fromRow(header, cells, aiMapping)
   end
   -- keep_start_army: 0 or 1; any other text stays in "extra"
   local keep = missionjson.startArmyFlag(cells.keep_start_army)
-  if keep ~= nil then
+  if keep ~= nil and cells.keep_start_army == tostring(keep) then
     take("keep_start_army")
     put(mission, "keep_start_army", { raw = tostring(keep) })
   end
@@ -262,6 +262,22 @@ function missionjson.toRow(data, reverseMapping, file)
   if data.format ~= nil and data.format ~= missionjson.FORMAT then
     error(string.format("%s has format %s; this version reads format %d", file, tostring(data.format), missionjson.FORMAT))
   end
+  if data.format == nil and data.players == nil and type(data.map_name) == "string"
+      and data.fairness ~= nil and data.start_levels ~= nil and data.num_players ~= nil then
+    local cells = {}
+    for column, value in pairs(data) do
+      local cell = cellOf(value, file .. ": " .. column)
+      if reverseMapping ~= nil and column:match("^player[1-8]$") then
+        cell = reverseMapping[cell] or cell
+      end
+      cells[column] = cell
+    end
+    return cells
+  end
+  if data.fairness ~= nil or data.start_levels ~= nil or data.num_players ~= nil
+      or type(data.players) ~= "table" or #data.players == 0 then
+    error(file .. ": expected flat mission columns or a structured mission with players")
+  end
   local cells = {}
   cells.map_name = cellOf(data.map_name, file .. ": map_name")
   cells.mission_name = cellOf(data.mission_name, file .. ": mission_name")
@@ -283,6 +299,9 @@ function missionjson.toRow(data, reverseMapping, file)
   cells.player1 = "0"
   for player = 1, 8 do
     local entry = players[player]
+    if player <= #players and type(entry) ~= "table" then
+      error(string.format("%s: players[%d] must be an object", file, player))
+    end
     for _, spec in ipairs(playerColumns(player)) do
       if entry == nil then
         cells[spec.column] = spec.empty
