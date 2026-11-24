@@ -1,4 +1,6 @@
 # Custom Skirmish Trails
+
+Module authors are gynt, Monsterfish, Heroesflorian, and Krarilotus.
 Adds Custom Skirmish Trails to Stronghold Crusader and Stronghold Crusader Extreme
 
 This tool is recommended to manipulate the csv files https://edit-csv.net/
