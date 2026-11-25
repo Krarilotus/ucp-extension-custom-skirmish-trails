@@ -2,8 +2,9 @@
 -- marker_locked / marker_available / marker_won. A mission with a marker shows its picture in
 -- place of the game's flag: locked (its click is not taken) until the trail reaches it, its date
 -- has come and its map is installed; available after that; a won mission draws its won picture
--- over it. The game's chicken stays. A side mission of the trail's route (route.lua) is reached and
--- won by the route instead of the trail's furthest mission.
+-- over it. The game's chicken stays. A mission of the trail's route (route.lua) that the game's
+-- furthest mission doesn't describe (a side mission, a parallel path) is reached and won by the
+-- route.
 --
 -- All sites lie in the trail screen's draw (render) and click functions, at the same offsets in
 -- Stronghold Crusader.exe and Stronghold_Crusader_Extreme.exe.
@@ -113,8 +114,9 @@ local function refresh(trailName, door)
     local pictures = entry and picturesOf(trailName, index, entry)
     local open = pictures ~= nil and scenario.isOpen(entry)
     door.list[index] = pictures and { pictures = pictures, open = open }
-    if pictures == nil and door.route ~= nil and door.route:isSide(index - 1) then
-      log(WARNING, string.format("custom-skirmish-trails: %s side mission %d has no marker; it can't be played",
+    if pictures == nil and door.route ~= nil and door.route:needsPictures(index - 1) then
+      log(WARNING, string.format("custom-skirmish-trails: %s mission %d is off the trail's order and has no marker; "
+        .. "it can't be played",
         trailName, index))
     end
   end
@@ -143,9 +145,10 @@ local function onRender(registers)
   for index = 1, door.count do
     local slot, item = index - 1, door.list[index]
     local open = slot <= furthest
-    local won = slot < furthest and core.readInteger(door.scores + slot * 4) ~= SKIPPED
-    if r ~= nil and r:isSide(slot) then
-      open, won = item ~= nil and r:isAvailable(slot, furthest), r:isWon(slot, furthest)
+    local skipped = core.readInteger(door.scores + slot * 4) == SKIPPED
+    local won = slot < furthest and not skipped
+    if r ~= nil and r:needsPictures(slot) then
+      open, won = item ~= nil and r:isOpen(slot), r:isPassed(slot) and not skipped
     end
     open = open and (item == nil or item.open)
     core.writeByte(door.locks + slot, open and 0 or 1)

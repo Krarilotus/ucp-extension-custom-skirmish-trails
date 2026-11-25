@@ -22,7 +22,7 @@ local SELECT_STORES = {
 -- reaches "mov ecx, trails / call" (the trail's number is pushed).
 local CHICKEN_SITE = { fn = "click", offset = 0x71, bytes = "B9 ? ? ? ? E8 ? ? ? ? 29 2D" }
 
-local stores = {} -- trailName -> { furthest, selected, path, count, route } once the win store is detoured
+local stores = {} -- trailName -> { trail, furthest, selected, path, count, route } once the win store is detoured
 local chickenHooked = false
 
 local function readProgress(path, count)
@@ -36,8 +36,26 @@ local function readProgress(path, count)
   return value and math.min(value, count) or 0
 end
 
----The win store of `trail`, detoured once: a side mission's win keeps the furthest row, a main
----mission's skips the side missions after it, and the furthest row is saved when a path is set.
+---A node's reward of `chickens` on `trail`, added to its chicken budget for the next trail screen.
+local function giveChickens(trail, chickens)
+  for index, name in pairs(memory.TRAIL_TYPES) do
+    if name == trail and patches.addChickens(index, chickens) then
+      return
+    end
+  end
+  log(WARNING, "custom-skirmish-trails: the trail screen's chicken code was not found; a reward of chickens is not given")
+end
+
+---Keeps the win of the route's node at `row` with the players alive now and gives its reward.
+local function recordWin(state, row)
+  local chickens = state.route:recordResult(row, unitlimits.playerFacts())
+  if chickens > 0 then
+    giveChickens(state.trail, chickens)
+  end
+end
+
+---The win store of `trail`, detoured once: with a route the won row is passed and the furthest row
+---becomes the route's frontier, and the furthest row is saved when a path is set.
 local function winStore(trail, purpose)
   if stores[trail] ~= nil then
     return stores[trail]
@@ -47,12 +65,19 @@ local function winStore(trail, purpose)
     return nil
   end
   local store = site + 3
-  local state = { furthest = core.readInteger(store + 1), selected = memory.TRAIL_PROGRESS_ADDRESSES[trail] }
+  local state = { trail = trail, furthest = core.readInteger(store + 1), selected = memory.TRAIL_PROGRESS_ADDRESSES[trail] }
   core.detourCode(function(registers)
     local r = state.route
     if r ~= nil then
-      registers.EAX = r:isSide(core.readInteger(state.selected)) and core.readInteger(state.furthest)
-        or r:nextMain(registers.EAX)
+      local row = core.readInteger(state.selected)
+      r:pass(row)
+      if row == r.count - 1 then
+        -- the end: the game ends the trail without reaching the select store
+        recordWin(state, row)
+        registers.EAX = r.count
+      else
+        registers.EAX = r:frontier()
+      end
     end
     local value = registers.EAX
     if state.path ~= nil and value >= 1 and value <= state.count then
@@ -86,27 +111,18 @@ local function onChicken()
   local trail = memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)]
   local state = trail and stores[trail]
   local r = state and state.route
-  local furthest = state and core.readInteger(state.furthest)
-  if r ~= nil and r:isSide(furthest) then
-    core.writeInteger(state.furthest, r:nextMain(furthest))
-    core.writeInteger(state.selected, r:nextMain(furthest))
+  if r ~= nil then
+    -- the game skipped its furthest row, the frontier, and moved past it
+    r:pass(core.readInteger(state.furthest) - 1)
+    core.writeInteger(state.furthest, r:frontier())
+    core.writeInteger(state.selected, r:suggest())
   end
 end
 
----A node's reward of `chickens` on `trail`, added to its chicken budget for the next trail screen.
-local function giveChickens(trail, chickens)
-  for index, name in pairs(memory.TRAIL_TYPES) do
-    if name == trail and patches.addChickens(index, chickens) then
-      return
-    end
-  end
-  log(WARNING, "custom-skirmish-trails: the trail screen's chicken code was not found; a reward of chickens is not given")
-end
-
----Plays the side missions of `r` (route.lua) on `trail` without moving its furthest row: their wins
----are recorded in the route, the next main mission is selected after them, and wins and chickens
----skip the side missions. Each node's win is kept with the players alive then, and its reward of
----chickens is given at its first win. False when a game site is not found.
+---Plays `trail` by the route `r` (route.lua): every win and chicken skip passes its node, the
+---furthest row is the route's frontier and the next playable main mission is selected. Each
+---node's win is kept with the players alive then, and its reward of chickens is given at its
+---first win. False when a game site is not found.
 function progress.installRoute(trail, r)
   local state = winStore(trail, "side missions")
   local selectSite = SELECT_STORES[trail]
@@ -117,16 +133,9 @@ function progress.installRoute(trail, r)
   end
   core.detourCode(function(registers)
     local won = core.readInteger(state.selected)
-    local chickens = r:recordResult(won, unitlimits.playerFacts())
-    if chickens > 0 then
-      giveChickens(trail, chickens)
-    end
-    if r:isSide(won) then
-      r:recordWin(won)
-      registers[selectSite.register] = core.readInteger(state.furthest)
-    else
-      registers[selectSite.register] = r:nextMain(registers[selectSite.register])
-    end
+    r:pass(won)
+    recordWin(state, won)
+    registers[selectSite.register] = r:suggest()
     return registers
   end, select, 6)
   if not chickenHooked then
@@ -137,12 +146,12 @@ function progress.installRoute(trail, r)
     chickenHooked = true
   end
   state.route = r
-  -- progress kept from before the trail had its route
   hooks.registerHookCallback("afterInit", function()
-    local furthest = r:nextMain(core.readInteger(state.furthest))
-    core.writeInteger(state.furthest, furthest)
-    if r:isSide(core.readInteger(state.selected)) then
-      core.writeInteger(state.selected, math.min(furthest, r.count - 1))
+    r:seed(core.readInteger(state.furthest))
+    core.writeInteger(state.furthest, r:frontier())
+    local selected = core.readInteger(state.selected)
+    if selected < 0 or selected >= r.count or not r:isOpen(selected) then
+      core.writeInteger(state.selected, r:suggest())
     end
   end)
   return true

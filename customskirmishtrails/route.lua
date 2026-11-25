@@ -1,9 +1,12 @@
--- trail_route in the trail settings file: the trail's missions as nodes keyed by id. Main missions
--- keep the trail's order and the game's furthest mission; side missions open when the nodes they
--- require are won, and their wins are kept in a file of won node ids. Every win of a node is kept
--- in a results file with its difficulty and the players whose lord, and who themselves, were alive
--- at that win; a side mission's unlock needs one such win, and a node's reward is given at its
--- first win. Rows are 0-based here, as in the game.
+-- trail_route in the trail settings file: the trail's missions as nodes keyed by id, joined by
+-- requires into a graph. A node can be played once the nodes it requires are passed (won, or for a
+-- main node skipped with a chicken) and its unlock is met; the trail ends when its end node, the
+-- trail's last row, is won. Passed nodes are kept in a file of node ids. The game's furthest row
+-- is the first main row not passed (the frontier), so its markers, chicken count and chicken skip
+-- keep working for the nodes it can describe. Every win of a node is kept in a results file with
+-- its difficulty and the players whose lord, and who themselves, were alive at that win; an unlock
+-- needs one such win, and a node's reward is given at its first win. Rows are 0-based here, as in
+-- the game.
 
 local winfiles = require("customskirmishtrails.winfiles")
 
@@ -82,16 +85,91 @@ local function readReward(value)
   return { chickens = chickens }
 end
 
+---Every node `node` needs before it can be played: requires, requires_any and unlock.won.
+local function needs(node)
+  local list = {}
+  for _, ids in ipairs({ node.requires, node.requiresAny }) do
+    for _, id in ipairs(ids) do
+      table.insert(list, id)
+    end
+  end
+  if node.unlock ~= nil then
+    table.insert(list, node.unlock.won)
+  end
+  return list
+end
+
+---The nodes in or behind a circle of needs (sorted), or nil when there are none.
+local function circle(nodes)
+  local left, count = {}, {}
+  for id, node in pairs(nodes) do
+    left[id], count[id] = node, #needs(node)
+  end
+  local done = true
+  while done do
+    done = false
+    for id, node in pairs(left) do
+      if count[id] == 0 then
+        left[id], done = nil, true
+        for other, otherNode in pairs(left) do
+          for _, needed in ipairs(needs(otherNode)) do
+            if needed == id then
+              count[other] = count[other] - 1
+            end
+          end
+        end
+      end
+    end
+  end
+  local ids = {}
+  for id in pairs(left) do
+    table.insert(ids, id)
+  end
+  table.sort(ids)
+  return #ids > 0 and ids or nil
+end
+
+---Marks the chain nodes: main nodes without unlock that need only main nodes on rows before
+---theirs and that every main node before them leads to through requires. The game's own markers
+---and its furthest row describe such a node right; every other node is drawn by the route.
+local function markChain(nodes, rows, count)
+  local ancestors = {}
+  local function ancestorsOf(node)
+    if ancestors[node.id] == nil then
+      local set = {}
+      ancestors[node.id] = set
+      for _, id in ipairs(node.requires) do
+        set[id] = true
+        for above in pairs(ancestorsOf(nodes[id])) do
+          set[above] = true
+        end
+      end
+    end
+    return ancestors[node.id]
+  end
+  for row = 0, count - 1 do
+    local node = rows[row]
+    local chain = not node.side and node.unlock == nil
+    for _, id in ipairs(needs(node)) do
+      chain = chain and not nodes[id].side and nodes[id].row < row
+    end
+    for before = 0, row - 1 do
+      chain = chain and (rows[before].side or ancestorsOf(node)[rows[before].id] == true)
+    end
+    node.chain = chain
+  end
+end
+
 ---The trail's route from `value` (trail_route) for a trail of `count` missions, or nil and the
 ---problem. Other fields of a node are not used.
 local function parse(value, count)
   if type(value) ~= "table" then
     return nil, "trail_route must be an object of node ids"
   end
-  local nodes, rows, sides, rewards = {}, {}, 0, false
+  local nodes, rows, rewards, ending = {}, {}, false, nil
   for id, entry in pairs(value) do
-    if type(id) ~= "string" or type(entry) ~= "table" then
-      return nil, "every trail_route entry must be an object under a node id"
+    if type(id) ~= "string" or not id:match("^[%w_%-]+$") or type(entry) ~= "table" then
+      return nil, "every trail_route entry must be an object under a node id of letters, digits, _ and -"
     end
     local mission = math.tointeger(entry.mission)
     if mission == nil or mission < 1 or mission > count then
@@ -108,14 +186,14 @@ local function parse(value, count)
     if requires == nil or requiresAny == nil then
       return nil, string.format("node '%s': requires and requires_any must be lists of node ids", id)
     end
-    if kind == "main" and (#requires > 0 or #requiresAny > 0) then
-      return nil, string.format("node '%s': a main mission opens in the trail's order and takes no requires", id)
+    if entry["end"] ~= nil and type(entry["end"]) ~= "boolean" or entry["end"] and kind == "side" then
+      return nil, string.format("node '%s': end must be true or false, and only a main mission can be the end", id)
     end
     local unlock, reward, problem
     if entry.unlock ~= nil then
       unlock, problem = readUnlock(entry.unlock)
-      if unlock == nil or kind == "main" then
-        return nil, string.format("node '%s': %s", id, problem or "a main mission takes no unlock")
+      if unlock == nil then
+        return nil, string.format("node '%s': %s", id, problem)
       end
     end
     if entry.reward ~= nil then
@@ -125,29 +203,52 @@ local function parse(value, count)
       end
       rewards = true
     end
-    if kind == "side" then
-      sides = sides + 1
-    end
     local node = { id = id, row = mission - 1, side = kind == "side", requires = requires, requiresAny = requiresAny,
       unlock = unlock, reward = reward }
+    if entry["end"] then
+      if ending ~= nil then
+        return nil, string.format("nodes '%s' and '%s' are both the end", ending.id, id)
+      end
+      ending = node
+    end
     nodes[id], rows[mission - 1] = node, node
   end
+  -- missions the route doesn't name are main missions; a main mission without requires follows
+  -- the main mission before it
+  local previous = nil
+  for row = 0, count - 1 do
+    if rows[row] == nil then
+      rows[row] = { id = "#" .. (row + 1), row = row, side = false, requires = {}, requiresAny = {} }
+      nodes[rows[row].id] = rows[row]
+    end
+    local node = rows[row]
+    if not node.side then
+      if previous ~= nil and #node.requires == 0 and #node.requiresAny == 0 then
+        node.requires = { previous.id }
+      end
+      previous = node
+    end
+  end
+  local last = rows[count - 1]
+  if last.side or (ending ~= nil and ending ~= last) then
+    return nil, string.format("the trail's end must be a main mission and its last mission (%d)", count)
+  end
   for id, node in pairs(nodes) do
-    for _, list in ipairs({ node.requires, node.requiresAny }) do
-      for _, required in ipairs(list) do
-        if nodes[required] == nil then
-          return nil, string.format("node '%s' requires '%s', which is not a node", id, required)
-        end
+    for _, needed in ipairs(needs(node)) do
+      if nodes[needed] == nil then
+        return nil, string.format("node '%s' requires '%s', which is not a node", id, needed)
+      end
+      if needed == last.id then
+        return nil, string.format("node '%s' requires the end '%s'; winning the end ends the trail", id, needed)
       end
     end
-    if node.unlock ~= nil and nodes[node.unlock.won] == nil then
-      return nil, string.format("node '%s': unlock.won '%s' is not a node", id, node.unlock.won)
-    end
   end
-  if rows[count - 1] ~= nil and rows[count - 1].side then
-    return nil, string.format("the trail's last mission (%d) must be a main mission", count)
+  local circled = circle(nodes)
+  if circled ~= nil then
+    return nil, "these nodes wait on a circle of requires and can never be played: " .. table.concat(circled, ", ")
   end
-  return { nodes = nodes, rows = rows, sides = sides, rewards = rewards }
+  markChain(nodes, rows, count)
+  return { nodes = nodes, rows = rows, rewards = rewards }
 end
 
 local function readLines(path)
@@ -216,24 +317,24 @@ local function addResult(r, line)
 end
 
 ---Reads `value` (trail_route of the settings file `settingsPath`) for a trail with `count`
----missions, played at `difficulty`; side wins are kept in `winsPath`, the results of node wins in
----`resultsPath`. Returns the route when it has side missions, nil otherwise or when it can't be
----used (logged).
-function route.load(settingsPath, value, count, winsPath, resultsPath, difficulty)
+---missions, played at `difficulty`; passed nodes are kept in `passedPath`, the results of node
+---wins in `resultsPath`. Returns the route when the trail needs it (a node that is not a chain
+---node, or a reward), nil otherwise or when it can't be used (logged).
+function route.load(settingsPath, value, count, passedPath, resultsPath, difficulty)
   local parsed, problem = parse(value, count)
   if parsed == nil then
     log(WARNING, string.format("custom-skirmish-trails: %s: %s; the trail plays its missions in their order",
       settingsPath, problem))
     return nil
   end
-  if parsed.sides == 0 then
-    if parsed.rewards then
-      log(WARNING, string.format("custom-skirmish-trails: %s: rewards need a route with side missions; they are "
-        .. "not given", settingsPath))
-    end
+  parsed.graph = false
+  for row = 0, count - 1 do
+    parsed.graph = parsed.graph or not parsed.rows[row].chain
+  end
+  if not parsed.graph and not parsed.rewards then
     return nil
   end
-  parsed.count, parsed.path, parsed.wins = count, winsPath, readWins(winsPath)
+  parsed.count, parsed.path, parsed.passed = count, passedPath, readWins(passedPath)
   parsed.resultsPath, parsed.difficulty, parsed.results, parsed.lines = resultsPath, difficulty, {}, {}
   for _, line in ipairs(readLines(resultsPath)) do
     addResult(parsed, line)
@@ -241,26 +342,66 @@ function route.load(settingsPath, value, count, winsPath, resultsPath, difficult
   return setmetatable(parsed, Route)
 end
 
-function Route:isSide(row)
-  local node = self.rows[row]
-  return node ~= nil and node.side
+---False when the game's own markers and its furthest row describe the node at `row` right (a
+---chain node, see markChain); its door then needs pictures of its own.
+function Route:needsPictures(row)
+  return not self.rows[row].chain
 end
 
----The first main mission at or after `row` (count when there is none).
-function Route:nextMain(row)
-  while row < self.count and self:isSide(row) do
-    row = row + 1
-  end
-  return row
+---A node is passed once it is won, or, for a main node, skipped with a chicken.
+function Route:isPassed(row)
+  return self.passed[self.rows[row].id] == true
 end
 
----A main mission is won once the trail has passed it (won or skipped with a chicken).
-function Route:isWon(row, furthest)
-  local node = self.rows[row]
-  if node ~= nil and node.side then
-    return self.wins[node.id] == true
+---The first main row not passed yet (count when every main node is passed): the game's furthest
+---row. Every row before it is passed or a side mission's.
+function Route:frontier()
+  for row = 0, self.count - 1 do
+    local node = self.rows[row]
+    if not node.side and not self.passed[node.id] then
+      return row
+    end
   end
-  return row < furthest
+  return self.count
+end
+
+---The row to select on the trail map: the first main row that can be played and is not passed,
+---otherwise the frontier.
+function Route:suggest()
+  for row = 0, self.count - 1 do
+    if not self.rows[row].side and not self:isPassed(row) and self:isAvailable(row) then
+      return row
+    end
+  end
+  return math.min(self:frontier(), self.count - 1)
+end
+
+function Route:pass(row)
+  local id = self.rows[row].id
+  if self.passed[id] then
+    return
+  end
+  self.passed[id] = true
+  local ids = {}
+  for passed in pairs(self.passed) do
+    table.insert(ids, passed)
+  end
+  writeLines(self.path, ids, "passed trail missions")
+end
+
+---Progress kept from before the route kept its main nodes passed: while no main node is kept,
+---every main row before the game's furthest row `furthest` counts as passed.
+function Route:seed(furthest)
+  for id in pairs(self.passed) do
+    if self.nodes[id] ~= nil and not self.nodes[id].side then
+      return
+    end
+  end
+  for row = 0, math.min(furthest, self.count) - 1 do
+    if not self.rows[row].side then
+      self:pass(row)
+    end
+  end
 end
 
 ---True when one win of the unlock's node was at its difficulty with all its players alive.
@@ -279,40 +420,29 @@ function Route:isUnlocked(unlock)
   return false
 end
 
----A side mission can be played when every node of requires and one of requires_any is won, and
----its unlock is met.
-function Route:isAvailable(row, furthest)
+---A node can be played when every node of requires and one of requires_any is passed, and its
+---unlock is met.
+function Route:isAvailable(row)
   local node = self.rows[row]
   if node.unlock ~= nil and not self:isUnlocked(node.unlock) then
     return false
   end
-  local function won(id)
-    return self:isWon(self.nodes[id].row, furthest)
-  end
   for _, id in ipairs(node.requires) do
-    if not won(id) then
+    if not self.passed[id] then
       return false
     end
   end
   for _, id in ipairs(node.requiresAny) do
-    if won(id) then
+    if self.passed[id] then
       return true
     end
   end
   return #node.requiresAny == 0
 end
 
-function Route:recordWin(row)
-  local id = self.rows[row].id
-  if self.wins[id] then
-    return
-  end
-  self.wins[id] = true
-  local ids = {}
-  for won in pairs(self.wins) do
-    table.insert(ids, won)
-  end
-  writeLines(self.path, ids, "side mission wins")
+---A passed node stays open to be played again.
+function Route:isOpen(row)
+  return self:isPassed(row) or self:isAvailable(row)
 end
 
 ---Keeps the win of the node at `row` with the difficulty and `facts` ({ lords = { [player] = true },

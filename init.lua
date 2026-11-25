@@ -193,30 +193,30 @@ local function hookPlayerNaming()
   end)
 end
 
----The side missions of a trail settings file's trail_route, played where door pictures show them;
----nil when the trail has none or they can't be played (logged).
+---The trail_route of a trail settings file, played where door pictures show what the game's own
+---markers can't; nil when the trail doesn't need it or it can't be played (logged).
 local function installRoute(trail, settings, count, difficulty)
   if settings.route == nil then
     return nil
   end
   local suffix = settings.progressByDifficulty and ("-" .. difficulty) or ""
-  local sides = route.load(settings.path, settings.route, count,
+  local r = route.load(settings.path, settings.route, count,
     string.format("ucp/custom-skirmish-trails-sides-%s%s.txt", trail.name, suffix),
     string.format("ucp/custom-skirmish-trails-results-%s%s.txt", trail.name, suffix), difficulty)
-  if sides == nil then
+  if r == nil then
     return nil
   end
-  if settings.visuals.markerSheet == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s: side missions need door pictures "
+  if r.graph and settings.visuals.markerSheet == nil then
+    log(WARNING, string.format("custom-skirmish-trails: %s: side missions and parallel paths need door pictures "
       .. "(trail_marker_sheet); the trail plays its missions in their order", settings.path))
     return nil
   end
-  if not progress.installRoute(trail.name, sides) then
-    log(WARNING, string.format("custom-skirmish-trails: %s: side missions are switched off; the trail plays its "
+  if not progress.installRoute(trail.name, r) then
+    log(WARNING, string.format("custom-skirmish-trails: %s: the trail route is switched off; the trail plays its "
       .. "missions in their order", settings.path))
     return nil
   end
-  return sides
+  return r
 end
 
 -- Settings -------------------------------------------------------------------------------
@@ -429,7 +429,7 @@ return {
         end
         local okRoute, sides = pcall(installRoute, trail, settings, missionCounts[trail.name], difficulty)
         if not okRoute then
-          log(WARNING, string.format("custom-skirmish-trails: %s side missions: %s", trail.type, tostring(sides)))
+          log(WARNING, string.format("custom-skirmish-trails: %s trail route: %s", trail.type, tostring(sides)))
           sides = nil
         end
         routes[trail.name] = sides
