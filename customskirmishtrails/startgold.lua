@@ -50,7 +50,7 @@ local function showInBriefing()
   if human == nil or ai == nil or label == nil then
     return
   end
-  local textObject = core.readInteger(ai + 11)
+  local textObject = core.readInteger(ai + 12)
   local drawNumber = ai + AI_SITE_SIZE + core.readInteger(ai + 17)
   local drawText = label + 5 + core.readInteger(label + 1)
   local gameValue = {}
