@@ -1,4 +1,3 @@
-local winfiles = require("customskirmishtrails.winfiles")
 ---@diagnostic disable-next-line: undefined-global
 local ucp = ucp or {internal = {
   resolveAliasedPath = function(...) error("resolveAliasedPath not found, ucp lib not found") end,
@@ -383,9 +382,7 @@ local function prefixHeaders(contents)
 end
 
 local function getContents(path)
-  local resolved, reason = winfiles.scopedPath(path)
-  if resolved == nil then return nil, reason end
-  local handle, err = io.open(resolved,'rb')
+  local handle, err = io.open(path,'rb')
   if handle == nil then error(debug.traceback(err)) end
   local contents = handle:read("*all")
   log(2, string.format("raw csv contents\n%s", contents))
@@ -481,9 +478,13 @@ local function pvalidateInput(input, index)
   return pcall(validateInput, input, index)
 end
 
-local function readCSV(path, limit)
+---Reads the trail csv file `path`, or `contents` in its place.
+local function readCSV(path, limit, contents)
   log(2, string.format("readCSV: %s", path))
-  local contents, reason = getContents(path)
+  local reason
+  if contents == nil then
+    contents, reason = getContents(path)
+  end
   if contents == nil then
     return nil, string.format("%s: %s", tostring(path), tostring(reason))
   end

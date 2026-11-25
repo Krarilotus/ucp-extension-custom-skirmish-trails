@@ -1,7 +1,7 @@
 local memory = require("customskirmishtrails.memory")
 local patches = require("customskirmishtrails.patches")
 local unitlimits = require("customskirmishtrails.unitlimits")
-local winfiles = require("customskirmishtrails.winfiles")
+local storage = require("customskirmishtrails.storage")
 
 local progress = {}
 
@@ -25,14 +25,8 @@ local CHICKEN_SITE = { fn = "click", offset = 0x71, bytes = "B9 ? ? ? ? E8 ? ? ?
 local stores = {} -- trailName -> { trail, furthest, selected, path, count, route } once the win store is detoured
 local chickenHooked = false
 
-local function readProgress(path, count)
-  local file = io.open(path, "rb")
-  if file == nil then
-    return 0
-  end
-  local contents = file:read("*a")
-  file:close()
-  local value = tonumber(contents:match("^%s*(%d+)%s*$"))
+local function readProgress(name, count)
+  local value = tonumber((storage.read(name) or ""):match("^%s*(%d+)%s*$"))
   return value and math.min(value, count) or 0
 end
 
@@ -82,7 +76,7 @@ local function winStore(trail, purpose)
     end
     local value = registers.EAX
     if state.path ~= nil and value >= 1 and value <= state.count then
-      local ok, err = winfiles.writeFile(state.path, tostring(value) .. "\n")
+      local ok, err = storage.write(state.path, tostring(value) .. "\n")
       if not ok then
         log(WARNING, "custom-skirmish-trails: could not save trail progress: " .. tostring(err))
       end
@@ -96,7 +90,7 @@ local function winStore(trail, purpose)
   return state
 end
 
----Keeps the furthest row of `trail` in the file `path` instead of the game's own progress.
+---Keeps the furthest row of `trail` in the user data file `path` instead of the game's own progress.
 function progress.install(trail, path, count)
   local state = winStore(trail, "the trail's own progress file")
   if state == nil then
@@ -193,6 +187,7 @@ function progress.installRoute(trail, r)
   end
   -- the trail's wins and chickens come after afterInit, when the game has loaded its progress
   hooks.registerHookCallback("afterInit", function()
+    r:readFiles()
     state.route = r
     r:seed(core.readInteger(state.furthest))
     state.gameRows = { furthest = core.readInteger(state.furthest), selected = core.readInteger(state.selected) }

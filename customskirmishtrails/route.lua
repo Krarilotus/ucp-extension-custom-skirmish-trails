@@ -7,7 +7,7 @@
 -- the players whose lord, and who themselves, were alive at that win; an unlock needs one such win, and a node's reward is given at its first win. Rows are 0-based here, as in
 -- the game.
 
-local winfiles = require("customskirmishtrails.winfiles")
+local storage = require("customskirmishtrails.storage")
 
 local route = {}
 
@@ -387,7 +387,7 @@ end
 
 local function readLines(path)
   local lines = {}
-  local file = io.open(path, "rb")
+  local file = storage.open(path, "rb")
   if file == nil then
     return lines
   end
@@ -401,7 +401,7 @@ end
 ---Writes `lines` sorted into `path`; `what` names them in the log when that fails.
 local function writeLines(path, lines, what)
   table.sort(lines)
-  local ok, err = winfiles.writeFile(path, table.concat(lines, "\n") .. "\n")
+  local ok, err = storage.write(path, table.concat(lines, "\n") .. "\n")
   if not ok then
     log(WARNING, string.format("custom-skirmish-trails: could not save %s: %s", what, tostring(err)))
   end
@@ -451,9 +451,10 @@ local function addResult(r, line)
   return true
 end
 
----The route `parsed` (route.read) of a trail with `count` missions; passed
----nodes are kept in `passedPath`, the results of node wins in `resultsPath`. Returns the route when
----the trail needs it (a node that is not a chain node, or a reward), nil otherwise.
+---The route `parsed` (route.read) of a trail with `count` missions; passed nodes are kept in the
+---user data file `passedPath`, the results of node wins in `resultsPath` (read by readFiles).
+---Returns the route when the trail needs it (a node that is not a chain node, or a reward), nil
+---otherwise.
 function route.load(parsed, count, passedPath, resultsPath)
   if parsed == nil or parsed.count ~= count then
     return nil
@@ -465,12 +466,17 @@ function route.load(parsed, count, passedPath, resultsPath)
   if not parsed.graph and not parsed.rewards then
     return nil
   end
-  parsed.path, parsed.passed = passedPath, readWins(passedPath)
+  parsed.path, parsed.passed = passedPath, {}
   parsed.resultsPath, parsed.results, parsed.lines = resultsPath, {}, {}
-  for _, line in ipairs(readLines(resultsPath)) do
-    addResult(parsed, line)
-  end
   return setmetatable(parsed, Route)
+end
+
+---Reads the passed nodes and results kept from earlier games, once the game has started.
+function Route:readFiles()
+  self.passed = readWins(self.path)
+  for _, line in ipairs(readLines(self.resultsPath)) do
+    addResult(self, line)
+  end
 end
 
 ---False when the game's own markers and its furthest row describe the node at `row` right (a

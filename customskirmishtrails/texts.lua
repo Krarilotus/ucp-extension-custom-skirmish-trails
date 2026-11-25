@@ -1,4 +1,3 @@
-local winfiles = require("customskirmishtrails.winfiles")
 -- Language text files: the trail's csv (or mission) data holds one set of texts, the default
 -- language. Every further language is one JSON file with only the texts:
 --
@@ -58,9 +57,8 @@ function texts.fileFor(textFiles, language)
     end
     for _, candidate in ipairs(candidates) do
       local path = textFiles.folder .. candidate .. ".json"
-      local resolved = winfiles.scopedPath(path)
-      local handle = resolved and io.open(resolved, "rb")
-      if handle ~= nil then
+      local ok, handle = pcall(io.open, path, "rb")
+      if ok and handle ~= nil then
         handle:close()
         return path
       end

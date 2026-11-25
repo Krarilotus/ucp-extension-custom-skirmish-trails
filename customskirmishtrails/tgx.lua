@@ -1,6 +1,6 @@
 -- Turns a picture file (.png, .jpg, .bmp, .gif) into the game's .tgx format, so a trail's
--- background can be given as a png. Windows' GDI+ decodes the picture; the tgx is written to
--- ucp/.cache and made again only when the picture file changes.
+-- background can be given as a png. Windows' GDI+ decodes the picture; the tgx is written to the
+-- user data folder and made again only when the picture file changes.
 --
 -- TGX: width and height (4 bytes each), then per line run tokens and one end-of-line token.
 -- A token byte holds the run length - 1 in its low 5 bits and the run type in its high 3:
@@ -8,6 +8,7 @@
 -- 4 = end of the line. Pixels are 16-bit 1RRRRRGGGGGBBBBB (the game's files set the top bit).
 
 local winfiles = require("customskirmishtrails.winfiles")
+local storage = require("customskirmishtrails.storage")
 
 local tgx = {}
 
@@ -174,10 +175,7 @@ function tgx.fromPicture(path)
   return result
 end
 
----The width and height in a tgx file, or nil.
-function tgx.size(path)
-  local resolved = winfiles.scopedPath(path)
-  local handle = resolved and io.open(resolved, "rb")
+local function headerSize(handle)
   if handle == nil then
     return nil
   end
@@ -189,33 +187,38 @@ function tgx.size(path)
   return string.unpack("<I4I4", header)
 end
 
----A tgx file for the picture `path`, made in `cachePath` unless an earlier one is still up to
----date. Returns the tgx path and its size.
-function tgx.cached(path, cachePath)
+---The width and height in a tgx file, or nil.
+function tgx.size(path)
+  local ok, handle = pcall(io.open, path, "rb")
+  return headerSize(ok and handle or nil)
+end
+
+---A tgx file for the picture `path`, made in the user data file `cacheName` unless an earlier one
+---is still up to date. Returns the tgx file's absolute path and its size.
+function tgx.cached(path, cacheName)
   local resolved, reason = winfiles.scopedPath(path)
   if resolved == nil then error(reason) end
   local stamp = winfiles.fileStamp(resolved)
   if stamp == nil then
     error("the picture " .. path .. " does not exist")
   end
-  local keyPath = cachePath .. ".source"
-  local keyFile = io.open(keyPath, "rb")
-  if keyFile ~= nil then
-    local key = keyFile:read("*all")
-    keyFile:close()
-    if key == path .. "|" .. stamp then
-      local width, height = tgx.size(cachePath)
-      if width ~= nil then
-        return cachePath, width, height
-      end
+  local cachePath = storage.path(cacheName)
+  if cachePath == nil then
+    error("the user data folder is not ready")
+  end
+  local key = path .. "|" .. stamp
+  if storage.read(cacheName .. ".source") == key then
+    local width, height = headerSize(storage.open(cacheName, "rb"))
+    if width ~= nil then
+      return cachePath, width, height
     end
   end
   local picture = tgx.fromPicture(path)
-  local ok, err = winfiles.writeFile(cachePath, picture.bytes)
+  local ok, err = storage.write(cacheName, picture.bytes)
   if not ok then
     error(err)
   end
-  winfiles.writeFile(keyPath, path .. "|" .. stamp)
+  storage.write(cacheName .. ".source", key)
   log(INFO, string.format("custom-skirmish-trails: made %s (%d x %d) from %s", cachePath, picture.width,
     picture.height, path))
   return cachePath, picture.width, picture.height

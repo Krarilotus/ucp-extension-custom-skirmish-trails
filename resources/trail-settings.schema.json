@@ -62,7 +62,7 @@
       "type": "string"
     },
     "trail_id": {
-      "description": "Names the files that keep this trail's progress, passed missions and results (ucp/custom-skirmish-trails-progress-<trail_id>.txt and so on), apart from the game's own progress and every other trail_id. Omission names them by the trail and keeps the game's own progress.",
+      "description": "Names the files that keep this trail's progress, passed missions and results (progress-<trail_id>.txt and so on, in the module's user data folder), apart from the game's own progress and every other trail_id. Omission names them by the trail and keeps the game's own progress.",
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
       "maxLength": 64
@@ -213,7 +213,7 @@
           "type": "string"
         },
         "data_mode": {
-          "description": "json_folder: write only mission files; the CSV is generated from them at start. csv (the default): the CSV is the source and mission files are written from it. automatic: the newer source wins for each mission, with CSV winning ties.",
+          "description": "What the game loads. json_folder: the mission files. csv (the default): the CSV. automatic: per mission the newer one, with CSV winning ties. Neither is written.",
           "type": "string",
           "enum": [
             "csv",

@@ -17,7 +17,7 @@ local menutext = require("customskirmishtrails.menutext")
 local textsModule = require("customskirmishtrails.texts")
 local sync = require("customskirmishtrails.sync")
 local conversion = require("customskirmishtrails.conversion")
-local winfiles = require("customskirmishtrails.winfiles")
+local storage = require("customskirmishtrails.storage")
 local progress = require("customskirmishtrails.progress")
 local scenario = require("customskirmishtrails.scenario")
 local unitlimits = require("customskirmishtrails.unitlimits")
@@ -36,7 +36,7 @@ local TRAILS = {
   { name = "extremeTrail", key = "extremetrail", type = "Extreme" },
 }
 
-local REQUESTS_FILE = "ucp/.cache/custom-skirmish-trails-requests.json"
+local REQUESTS_FILE = "requests.json"
 
 -- per trail: mission number -> map name given by a plugin (setMissionMap)
 local MAP_OVERRIDES = {}
@@ -103,8 +103,8 @@ local function insertPostSkirmishSetupDetour()
   end, core.AOBScan("A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? 89 44 24 10 "), 5)
 end
 
-local function applyTrail(trailName, path, missions, limit, languageTexts, startInstalled, keys)
-  local result, err = cst_io.readCSV(path, limit + 1) -- one for the header
+local function applyTrail(trailName, path, missions, limit, languageTexts, startInstalled, keys, csvText)
+  local result, err = cst_io.readCSV(path, limit + 1, csvText) -- one for the header
   if result == nil then error(err) end
   -- the game language's texts over the default texts of the csv
   textsModule.apply(languageTexts, result, keys)
@@ -142,11 +142,7 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
     end
   end
   
-  local f = io.open(string.format("ucp/.cache/custom-skirmish-trails-config-%s.yml", trailName), 'w')
-  if f ~= nil then
-    f:write(yaml.dump(result))
-    f:close()
-  end
+  storage.write(string.format("config-%s.yml", trailName), yaml.dump(result))
 
   REGISTRY[trailName] = result
   
@@ -199,10 +195,10 @@ local function hookPlayerNaming()
   end)
 end
 
----The file that keeps the trail's `kind` of state (progress, sides or results): named by the trail
----settings' trail_id, else by the trail.
+---The user data file that keeps the trail's `kind` of state (progress, sides or results): named by
+---the trail settings' trail_id, else by the trail.
 local function stateFile(kind, trail, settings)
-  return string.format("ucp/custom-skirmish-trails-%s-%s.txt", kind, settings.id or trail.name)
+  return string.format("%s-%s.txt", kind, settings.id or trail.name)
 end
 
 ---The trail_route of a trail settings file; nil when the trail doesn't need it or it can't be
@@ -294,12 +290,10 @@ end
 -- Export / Import requests from the GUI ------------------------------------------------------
 
 local function readRequests()
-  local handle = io.open(REQUESTS_FILE, "rb")
-  if handle == nil then
+  local text = storage.read(REQUESTS_FILE)
+  if text == nil then
     return {}
   end
-  local text = handle:read("*all")
-  handle:close()
   local ok, data = pcall(function() return json:decode(text) end)
   return (ok and type(data) == "table") and data or {}
 end
@@ -336,8 +330,7 @@ local function formatRequests(requests)
 end
 
 local function writeRequests(requests)
-  -- through Windows: UCP's io.open left this file empty in the game
-  local ok, err = winfiles.writeFile(REQUESTS_FILE, formatRequests(requests))
+  local ok, err = storage.write(REQUESTS_FILE, formatRequests(requests))
   if not ok then
     log(WARNING, "custom-skirmish-trails: cannot write " .. REQUESTS_FILE .. ": " .. tostring(err))
   end
@@ -485,45 +478,48 @@ return {
     end
     patches.setStartYears(startYears)
 
-    local chickenBudgets = {}
-    for index, trailName in pairs(memory.TRAIL_TYPES) do
-      local settings = trailSettings[trailName]
-      local budget = settings and settings.chickens
-      -- the chickens of the route's rewards won so far
-      local r = routes[trailName]
-      if r ~= nil and r.rewards and budget ~= "unlimited" then
-        budget = math.min((budget or patches.NATIVE_CHICKENS) + r:earnedChickens(), 2147483647)
+    local startInstalled
+    -- after the routes have read their files from the user data folder (their afterInit callbacks)
+    hooks.registerHookCallback("afterInit", function()
+      local chickenBudgets = {}
+      for index, trailName in pairs(memory.TRAIL_TYPES) do
+        local settings = trailSettings[trailName]
+        local budget = settings and settings.chickens
+        -- the chickens of the route's rewards won so far
+        local r = routes[trailName]
+        if r ~= nil and r.rewards and budget ~= "unlimited" then
+          budget = math.min((budget or patches.NATIVE_CHICKENS) + r:earnedChickens(), 2147483647)
+        end
+        -- One more than the number of rows keeps a chicken available after every possible skip.
+        chickenBudgets[index] = budget == "unlimited" and patches.CAPACITY[trailName] + 1 or budget
       end
-      -- One more than the number of rows keeps a chicken available after every possible skip.
-      chickenBudgets[index] = budget == "unlimited" and patches.CAPACITY[trailName] + 1 or budget
-    end
-    patches.setChickenBudgets(chickenBudgets)
+      patches.setChickenBudgets(chickenBudgets)
 
-    -- trail_missions: csv file and mission files kept in step
-    for _, trail in ipairs(TRAILS) do
-      local settings = trailSettings[trail.name]
-      if settings ~= nil and settings.missions ~= nil then
-        local textFolder = settings.textFiles ~= nil and settings.textFiles.folder or nil
-        local okSync, messages = pcall(sync.run, trail.name, settings.missions,
-          settings.hasAiMapping and settings.aiMapping or nil, knownHeaders(), textFolder, settings)
-        if not okSync then
-          log(WARNING, string.format("custom-skirmish-trails: %s trail missions: %s", trail.type, tostring(messages)))
-        else
-          for _, message in ipairs(messages) do
-            log(INFO, "custom-skirmish-trails: " .. message)
+      -- trail_missions: the missions data_mode loads
+      local csvTexts = {}
+      for _, trail in ipairs(TRAILS) do
+        local settings = trailSettings[trail.name]
+        if settings ~= nil and settings.missions ~= nil then
+          local textFolder = settings.textFiles ~= nil and settings.textFiles.folder or nil
+          local okSync, text, messages = pcall(sync.run, trail.name, settings.missions,
+            settings.hasAiMapping and settings.aiMapping or nil, knownHeaders(), textFolder, settings)
+          if not okSync then
+            log(WARNING, string.format("custom-skirmish-trails: %s trail missions: %s", trail.type, tostring(text)))
+          else
+            csvTexts[trail.name] = text
+            for _, message in ipairs(messages) do
+              log(INFO, "custom-skirmish-trails: " .. message)
+            end
           end
         end
       end
-    end
 
-    -- Export / Import CSV Data requested in the GUI
-    local ok, err = pcall(runConversions, config, trailSettings)
-    if not ok then
-      log(WARNING, "custom-skirmish-trails: Export / Import CSV Data: " .. tostring(err))
-    end
+      -- Export / Import CSV Data requested in the GUI
+      local ok, err = pcall(runConversions, config, trailSettings)
+      if not ok then
+        log(WARNING, "custom-skirmish-trails: Export / Import CSV Data: " .. tostring(err))
+      end
 
-    local startInstalled
-    hooks.registerHookCallback("afterInit", function()
       local language = data.version.getGameLanguage() or ""
 
       for _, trail in ipairs(TRAILS) do
@@ -554,7 +550,7 @@ return {
           log(INFO, string.format("custom-skirmish-trails: %s trail (%s): %s", trail.type, language, path))
           local okTrail, trailError = pcall(applyTrail, trail.name, path, missionTables[trail.name],
             missionCounts[trail.name], languageTexts, startInstalled,
-            trailSettings[trail.name] and trailSettings[trail.name].missionKeys)
+            trailSettings[trail.name] and trailSettings[trail.name].missionKeys, csvTexts[trail.name])
           if not okTrail then
             log(WARNING, string.format("custom-skirmish-trails: the trail csv file %s cannot be used, so the %s "
               .. "trail keeps the game's own missions: %s", path, trail.type, tostring(trailError)))

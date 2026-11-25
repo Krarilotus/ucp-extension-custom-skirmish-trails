@@ -114,7 +114,7 @@ local function registerBackgroundOverride()
 end
 
 ---The .tgx file to show for a trail_background: a .tgx is used as it is, any other picture
----(.png, .jpg, .bmp, .gif) is turned into a .tgx in ucp/.cache first.
+---(.png, .jpg, .bmp, .gif) is turned into a .tgx in the user data folder first.
 function backgroundTgx(trailName, path)
   local original = "gfx/" .. BACKGROUND_FILES[trailName]
   local resolved, reason = winfiles.scopedPath(path)
@@ -125,7 +125,7 @@ function backgroundTgx(trailName, path)
   local result, width, height = resolved, nil, nil
   if not path:lower():match("%.tgx$") then
     local ok, made, madeWidth, madeHeight = pcall(tgx.cached, path,
-      string.format("ucp/.cache/custom-skirmish-trails-background-%s.tgx", trailName))
+      string.format("background-%s.tgx", trailName))
     if not ok or made == nil then
       log(WARNING, string.format("custom-skirmish-trails: the trail background stays: %s", tostring(made)))
       return nil
@@ -169,11 +169,14 @@ function visuals.applyVisuals(trailName, trailVisuals)
     end
   end
   if trailVisuals.background ~= nil then
-    local background = backgroundTgx(trailName, trailVisuals.background)
-    if background ~= nil then
-      backgrounds[BACKGROUND_FILES[trailName]] = background
-      registerBackgroundOverride()
-    end
+    -- the user data folder is ready once the game has started
+    hooks.registerHookCallback("afterInit", function()
+      local background = backgroundTgx(trailName, trailVisuals.background)
+      if background ~= nil then
+        backgrounds[BACKGROUND_FILES[trailName]] = background
+        registerBackgroundOverride()
+      end
+    end)
   end
 end
 

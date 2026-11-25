@@ -3,7 +3,7 @@ package.path = (MODULE_DIR or ".") .. "/?.lua;" .. package.path
 local files, memoryWrites = {}, {}
 local onWin, afterInit
 local trail = "warchestTrail"
-local path = "ucp/custom-skirmish-trails-progress-warchestTrail-normal.txt"
+local path = "progress-warchestTrail-normal.txt"
 
 package.loaded["customskirmishtrails.memory"] = { TRAIL_PROGRESS_ADDRESSES = { [trail] = 200 } }
 package.loaded["customskirmishtrails.patches"] = {
@@ -16,10 +16,13 @@ package.loaded["customskirmishtrails.patches"] = {
     return 400
   end,
 }
-package.loaded["customskirmishtrails.winfiles"] = { writeFile = function(name, contents)
-  files[name] = contents
-  return true
-end }
+package.loaded["customskirmishtrails.storage"] = {
+  write = function(name, contents)
+    files[name] = contents
+    return true
+  end,
+  read = function(name) return files[name] end,
+}
 core = {
   readInteger = function(address)
     assert(address == 104)
@@ -35,11 +38,6 @@ hooks = { registerHookCallback = function(name, callback)
   assert(name == "afterInit")
   afterInit = callback
 end }
-io.open = function(name)
-  if files[name] then
-    return { read = function() return files[name] end, close = function() end }
-  end
-end
 
 local progress = require("customskirmishtrails.progress")
 progress.install(trail, path, 3)
@@ -50,10 +48,10 @@ assert(onWin(registers) == registers)
 assert(files[path] == "3\n")
 afterInit()
 assert(memoryWrites[300] == 3 and memoryWrites[200] == 2)
-progress.install(trail, "ucp/custom-skirmish-trails-progress-warchestTrail-hard.txt", 3)
+progress.install(trail, "progress-warchestTrail-hard.txt", 3)
 afterInit()
 assert(memoryWrites[300] == 0 and memoryWrites[200] == 0)
 onWin({ EAX = 4 })
-assert(files["ucp/custom-skirmish-trails-progress-warchestTrail-hard.txt"] == nil)
+assert(files["progress-warchestTrail-hard.txt"] == nil)
 assert(files[path] == "3\n")
 print("progress: passed")

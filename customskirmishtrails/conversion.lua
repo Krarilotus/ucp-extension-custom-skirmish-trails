@@ -3,11 +3,12 @@
 --   <base>.csv
 --   <base>/<name>_mission_01.json, <name>_mission_02.json, ...
 --
--- Export writes one JSON file per csv line, Import puts the JSON files back together into the
--- csv. Export followed by Import gives the same csv back. The trail settings file's
+-- Export writes one JSON file per csv line, Import puts the JSON files back together into a csv.
+-- Both read the trail's files and write into the module's user data folder (export/, import/).
+-- Export followed by Import gives the same csv back. The trail settings file's
 -- ai_character_mapping, when given, turns the AI keys of the csv into the names used in the JSON.
 
-local winfiles = require("customskirmishtrails.winfiles")
+local storage = require("customskirmishtrails.storage")
 local settingsModule = require("customskirmishtrails.settings")
 local missionjson = require("customskirmishtrails.missionjson")
 
@@ -205,7 +206,9 @@ end
 function conversion.listMissionFiles(folder, name)
   local pattern = "^" .. name:gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"):lower() .. "_mission_(%d+)%.json$"
   local files = {}
-  for _, file in ipairs(winfiles.listFiles(folder, "*.json")) do
+  local listed, entries = pcall(ucp.internal.io.files, folder)
+  for _, entry in ipairs(listed and entries or {}) do
+    local file = entry:match("([^/\\]+)$")
     local number = file:lower():match(pattern)
     if number ~= nil then
       table.insert(files, { number = tonumber(number), name = file })
@@ -241,17 +244,14 @@ end
 
 -- Export and Import (the GUI's CSV data panel) ---------------------------------------------
 
----Writes one JSON file per mission line of the csv file `csvPath`.
+---Writes one JSON file per mission line of the csv file `csvPath` into export/<name>/.
 function conversion.export(csvPath, aiMapping)
   local csv, err = conversion.readTable(csvPath)
   if csv == nil then
     return false, err
   end
-  local folder, name = conversion.folderOf(csvPath)
-  local ok, folderError = winfiles.createDirectory(folder)
-  if not ok then
-    return false, folderError
-  end
+  local _, name = conversion.folderOf(csvPath)
+  local folder = "export/" .. name
   for index, cells in ipairs(csv.missions) do
     local keep = cells.keep_start_army or ""
     if not keep:match("^%s*$") and missionjson.startArmyFlag(keep) == nil then
@@ -259,21 +259,21 @@ function conversion.export(csvPath, aiMapping)
         .. "it is kept under \"extra\"", csvPath, index, keep))
     end
     local file = folder .. "/" .. conversion.missionFileName(name, index)
-    local done, writeError = winfiles.writeFile(file, missionjson.fromRow(csv.header, cells, aiMapping))
+    local done, writeError = storage.write(file, missionjson.fromRow(csv.header, cells, aiMapping))
     if not done then
       return false, writeError
     end
   end
-  return true, string.format("exported %d missions of %s to %s", #csv.missions, csvPath, folder)
+  return true, string.format("exported %d missions of %s to %s", #csv.missions, csvPath, storage.path(folder))
 end
 
----Puts the mission JSON files next to `csvPath` back together into `csvPath`.
+---Puts the mission JSON files next to `csvPath` back together into import/<name>.csv.
 function conversion.import(csvPath, aiMapping, knownHeaders)
   local folder, name = conversion.folderOf(csvPath)
   local files = conversion.listMissionFiles(folder, name)
   if #files == 0 then
-    return false, string.format("no %s files in %s; %s stays as it is",
-      (conversion.missionFileName(name, 1):gsub("01", "NN")), folder, csvPath)
+    return false, string.format("no %s files in %s",
+      (conversion.missionFileName(name, 1):gsub("01", "NN")), folder)
   end
   local reverse = conversion.reverseMapping(aiMapping)
   local missions = {}
@@ -283,18 +283,12 @@ function conversion.import(csvPath, aiMapping, knownHeaders)
   local existing = conversion.readTable(csvPath)
   local header = conversion.columnOrder(existing and existing.header or nil, missions, knownHeaders)
   local text = conversion.csvText(header, missions, existing and existing.newline or "\r\n")
-  if existing ~= nil then
-    local backedUp, backupError = winfiles.writeFile(csvPath .. ".bak", existing.text)
-    if not backedUp then
-      return false, string.format("%s stays as it is, because its backup cannot be written: %s", csvPath,
-        tostring(backupError))
-    end
-  end
-  local done, writeError = winfiles.writeFile(csvPath, text)
+  local output = "import/" .. name .. ".csv"
+  local done, writeError = storage.write(output, text)
   if not done then
     return false, writeError
   end
-  return true, string.format("imported %d missions from %s into %s", #missions, folder, csvPath)
+  return true, string.format("imported %d missions from %s into %s", #missions, folder, storage.path(output))
 end
 
 return conversion

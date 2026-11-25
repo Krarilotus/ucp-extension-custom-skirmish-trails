@@ -43,8 +43,3 @@ body {
 #csv-data #pending {
   color: #e0c070;
 }
-
-#csv-data #last {
-  white-space: pre-wrap;
-  opacity: 0.85;
-}

@@ -1,8 +1,7 @@
--- Writing files where UCP's io.open does not: UCP refuses to write inside ucp/plugins and
--- ucp/modules, which is where trail csv files usually live. Export and Import therefore write
--- through Windows' own ANSI functions: LoadLibraryA through the game's own import of it,
--- GetProcAddress from kernel32's export table, the rest through GetProcAddress. Trail paths must
--- resolve inside the game folder.
+-- Windows functions the framework does not offer: DLL functions (GDI+, ole32), absolute paths
+-- for them, and file times. LoadLibraryA through the game's own import of it, GetProcAddress from
+-- kernel32's export table, the rest through GetProcAddress. Trail paths must resolve inside the
+-- game folder.
 
 local winfiles = {}
 
@@ -13,23 +12,12 @@ local OFFSET_EXPORT_DIRECTORY = 0x78
 local LOAD_LIBRARY_CALL = "51 56 68 ? ? ? ? FF 15 I(? ? ? ?) 8B F0 85 F6"
 local MAX_FORWARDS = 4
 local PATH_BUFFER_SIZE = 1024
-local FIND_DATA_SIZE = 320
-local FIND_DATA_ATTRIBUTES = 0x00
-local FIND_DATA_NAME = 0x2C
-local FILE_ATTRIBUTE_DIRECTORY = 0x10
 local INVALID_HANDLE = 0xFFFFFFFF
-local GENERIC_WRITE = 0x40000000
-local CREATE_ALWAYS = 2
-local FILE_ATTRIBUTE_NORMAL = 0x80
-local MOVEFILE_REPLACE_EXISTING = 1
-local MOVEFILE_WRITE_THROUGH = 8
-local ERROR_ALREADY_EXISTS = 183
 local FILE_ATTRIBUTE_REPARSE_POINT = 0x400
 local ERROR_FILE_NOT_FOUND, ERROR_PATH_NOT_FOUND = 2, 3
 
 local win = {}
-local pathBuffer, tempPathBuffer, tempPrefix, findData, writtenBuffer, gameDirectory
-local dataBuffer, dataBufferSize = nil, 0
+local pathBuffer, gameDirectory
 
 ---A cdecl function that forwards its arguments to the stdcall function whose pointer is at `slot`.
 local function stdcallThunk(slot, argumentCount)
@@ -111,7 +99,6 @@ end
 
 local function setUp()
   pathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
-  findData = core.allocate(FIND_DATA_SIZE, true)
 
   local found, _, loadLibrarySlot = pcall(utils.AOBExtract, LOAD_LIBRARY_CALL)
   if not found or loadLibrarySlot == nil then
@@ -128,7 +115,6 @@ local function setUp()
   win.GetProcAddress = stdcallThunk(getProcAddressSlot, 2)
 
   bindFunctions({
-    { "FindFirstFileA", 2 }, { "FindNextFileA", 2 }, { "FindClose", 1 },
     { "GetModuleFileNameA", 3 },
     { "GetLastError", 0 }, { "MultiByteToWideChar", 6 }, { "GetFileAttributesExA", 3 },
     { "GetFileAttributesA", 1 },
@@ -137,27 +123,6 @@ local function setUp()
   local length = win.GetModuleFileNameA(0, pathBuffer, PATH_BUFFER_SIZE)
   assert(length > 0 and length < PATH_BUFFER_SIZE, "cannot resolve the game directory")
   gameDirectory = assert(core.readString(pathBuffer, length):gsub("/", "\\"):match("^(.*\\)"))
-end
-
-local writerFailure
-local function initializeWriter()
-  if writerFailure ~= nil then error(writerFailure, 0) end
-  if writtenBuffer ~= nil then return end
-  local ok, err = pcall(function()
-    bindFunctions({
-      { "CreateDirectoryA", 2 }, { "DeleteFileA", 1 },
-      { "GetTempFileNameA", 4 }, { "MoveFileExA", 3 },
-      { "CreateFileA", 7 }, { "WriteFile", 5 }, { "CloseHandle", 1 },
-    })
-    tempPathBuffer = core.allocate(PATH_BUFFER_SIZE, true)
-    tempPrefix = core.allocate(4, true)
-    writeCString(tempPrefix, "cst")
-    writtenBuffer = core.allocate(4, true)
-  end)
-  if not ok then
-    writerFailure = tostring(err)
-    error(writerFailure, 0)
-  end
 end
 
 ---Resolves the Windows functions once; a failure is kept and raised again on later calls.
@@ -230,62 +195,6 @@ local function checkedPath(path)
   return absolute
 end
 
----Like checkedPath, for paths that must name something inside the game folder (not the
----game folder itself): files to write or delete.
-local function checkedEntryPath(path)
-  local relative, absolute = winfiles.scopedPath(path)
-  if relative == nil then error(absolute, 2) end
-  if relative == "." then error("trail path must name a file inside the game folder", 2) end
-  return absolute
-end
-
-local function lastError()
-  return string.format("Windows error %d", win.GetLastError())
-end
-
----Creates the folder `path`, with any missing parent folders inside the game folder.
----True when it exists afterwards.
-function winfiles.createDirectory(path)
-  initialize()
-  initializeWriter()
-  local relative, absolute = winfiles.scopedPath(path)
-  if relative == nil then error(absolute, 2) end
-  if relative == "." then
-    return true
-  end
-  local current = gameDirectory:sub(1, -2)
-  for part in relative:gmatch("[^/]+") do
-    current = current .. "\\" .. part
-    if win.CreateDirectoryA(setPath(current), 0) == 0 then
-      local err = win.GetLastError()
-      if err ~= ERROR_ALREADY_EXISTS then
-        return false, string.format("cannot create the folder %s (Windows error %d)", current, err)
-      end
-    end
-  end
-  return true
-end
-
----The names of the files (not folders) in the folder `path` that match `pattern` ("*.json").
-function winfiles.listFiles(path, pattern)
-  initialize()
-  local absolute = checkedPath(path):gsub("\\$", "")
-  assert(pattern == "*.json", "unsupported trail file search")
-  local handle = win.FindFirstFileA(setPath(absolute .. "\\" .. pattern), findData) & 0xFFFFFFFF
-  local names = {}
-  if handle == INVALID_HANDLE then
-    return names
-  end
-  repeat
-    local attributes = core.readInteger(findData + FIND_DATA_ATTRIBUTES) & 0xFFFFFFFF
-    if attributes & FILE_ATTRIBUTE_DIRECTORY == 0 then
-      table.insert(names, core.readString(findData + FIND_DATA_NAME))
-    end
-  until win.FindNextFileA(handle, findData) == 0
-  win.FindClose(handle)
-  return names
-end
-
 ---Copies the bytes of a Lua string to `address`. Binary safe (zero bytes included), unlike
 ---core.writeString.
 local COPY_CHUNK = 4096
@@ -349,64 +258,6 @@ function winfiles.fileTime(path)
   end
   core.deallocate(data)
   return time
-end
-
----Deletes the file `path`. True when it is gone afterwards.
-function winfiles.deleteFile(path)
-  initialize()
-  initializeWriter()
-  if win.DeleteFileA(setPath(checkedEntryPath(path))) ~= 0 then
-    return true
-  end
-  return winfiles.fileStamp(path) == nil
-end
-
----Writes `contents` (any bytes) to the file `path`, replacing it.
-function winfiles.writeFile(path, contents)
-  initialize()
-  initializeWriter()
-  local absolute = checkedEntryPath(path)
-  local directory = absolute:match("^(.*\\)[^\\]+$")
-  if directory == nil or directory:sub(1, #gameDirectory):lower() ~= gameDirectory:lower() then
-    return false, "invalid output path"
-  end
-  if win.GetTempFileNameA(setPath(directory), tempPrefix, 0, tempPathBuffer) == 0 then
-    return false, string.format("cannot stage %s (%s)", absolute, lastError())
-  end
-  local handle = win.CreateFileA(tempPathBuffer, GENERIC_WRITE, 0, 0, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, 0)
-    & 0xFFFFFFFF
-  if handle == INVALID_HANDLE then
-    local reason = lastError()
-    win.DeleteFileA(tempPathBuffer)
-    return false, string.format("cannot write %s (%s)", absolute, reason)
-  end
-  local ok, err = true, nil
-  if #contents > 0 then
-    if #contents + 1 > dataBufferSize then
-      if dataBuffer ~= nil then
-        core.deallocate(dataBuffer)
-      end
-      dataBufferSize = math.max(#contents + 1, 64 * 1024)
-      dataBuffer = core.allocate(dataBufferSize, true)
-    end
-    winfiles.writeMemory(dataBuffer, contents)
-    if win.WriteFile(handle, dataBuffer, #contents, writtenBuffer, 0) == 0
-      or core.readInteger(writtenBuffer) ~= #contents then
-      ok, err = false, string.format("cannot write %s (%s)", absolute, lastError())
-    end
-  end
-  if win.CloseHandle(handle) == 0 then
-    ok, err = false, err or lastError()
-  end
-  -- Replace the directory entry. An existing hard link keeps its other links
-  -- intact, and an interrupted write leaves the previous destination intact.
-  if ok and win.MoveFileExA(tempPathBuffer, setPath(absolute),
-      MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) ~= 0 then
-    return true
-  end
-  err = err or string.format("cannot replace %s (%s)", absolute, lastError())
-  win.DeleteFileA(tempPathBuffer)
-  return false, err
 end
 
 return winfiles

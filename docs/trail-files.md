@@ -39,16 +39,19 @@ The game limits each player's troops: in Crusader to 2400 / living lords - 40, i
 
 The limit is never higher than the game's skirmish formula for the living lords (also in scenario missions, where the game has none), for example at most 2360 with one living lord in Crusader. In a scenario mission the living lords are the lords of the map's players that are still alive. Placed and AI units share the game's unit pool, so a limit doesn't guarantee room for the player's troops. The limit is worked out each tick from the mission being played (a skirmish mission: the game's trail state; a scenario mission: the scenario the trail started, see above); outside trail missions the game's own limit is used. A mission with a limit doesn't start when the game code for it is not found. The AI's troops are not limited by it.
 
+## Files the game writes
+The game writes only into the module's user data folder, `ucp/userdata/custom-skirmish-trails/` in the game's user folder (UCP framework 3.0.8 or later), never into a trail's folder. A `_` in a file name is written as `-`.
+
 ## Trail settings file
 Each trail can have a trail settings file (a .json file, set in the GUI) with everything about the trail. `resources/trail-settings.schema.json` describes it, and `resources/trails/template-*-settings.json` hold the game's own values. Every entry is optional:
 - `trail_type`: `First`, `Warchest` or `Extreme`.
-- `trail_id`: names the files that keep the trail's progress (`ucp/custom-skirmish-trails-progress-<trail_id>.txt`), passed missions and results (see Trail route), so its progress stays apart from the game's own and from every other `trail_id`. 1 to 64 letters, digits, `-` or `_`. Without it the progress is the game's own, and the other files are named by the trail.
+- `trail_id`: names the files that keep the trail's progress (`progress-<trail_id>.txt` in the user data folder), passed missions and results (see Trail route), so its progress stays apart from the game's own and from every other `trail_id`. 1 to 64 letters, digits, `-` or `_`. Without it the progress is the game's own, and the other files are named by the trail.
 - `trail_missions`: the trail's mission data, see below.
 - `trail_text_files`: the trail's language files, see below.
 - `trail_title`, `trail_summary`: the texts under the trail's button in the skirmish menu. A summary wider than 540 pixels wraps into a second line; both texts then sit 10 pixels higher.
 - `trail_locked_text`: the briefing of a scenario mission whose map isn't open yet (see Scenario missions); `{date}` becomes the date.
 - `starting_year`: the year the first mission starts in.
-- `trail_visuals`: `trail_button_idle` and `trail_button_highlighted` (pictures, for example .png, for the trail's button in the skirmish menu), and `trail_background` (the trail screen's background: a .tgx file, or a .png/.jpg/.bmp that the game turns into a .tgx once and keeps in `ucp/.cache`; use the size of the game's own file), and `trail_marker_sheet` (door pictures, see below).
+- `trail_visuals`: `trail_button_idle` and `trail_button_highlighted` (pictures, for example .png, for the trail's button in the skirmish menu), and `trail_background` (the trail screen's background: a .tgx file, or a .png/.jpg/.bmp that the game turns into a .tgx once and keeps in the user data folder; use the size of the game's own file), and `trail_marker_sheet` (door pictures, see below).
 - `trail_mission_positions`: a list of `{ "x": .., "y": .. }` points on the 800 x 600 trail screen, one per mission. Their number is the trail's number of missions (at most 50 for the first trail, 30 for the Warchest and the Extreme trail). A route of mission files (see Trail route) gives the positions and the number of missions instead.
 - `trail_route`: the trail's missions as a graph of nodes, see Trail route.
 - `ai_character_mapping`: your own names for the AI keys (`"SK_RICHARD": "Robert"`). Mission files use them, and the csv file may use them in player1 to player8.
@@ -56,7 +59,7 @@ Each trail can have a trail settings file (a .json file, set in the GUI) with ev
 Relative paths in the file are taken from the file's own folder.
 
 ## Mission data: csv file and mission files
-**Write mission files; the csv is generated.** With `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "json_folder" }`, a trail needs only its trail settings file and the mission files `missions/my_trail/my_trail_mission_01.json`, `..._02.json`, ... (numbered without gaps; a route's `mission` is that number). A route of mission files names each file itself instead (see Trail route). There is no csv to write: the first start writes `missions/my_trail.csv` from the mission files, and every start after a change writes it again. Don't edit the csv; it is only what the game loads.
+**Write mission files; no csv is needed.** With `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "json_folder" }`, a trail needs only its trail settings file and the mission files `missions/my_trail/my_trail_mission_01.json`, `..._02.json`, ... (numbered without gaps; a route's `mission` is that number). A route of mission files names each file itself instead (see Trail route). The game loads the mission files at every start.
 
 `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` names both the csv file (`missions/my_trail.csv`) and a folder of mission files (`missions/my_trail/my_trail_mission_01.json`, ...). A mission file (format 1, `resources/mission.schema.json`) holds the same data as one csv line, laid out for reading and editing:
 - `mission_name` and `text_description` (a list of the 8 lines) at the top;
@@ -66,12 +69,12 @@ Relative paths in the file are taken from the file's own folder.
 - `marker`: `locked`, `available` and `won`, the csv's `marker_locked`, `marker_available` and `marker_won` (door pictures, each optional, see below);
 - `extra`: any csv value that has no place above, so that nothing gets lost. A conflicting value in `extra` takes precedence and logs a warning before it can be written to CSV.
 
-`data_mode` says which one is the ground truth. It is applied at every game start:
-- `csv`: the game loads the csv file and writes the mission files from it.
-- `json_folder`: the game writes the csv file from the mission files, then loads it.
-- `automatic`: each mission JSON file is compared against the modification time of the entire CSV. The newer file wins, with ties going to the CSV. A malformed mission JSON file stops sync, including in CSV mode.
+`data_mode` says which one the game loads at every start; it changes neither:
+- `csv`: the csv file.
+- `json_folder`: the mission files.
+- `automatic`: per mission, the mission file when it is newer than the csv file, else the csv line. A malformed mission file stops the loading of the mission files.
 
-Before files are changed, the previous csv is kept as `<csv>.bak` and the previous mission files in `<folder>/.bak` (one previous version each). When no file changed since the last start, nothing is read or written. Without a trail settings file, the csv file set in the GUI is used as before.
+To turn one into the other, use Export and Import. Without a trail settings file, the csv file set in the GUI is used as before.
 
 ## Language files
 The mission data holds one set of texts, the default language. Each further language is one small JSON file with only its texts: `"trail_text_files": "texts/"` points to a folder with one file per game language as UCP names it: `english.json`, `german.json`, `russian.json` and so on (or give an object of languages to files). A language file:
@@ -87,7 +90,7 @@ The mission data holds one set of texts, the default language. Each further lang
 }
 ```
 
-Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number, or by their node id when the trail's route names its missions by file (`"door05": { ... }`). A text a language file does not have shows the mission data's text; strict mode lists those. With `trail_missions`, `texts/_template.json` is written with all texts of the mission data, as a starting point for translators.
+Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number, or by their node id when the trail's route names its missions by file (`"door05": { ... }`). A text a language file does not have shows the mission data's text; strict mode lists those. With `trail_missions`, `texts-template-<trail_id>.json` in the user data folder holds all texts of the mission data, as a starting point for translators.
 
 ## File paths
 Each trail's "File paths" panel lists the files set for it and clears them (the GUI's own reset only works right after a path was set).
@@ -96,7 +99,7 @@ Each trail's "File paths" panel lists the files set for it and clears them (the 
 Miscellaneous: logs every problem in the csv, mission, language and trail settings files, every trail setting that falls back to the game's own value, and every text a language file lacks. Without it, one warning per file with problems.
 
 ## Export and Import CSV Data
-Each trail's "CSV data" panel in the GUI has an Export and an Import button, for converting by hand (`trail_missions` does it at every start on its own). Export writes every csv line into a mission file, Import puts the mission files back together into the csv file. The GUI cannot write files itself, so a button records the request and the game carries it out at its next start; the panel then shows what was done.
+Each trail's "CSV data" panel in the GUI has an Export and an Import button. Export writes every csv line into a mission file in `export/<name>/` of the user data folder, Import puts the mission files next to the csv back together into `import/<name>.csv` there. The GUI cannot write files itself, so a button records the request and the game carries it out at its next start; ucp3.log and `requests.json` in the user data folder say what was done.
 
 ### Skip tokens
 
@@ -185,9 +188,9 @@ selects the first main mission in the trail's order that can be played.
 
 **The order.** The game keeps a trail as rows in order and ends it when its last row is won. With
 files, Trails gives every node its row: the main nodes in the order their `requires` allow (by id
-where several could go), then the side nodes, and the end last. It writes the csv the game loads
-from the node files in that order, at every start after a change (`trail_missions.base_name` names
-the csv; `data_mode` is not used: the files are the mission data). The route gives the positions;
+where several could go), then the side nodes, and the end last. The game loads the node files in
+that order (`trail_missions.base_name` names the csv of Import; `data_mode` is not used: the files
+are the mission data). The route gives the positions;
 `trail_mission_positions` is not used. A mission file holds the mission as in a numbered folder,
 `marker` included.
 
@@ -223,7 +226,7 @@ end, files and numbers mixed, a node of files without file or position, more nod
 can have) is reported in the log. A route by number then plays its missions in their order; a route
 of files loads no missions.
 
-Passed nodes are kept in `ucp/custom-skirmish-trails-sides-<trail>.txt` (`<trail_id>` in place of
+Passed nodes are kept in `sides-<trail>.txt` in the user data folder (`<trail_id>` in place of
 `<trail>` when it is set), one node id
 per line. While that file names no main node, every main mission before the game's furthest mission
 counts as passed, so progress from before the trail had its route is kept.
@@ -256,7 +259,7 @@ counts as passed, so progress from before the trail had its route is kept.
 - `reward`: `chickens` (1-1000) more chickens on this trail, given at the node's first win and
   shown when the trail map opens. They count on top of the trail's `chickens` (or the game's 3);
   with `"unlimited"` nothing changes.
-- Every win of a route node is kept in `ucp/custom-skirmish-trails-results-<trail>.txt` (named as
+- Every win of a route node is kept in `results-<trail>.txt` in the user data folder (named as
   the passed nodes' file), one line per different win:
   `door05 lords=1,3,4,5 players=1,3,4,5`, the node and the players whose lord, and who
   themselves, were alive at the win. Other words after the node, such as a difficulty, are

@@ -7,7 +7,7 @@ dependencies:
   textResourceModifier: ">= 0.3.0" 
   gmResourceModifier: "^0.3.1"
   files: ">= 1.2.0"
-  framework: ">=3.0.7"
+  framework: ">=3.0.8"
   frontend: ">=1.0.2"
 tags:
 - scenarios
