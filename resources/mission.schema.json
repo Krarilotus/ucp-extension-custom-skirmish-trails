@@ -163,6 +163,28 @@
             "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode.",
             "type": "integer",
             "minimum": 0
+          },
+          "color": {
+            "description": "The player's skirmish colour, which is its player slot (red, slot 1, is the human player's). Left out: the player's own slot.",
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "orange",
+                  "yellow",
+                  "blue",
+                  "black",
+                  "purple",
+                  "lightblue",
+                  "green"
+                ]
+              },
+              {
+                "type": "integer",
+                "minimum": 2,
+                "maximum": 8
+              }
+            ]
           }
         },
         "required": [

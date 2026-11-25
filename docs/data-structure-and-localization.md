@@ -65,6 +65,7 @@ Proposed shape of `<trail>_mission_NN.json` (version 2):
 | `team3` | `players[2].team` |
 | `aiv_type3` | `players[2].aiv_type` |
 | `gold_player_3` | `players[2].gold` |
+| `player3_color` | `players[2].color` |
 | `player1_lord` | `players[0].lord` |
 | `resource_wood` | `resources.wood` |
 | `text_description_line_04` | `text_description[3]` |

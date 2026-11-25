@@ -117,6 +117,7 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
   end
   MAP_OVERRIDES[trailName] = nil
   for index, entry in ipairs(result) do
+    interface.applyColors(entry, string.format("%s mission %d", trailName, index))
     local kind = scenario.kind(entry)
     if kind == nil then
       log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unknown mission_kind '%s'",

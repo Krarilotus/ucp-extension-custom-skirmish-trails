@@ -13,6 +13,9 @@ Optional csv columns, best placed at the end:
 `gold_player_1` (the human player) to `gold_player_8` (`gold` of a player in a mission file) set a player's start gold in this mission; `0` is no gold. Empty keeps the game's start gold for the mission's advantage and start mode. The briefing shows the human player's gold and, when an AI player has its own gold, one value per AI player in player order, for example `4000 / 3000 / 4000`.
 Below the gold, the briefing shows the skirmish menu's button picture of the mission's start mode (normal, crusader or deathmatch).
 
+## Player colours
+A player's skirmish colour is its player slot: red (the human player's), orange, yellow, blue, black, purple, lightblue and green. The optional columns `player2_color` to `player8_color` (`color` of an AI player in a mission file) put that AI player into the slot of a colour name or slot number (2-8). The other AI players keep their slot, or take the first free one when it is taken. Empty keeps the player's own slot. A colour that is red, unknown or already given to another player is reported in the log and not used.
+
 ## Scenario missions
 Trail missions with a custom map name can only start when the game can open that map. The optional csv column `mission_kind` (`"mission_kind"` in a mission file) says how a mission starts:
 - `skirmish` (or empty): as before, the trail sets up a skirmish on the map with the mission's players, teams, gold and goods.
@@ -53,7 +56,7 @@ Relative paths in the file are taken from the file's own folder.
 `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` names both the csv file (`missions/my_trail.csv`) and a folder of mission files (`missions/my_trail/my_trail_mission_01.json`, ...). A mission file (format 1, `resources/mission.schema.json`) holds the same data as one csv line, laid out for reading and editing:
 - `mission_name` and `text_description` (a list of the 8 lines) at the top;
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; the csv's fairness 1-5) and `start_mode` (`normal`, `crusader`, `deathmatch`; the csv's start_levels 1-3). Numbers work too;
-- `players`: one entry per player, so their number is the mission's number of players. `players[0]` is the human player: it may have `lord` and `skip_start_units`, never `ai`. The others always have `ai`, never `lord`. All have `name`, `start_position`, `team`, `aiv_type` and `gold` as needed;
+- `players`: one entry per player, so their number is the mission's number of players. `players[0]` is the human player: it may have `lord` and `skip_start_units`, never `ai`. The others always have `ai`, never `lord`. All have `name`, `start_position`, `team`, `aiv_type` and `gold` as needed, and AI players `color`;
 - `producible`, `recruitable`, `resources`, `tradeable`: the csv's prefixed columns as objects;
 - `marker`: `locked`, `available` and `won`, the csv's `marker_locked`, `marker_available` and `marker_won` (door pictures, see below);
 - `extra`: any csv value that has no place above, so that nothing gets lost. A conflicting value in `extra` takes precedence and logs a warning before it can be written to CSV.

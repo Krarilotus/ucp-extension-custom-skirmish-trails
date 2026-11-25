@@ -10,7 +10,8 @@
 --     "players": [                      one entry per player (num_players = its length)
 --       { "lord": "Arab", "skip_start_units": 1, "name": "", "start_position": 1, "team": 1,
 --         "aiv_type": 0, "gold": 2000 },                                       player 1 (human)
---       { "ai": "SK_RAT", "name": "", "start_position": 2, "team": 2, "aiv_type": 3, "gold": 1000 }
+--       { "ai": "SK_RAT", "name": "", "start_position": 2, "team": 2, "aiv_type": 3, "gold": 1000,
+--         "color": "blue" }
 --     ],
 --     "producible": { "bows": 1 }, "recruitable": { ... }, "resources": { ... }, "tradeable": { ... },
 --     "extra": { "column": "value" }    anything else, so that nothing is lost
@@ -50,6 +51,7 @@ local function playerColumns(player)
     table.insert(columns, 1, { column = "player1_lord", key = "lord", empty = "" })
   else
     table.insert(columns, 1, { column = "player" .. player, key = "ai", empty = "0" })
+    table.insert(columns, { column = "player" .. player .. "_color", key = "color", empty = "" })
   end
   return columns
 end

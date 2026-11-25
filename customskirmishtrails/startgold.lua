@@ -5,6 +5,7 @@
 
 local memory = require('customskirmishtrails.memory')
 local patches = require('customskirmishtrails.patches')
+local interface = require('customskirmishtrails.interface')
 
 local startgold = {}
 
@@ -24,11 +25,6 @@ local function gold(entry, player)
   return entry ~= nil and math.tointeger(tonumber(entry[string.format("gold_player_%d", player)])) or nil
 end
 
-local function hasAi(entry, player)
-  local value = entry["player" .. player]
-  return value ~= nil and value ~= "" and tonumber(value) ~= 0
-end
-
 ---The AI players' gold as the briefing shows it ("4000 / 3000 / 4000"), or nil when the mission
 ---gives no AI player its own gold.
 local function aiGoldText(entry, gameValue)
@@ -38,7 +34,7 @@ local function aiGoldText(entry, gameValue)
   local players = math.min(math.tointeger(tonumber(entry.num_players)) or 8, 8)
   local values, own = {}, false
   for player = 2, players do
-    if hasAi(entry, player) then
+    if interface.hasAi(entry, player) then
       local value = gold(entry, player)
       own = own or value ~= nil
       table.insert(values, tostring(value or gameValue))

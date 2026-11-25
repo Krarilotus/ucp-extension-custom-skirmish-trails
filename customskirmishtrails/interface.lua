@@ -104,6 +104,70 @@ local ENTRY_OFFSETS = {
   ["aiv_type8"] = 35*4,
 }
 
+-- A player's skirmish colour is its player slot; the human player has slot 1.
+local COLORS = { red = 1, orange = 2, yellow = 3, blue = 4, black = 5, purple = 6, lightblue = 7, green = 8 }
+local SLOT_COLUMNS = { "player%d", "start_position%d", "team%d", "aiv_type%d", "gold_player_%d", "player%d_name",
+  "player%d_color" }
+local EMPTY_SLOT = { "player%d", "start_position%d", "team%d", "aiv_type%d" }
+
+local function hasAi(entry, player)
+  local value = entry["player" .. player]
+  return value ~= nil and value ~= "" and tonumber(value) ~= 0
+end
+
+---Moves each AI player with a player<N>_color into the slot of that colour. The other AI
+---players keep their slot when it is free and take the first free one otherwise.
+local function applyColors(entry, where)
+  local players = math.min(math.tointeger(tonumber(entry.num_players)) or 8, 8)
+  local slots, taken, any = {}, { [1] = true }, false
+  for player = 2, players do
+    local value = entry[string.format("player%d_color", player)]
+    if hasAi(entry, player) and value ~= nil and value ~= "" then
+      local slot = COLORS[tostring(value):lower()] or math.tointeger(tonumber(value))
+      if slot == nil or slot < 2 or slot > 8 or taken[slot] then
+        log(WARNING, string.format("custom-skirmish-trails: %s: player%d_color %s is not a free AI colour",
+          where, player, tostring(value)))
+      else
+        slots[player], taken[slot], any = slot, true, true
+      end
+    end
+  end
+  if not any then
+    return
+  end
+  local last = players
+  for player = 2, players do
+    if slots[player] == nil and hasAi(entry, player) then
+      local slot = player
+      if taken[slot] then
+        slot = 2
+        while taken[slot] do
+          slot = slot + 1
+        end
+      end
+      slots[player], taken[slot] = slot, true
+    end
+    last = math.max(last, slots[player] or 0)
+  end
+  local moved = {}
+  for player, slot in pairs(slots) do
+    for _, column in ipairs(SLOT_COLUMNS) do
+      moved[column:format(slot)] = entry[column:format(player)]
+    end
+  end
+  for slot = 2, 8 do
+    for _, column in ipairs(SLOT_COLUMNS) do
+      entry[column:format(slot)] = moved[column:format(slot)]
+    end
+    if not taken[slot] then
+      for _, column in ipairs(EMPTY_SLOT) do
+        entry[column:format(slot)] = 0
+      end
+    end
+  end
+  entry.num_players = last
+end
+
 local function commitEntry(addr, index, entry, trail)
   local offset = addr + 144 * (index - 1)
   log(2, string.format("commitEntry: %s %X %s %X", entry, addr, index - 1, offset))
@@ -184,6 +248,8 @@ return {
   commitEntry = commitEntry,
   commitEntryExtra = commitEntryExtra,
   commitTextDescription = commitTextDescription,
+  applyColors = applyColors,
+  hasAi = hasAi,
   setStartGoods = startgoods.setStartGoods,
   setAiAliases = setAiAliases,
   STRING_ADDRESSES = STRING_ADDRESSES,
