@@ -117,12 +117,13 @@
         "type": "object",
         "properties": {
           "mission": {
-            "description": "The mission's number in the trail's mission data.",
+            "description": "The mission's number in the trail's mission data: its mission file's number (or csv line).",
             "type": "integer",
             "minimum": 1,
             "maximum": 50
           },
           "kind": {
+            "description": "main (the default): played in the trail's order. side: opens when its requires and unlock are met and doesn't move the trail on.",
             "type": "string",
             "enum": [
               "main",
@@ -139,6 +140,48 @@
             "description": "Side missions: node ids of which at least one must be won.",
             "type": "array",
             "items": { "type": "string" }
+          },
+          "unlock": {
+            "description": "Side missions: opens only once the node won was won while the named players were alive. One such win is enough.",
+            "type": "object",
+            "properties": {
+              "won": {
+                "description": "The node id whose win is checked.",
+                "type": "string"
+              },
+              "lord_alive": {
+                "description": "This player's lord was alive at that win. Players 1-8 are the game's player slots (colour slots); player 1 is you.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              },
+              "player_alive": {
+                "description": "This player was still in the game at that win: lord alive and keep standing. Players 1-8 are the game's player slots; player 1 is you.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 8
+              }
+            },
+            "required": [
+              "won"
+            ],
+            "additionalProperties": false
+          },
+          "reward": {
+            "description": "Given once, at the node's first win (not at a skip with a chicken). Needs a route with side missions.",
+            "type": "object",
+            "properties": {
+              "chickens": {
+                "description": "More chickens on this trail, on top of its chickens budget (or the game's 3); no change with unlimited.",
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              }
+            },
+            "required": [
+              "chickens"
+            ],
+            "additionalProperties": false
           }
         },
         "required": [
@@ -155,7 +198,7 @@
           "type": "string"
         },
         "data_mode": {
-          "description": "Use csv (the default) to export to JSON, json_folder to rebuild the CSV, or automatic to use the newer source for each mission, with CSV winning ties.",
+          "description": "json_folder: write only mission files; the CSV is generated from them at start. csv (the default): the CSV is the source and mission files are written from it. automatic: the newer source wins for each mission, with CSV winning ties.",
           "type": "string",
           "enum": [
             "csv",

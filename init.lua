@@ -201,7 +201,8 @@ local function installRoute(trail, settings, count, difficulty)
   end
   local suffix = settings.progressByDifficulty and ("-" .. difficulty) or ""
   local sides = route.load(settings.path, settings.route, count,
-    string.format("ucp/custom-skirmish-trails-sides-%s%s.txt", trail.name, suffix))
+    string.format("ucp/custom-skirmish-trails-sides-%s%s.txt", trail.name, suffix),
+    string.format("ucp/custom-skirmish-trails-results-%s%s.txt", trail.name, suffix))
   if sides == nil then
     return nil
   end
@@ -386,6 +387,7 @@ return {
 
     -- trail settings files: mission count and positions, start years, texts, visuals, progress
     local trailSettings = {}
+    local routes = {}
     local missionCounts = {}
     local startYears = {}
     for _, trail in ipairs(TRAILS) do
@@ -430,6 +432,7 @@ return {
           log(WARNING, string.format("custom-skirmish-trails: %s side missions: %s", trail.type, tostring(sides)))
           sides = nil
         end
+        routes[trail.name] = sides
         if settings.visuals.markerSheet ~= nil then
           local okMarkers, markersError = pcall(markers.install, trail.name, settings.visuals.markerSheet,
             missionCounts[trail.name], sides)
@@ -448,6 +451,11 @@ return {
     for index, trailName in pairs(memory.TRAIL_TYPES) do
       local settings = trailSettings[trailName]
       local budget = settings and settings.chickens and settings.chickens[difficulty]
+      -- the chickens of the route's rewards won so far
+      local r = routes[trailName]
+      if r ~= nil and r.rewards and budget ~= "unlimited" then
+        budget = math.min((budget or patches.NATIVE_CHICKENS) + r:earnedChickens(), 2147483647)
+      end
       -- One more than the number of rows keeps a chicken available after every possible skip.
       chickenBudgets[index] = budget == "unlimited" and patches.CAPACITY[trailName] + 1 or budget
     end

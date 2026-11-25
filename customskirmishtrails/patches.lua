@@ -292,6 +292,9 @@ function patches.guarded(sites, install)
   error(err, 0)
 end
 
+patches.NATIVE_CHICKENS = 3
+local chickenTable = nil
+
 ---The trail screen starts its chicken tally at 3 and subtracts a token for each
 ---skipped mission. Supply the configured budget before that native tally.
 function patches.setChickenBudgets(budgets)
@@ -303,7 +306,7 @@ function patches.setChickenBudgets(budgets)
   if site == nil then return end
   local tableAddress = core.allocate(12, true)
   for index = 0, 2 do
-    core.writeInteger(tableAddress + index * 4, budgets[index] or 3)
+    core.writeInteger(tableAddress + index * 4, budgets[index] or patches.NATIVE_CHICKENS)
   end
   -- EAX holds the trail selector. Keep the flags from cmp eax, edi for the native jne.
   patches.guarded({ { address = site, size = 5 } }, function()
@@ -317,6 +320,18 @@ function patches.setChickenBudgets(budgets)
       0x9D,                                      -- popfd
     })
   end)
+  chickenTable = tableAddress
+end
+
+---Adds `count` tokens to the budget of trail `index` (0-2) that setChickenBudgets set; false when
+---it set none.
+function patches.addChickens(index, count)
+  if chickenTable == nil then
+    return false
+  end
+  local address = chickenTable + index * 4
+  core.writeInteger(address, core.readInteger(address) + count)
+  return true
 end
 
 local function writeImmediate(address, size, value)

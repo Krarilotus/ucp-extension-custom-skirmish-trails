@@ -53,6 +53,8 @@ Each trail can have a trail settings file (a .json file, set in the GUI) with ev
 Relative paths in the file are taken from the file's own folder.
 
 ## Mission data: csv file and mission files
+**Write mission files; the csv is generated.** With `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "json_folder" }`, a trail needs only its trail settings file and the mission files `missions/my_trail/my_trail_mission_01.json`, `..._02.json`, ... (numbered without gaps; a route's `mission` is that number). There is no csv to write: the first start writes `missions/my_trail.csv` from the mission files, and every start after a change writes it again. Don't edit the csv; it is only what the game loads.
+
 `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` names both the csv file (`missions/my_trail.csv`) and a folder of mission files (`missions/my_trail/my_trail_mission_01.json`, ...). A mission file (format 1, `resources/mission.schema.json`) holds the same data as one csv line, laid out for reading and editing:
 - `mission_name` and `text_description` (a list of the 8 lines) at the top;
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; the csv's fairness 1-5) and `start_mode` (`normal`, `crusader`, `deathmatch`; the csv's start_levels 1-3). Numbers work too;
@@ -97,7 +99,7 @@ Each trail's "CSV data" panel in the GUI has an Export and an Import button, for
 
 Set `chickens` in the trail settings JSON to change its total skip budget. The
 game subtracts spent tokens when it opens the trail screen. An omitted
-difficulty uses the game’s default. `"unlimited"` supplies enough tokens to
+difficulty uses the game's default. `"unlimited"` supplies enough tokens to
 skip every mission on that trail.
 
 ```json
@@ -162,4 +164,29 @@ as before.
   node id per line.
 - A route with a mission outside the trail, two nodes on one mission, an id in `requires` that is
   not a node, `requires` on a main mission or a side mission as the last mission is reported in
-  the log, and the trail plays its missions in their order.
+  the log, and the trail plays its missions in their order. So is an `unlock` or `reward` that
+  doesn't have the form below.
+
+#### Unlocks and rewards
+
+```json
+"trail_route": {
+  "door05": { "mission": 5 },
+  "bonus": { "mission": 6, "kind": "side", "requires": ["door05"],
+             "unlock": { "won": "door05", "lord_alive": 3 }, "reward": { "chickens": 1 } }
+}
+```
+
+- `unlock` (side missions only): the side mission opens only once the node `won` was won while
+  the named players were alive, in addition to its `requires`. `lord_alive`: that player's lord was
+  alive; `player_alive`: that player was still in the game (lord alive and keep standing). Players
+  are numbered 1-8 as the game's player slots (the colour slots, see Player colours); player 1 is
+  you. A condition holds once one win of `won` met it; a later win doesn't take it back.
+- `reward`: `chickens` (1-1000) more chickens on this trail, given at the node's first win and
+  shown when the trail map opens. They count on top of the trail's `chickens` (or the game's 3);
+  with `"unlimited"` nothing changes. Rewards are given only by a route with side missions.
+- Every win of a route node is kept in `ucp/custom-skirmish-trails-results-<trail>.txt` (with
+  `progress_by_difficulty`: `...-results-<trail>-<difficulty>.txt`), one line per node:
+  `door05 lords=1,3 players=1,3`, the players whose lord, and who themselves, were alive at a win
+  of it. A skip with a chicken is not a win. Delete the file to start the trail's unlocks and
+  rewards over.

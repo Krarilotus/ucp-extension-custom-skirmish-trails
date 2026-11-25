@@ -34,7 +34,7 @@ local ENTRY_PATCH_SIZE = 9   -- the compare (7 bytes) and the short jne (2 bytes
 local COUNT_OFFSET = 0x14    -- where the jne goes: the counting part
 -- The single-player defeat check: "imul ecx, ecx, player size / cmp dword [ecx + campground], 0 /
 -- jle lost / cmp dword [ecx + lord], 0 / jg playing" (the lord of player 0, the players follow).
-local SCENARIO_LORD_AOB = "69 C9 I(? ? ? ?) 83 B9 ? ? ? ? 00 7E 09 83 B9 I(? ? ? ?) 00 7F 0C"
+local SCENARIO_LORD_AOB = "69 C9 I(? ? ? ?) 83 B9 I(? ? ? ?) 00 7E 09 83 B9 I(? ? ? ?) 00 7F 0C"
 local GAME_MODE_SCENARIO = 2
 local SYNC_MODE_SKIRMISH = 99
 local MAX_LORDS = 8
@@ -197,16 +197,56 @@ local function livingLords(value)
   return nil
 end
 
+---The players' lords and keeps from the single-player defeat check, into `b`; false and the
+---reason when it is not found.
+local function resolvePlayers(b)
+  local okSite, lordSite, playerSize, campgrounds, lordIds = pcall(utils.AOBExtract, SCENARIO_LORD_AOB)
+  if not okSite or lordSite == nil then
+    return false, "the single-player defeat check was not found"
+  end
+  local unique, reason = patches.isUnique(SCENARIO_LORD_AOB, lordSite)
+  if not unique then
+    return false, "the single-player defeat check " .. reason
+  end
+  b.playerSize, b.firstLordId, b.firstCampground = playerSize, lordIds + playerSize, campgrounds + playerSize
+  return true
+end
+
+---Player `player` (1-8) has a lord that isn't marked killed.
+local function lordAlive(b, player)
+  local offset = (player - 1) * b.playerSize
+  return core.readInteger(b.firstLordId + offset) > 0 and core.readInteger(b.firstLordKilled + offset) == 0
+end
+
 ---The living lords of a scenario: players 1-8 with a lord that isn't marked killed.
 local function scenarioLords(b)
   local count = 0
-  for slot = 0, MAX_LORDS - 1 do
-    local offset = slot * b.playerSize
-    if core.readInteger(b.firstLordId + offset) > 0 and core.readInteger(b.firstLordKilled + offset) == 0 then
+  for player = 1, MAX_LORDS do
+    if lordAlive(b, player) then
       count = count + 1
     end
   end
   return count > 0 and count or nil
+end
+
+---Players 1-8 now: `lords` holds those whose lord is alive (a lord that isn't marked killed, as the
+---troop limit counts it), `players` those who also still have their keep (as the single-player
+---defeat check reads it). nil when the game code was not found.
+function unitlimits.playerFacts()
+  local b = bindings
+  if b == nil or b.playerSize == nil then
+    return nil
+  end
+  local facts = { lords = {}, players = {} }
+  for player = 1, MAX_LORDS do
+    if lordAlive(b, player) then
+      facts.lords[player] = true
+      if core.readInteger(b.firstCampground + (player - 1) * b.playerSize) > 0 then
+        facts.players[player] = true
+      end
+    end
+  end
+  return facts
 end
 
 ---The trail mission being played: in single-player mode only the trail's scenario reaches the
@@ -254,15 +294,9 @@ end
 ---mission has a policy (session.cap) and the chosen map is the session's (session.sameMap).
 ---Otherwise the game's own compare is repeated, so its single-player store runs with the flags it had.
 local function installEntry(b, s)
-  local lordSite, playerSize, lordIds = utils.AOBExtract(SCENARIO_LORD_AOB)
-  if lordSite == nil then
-    error("the single-player defeat check was not found")
+  if b.playerSize == nil then
+    error(b.playersProblem)
   end
-  local unique, reason = patches.isUnique(SCENARIO_LORD_AOB, lordSite)
-  if not unique then
-    error("the single-player defeat check " .. reason)
-  end
-  b.playerSize, b.firstLordId = playerSize, lordIds + playerSize
   patches.guarded({ { address = b.entry, size = ENTRY_PATCH_SIZE } }, function()
     core.insertCode(b.entry, ENTRY_PATCH_SIZE, {
       0x83, 0x3D, core.itob(b.syncMode), 0x00,               -- cmp dword [syncMode], 0
@@ -294,6 +328,13 @@ function unitlimits.enable(level)
   local ok, result = pcall(resolve)
   if ok then
     bindings = result
+    if bindings ~= nil then
+      local found, problem = resolvePlayers(bindings)
+      if not found then
+        bindings.playersProblem = problem
+        log(WARNING, "custom-skirmish-trails: " .. problem .. "; trail results keep no players")
+      end
+    end
   else
     log(WARNING, "custom-skirmish-trails: unit_limit is switched off: " .. tostring(result))
   end

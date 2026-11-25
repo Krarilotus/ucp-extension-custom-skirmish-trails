@@ -1,5 +1,6 @@
 local memory = require("customskirmishtrails.memory")
 local patches = require("customskirmishtrails.patches")
+local unitlimits = require("customskirmishtrails.unitlimits")
 local winfiles = require("customskirmishtrails.winfiles")
 
 local progress = {}
@@ -92,9 +93,20 @@ local function onChicken()
   end
 end
 
+---A node's reward of `chickens` on `trail`, added to its chicken budget for the next trail screen.
+local function giveChickens(trail, chickens)
+  for index, name in pairs(memory.TRAIL_TYPES) do
+    if name == trail and patches.addChickens(index, chickens) then
+      return
+    end
+  end
+  log(WARNING, "custom-skirmish-trails: the trail screen's chicken code was not found; a reward of chickens is not given")
+end
+
 ---Plays the side missions of `r` (route.lua) on `trail` without moving its furthest row: their wins
 ---are recorded in the route, the next main mission is selected after them, and wins and chickens
----skip the side missions. False when a game site is not found.
+---skip the side missions. Each node's win is kept with the players alive then, and its reward of
+---chickens is given at its first win. False when a game site is not found.
 function progress.installRoute(trail, r)
   local state = winStore(trail, "side missions")
   local selectSite = SELECT_STORES[trail]
@@ -105,6 +117,10 @@ function progress.installRoute(trail, r)
   end
   core.detourCode(function(registers)
     local won = core.readInteger(state.selected)
+    local chickens = r:recordResult(won, unitlimits.playerFacts())
+    if chickens > 0 then
+      giveChickens(trail, chickens)
+    end
     if r:isSide(won) then
       r:recordWin(won)
       registers[selectSite.register] = core.readInteger(state.furthest)
