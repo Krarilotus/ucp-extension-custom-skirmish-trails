@@ -107,6 +107,42 @@
         "additionalProperties": false
       }
     },
+    "trail_route": {
+      "description": "The trail's missions as nodes, keyed by an id. Main missions are played in the trail's order as before; side missions open when the nodes they require are won and never move the trail on. Side missions need door pictures (trail_marker_sheet and a marker), and the trail's last mission must be a main mission. Missions not listed are main missions.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "mission": {
+            "description": "The mission's number in the trail's mission data.",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "main",
+              "side"
+            ],
+            "default": "main"
+          },
+          "requires": {
+            "description": "Side missions: node ids that must all be won. A main mission counts as won once the trail has passed it, also with a chicken.",
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "requires_any": {
+            "description": "Side missions: node ids of which at least one must be won.",
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": [
+          "mission"
+        ]
+      }
+    },
     "trail_missions": {
       "description": "The trail's mission data: a csv file (<base_name>.csv) and a folder of mission JSON files (<base_name>/<name>_mission_NN.json, see mission.schema.json), kept in step at every game start. The number of missions read is the number of trail_mission_positions (if given).",
       "type": "object",

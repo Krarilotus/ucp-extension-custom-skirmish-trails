@@ -2,7 +2,8 @@
 -- marker_locked / marker_available / marker_won. A mission with a marker shows its picture in
 -- place of the game's flag: locked (its click is not taken) until the trail reaches it, its date
 -- has come and its map is installed; available after that; a won mission draws its won picture
--- over it. The game's chicken stays.
+-- over it. The game's chicken stays. A side mission of the trail's route (route.lua) is reached and
+-- won by the route instead of the trail's furthest mission.
 --
 -- All sites lie in the trail screen's draw (render) and click functions, at the same offsets in
 -- Stronghold Crusader.exe and Stronghold_Crusader_Extreme.exe.
@@ -28,6 +29,7 @@ local DRAW_SITE = { fn = "render", offset = 0x88F, bytes = "68 ? ? ? ? B9 ? ? ? 
 
 -- furthest: "cmp [furthest], ebp" before the marker loop. scores: "cmp [ebp*4 + scores], -1200".
 -- hit: "mov [selected], edx" when a click hits a mission; miss: "add edx, ebp", the next mission.
+-- bound: "mov ebx, [furthest]", the last mission the click loop tries.
 -- flags: the calls that draw the game's markers: shadow, flag (or skipped), the next mission's
 -- shadow and marker. A shadow draw takes one argument more.
 local SITES = {
@@ -36,6 +38,7 @@ local SITES = {
     scores = { fn = "render", offset = 0x1AC, bytes = "81 3C AD ? ? ? ? 50 FB FF FF" },
     hit = { fn = "click", offset = 0x22A, bytes = "89 15 ? ? ? ?" },
     miss = { fn = "click", offset = 0x21E, bytes = "03 D5 83 FA" },
+    bound = { fn = "click", offset = 0x1E6, bytes = "8B 1D ? ? ? ? 33 D2" },
     flags = { 0x1F8, 0x2D9, 0x3C8, 0x3F3 },
   },
   warchestTrail = {
@@ -43,6 +46,7 @@ local SITES = {
     scores = { fn = "render", offset = 0x6A5, bytes = "81 3C AD ? ? ? ? 50 FB FF FF" },
     hit = { fn = "click", offset = 0x27B, bytes = "89 15 ? ? ? ?" },
     miss = { fn = "click", offset = 0x26F, bytes = "03 D5 83 FA" },
+    bound = { fn = "click", offset = 0x239, bytes = "8B 1D ? ? ? ? 33 D2" },
     flags = { 0x6DD, 0x77A, 0x86E, 0x899 },
   },
   extremeTrail = {
@@ -50,6 +54,7 @@ local SITES = {
     scores = { fn = "render", offset = 0xB4E, bytes = "81 3C AD ? ? ? ? 50 FB FF FF" },
     hit = { fn = "click", offset = 0x2CA, bytes = "89 15 ? ? ? ?" },
     miss = { fn = "click", offset = 0x2BE, bytes = "03 D5 83 FA" },
+    bound = { fn = "click", offset = 0x288, bytes = "8B 1D ? ? ? ? 33 D2" },
     flags = { 0xB86, 0xC23, 0xD17, 0xD42 },
   },
 }
@@ -104,8 +109,11 @@ local function refresh(trailName, door)
     local entry = missions[index]
     local pictures = entry and picturesOf(trailName, index, entry)
     local open = pictures ~= nil and scenario.isOpen(entry)
-    core.writeByte(door.locks + index - 1, (pictures and not open) and 1 or 0)
     door.list[index] = pictures and { pictures = pictures, open = open }
+    if pictures == nil and door.route ~= nil and door.route:isSide(index - 1) then
+      log(WARNING, string.format("custom-skirmish-trails: %s side mission %d has no marker; it can't be played",
+        trailName, index))
+    end
   end
 end
 
@@ -121,30 +129,51 @@ local function onRender(registers)
   local shown = door ~= nil and door.gm >= 0
   core.writeByte(native.hide, shown and 1 or 0)
   if not shown then
+    if door ~= nil and door.reach ~= nil then
+      core.writeInteger(door.reach, core.readInteger(door.furthest))
+    end
     return registers
   end
   refresh(trailName, door)
   local furthest = core.readInteger(door.furthest)
-  -- the game's draw counts pictures from 1
-  for index, item in pairs(door.list) do
-    local slot = index - 1
-    local x = core.readInteger(door.positions + slot * 8) + registers.ESI
-    local y = core.readInteger(door.positions + slot * 8 + 4) + registers.EDI
-    local closed = (item.open and slot <= furthest) and item.pictures[2] or item.pictures[1]
-    native.draw(native.screen, door.gm, closed + 1, x, y)
-    if slot < furthest and core.readInteger(door.scores + slot * 4) ~= SKIPPED then
-      native.draw(native.screen, door.gm, item.pictures[3] + 1, x, y)
+  local r, reach = door.route, furthest
+  for index = 1, door.count do
+    local slot, item = index - 1, door.list[index]
+    local open = slot <= furthest
+    local won = slot < furthest and core.readInteger(door.scores + slot * 4) ~= SKIPPED
+    if r ~= nil and r:isSide(slot) then
+      open, won = item ~= nil and r:isAvailable(slot, furthest), r:isWon(slot, furthest)
     end
+    open = open and (item == nil or item.open)
+    core.writeByte(door.locks + slot, open and 0 or 1)
+    if open and slot > reach then
+      reach = slot
+    end
+    if item ~= nil then
+      local x = core.readInteger(door.positions + slot * 8) + registers.ESI
+      local y = core.readInteger(door.positions + slot * 8 + 4) + registers.EDI
+      -- the game's draw counts pictures from 1
+      native.draw(native.screen, door.gm, (open and item.pictures[2] or item.pictures[1]) + 1, x, y)
+      if won then
+        native.draw(native.screen, door.gm, item.pictures[3] + 1, x, y)
+      end
+    end
+  end
+  if door.reach ~= nil then
+    core.writeInteger(door.reach, reach)
   end
   return registers
 end
 
 ---Reserves `sheetPath` (a .gm1 file laid out as skirmish_trail_icons.gm1) for `trailName`, which
----has `count` missions, and takes over its markers and clicks. Call while extensions are enabled.
-function markers.install(trailName, sheetPath, count)
+---has `count` missions, and takes over its markers and clicks. With `r` (route.lua), side missions
+---are drawn and clicked by their own state. Call while extensions are enabled.
+function markers.install(trailName, sheetPath, count, r)
   local sites = SITES[trailName]
   local furthest, scores = siteOf(sites.furthest), siteOf(sites.scores)
   local hit, miss = siteOf(sites.hit), siteOf(sites.miss)
+  local bound = r ~= nil and siteOf(sites.bound)
+  if bound == nil then return end
   local positions = patches.positionTable(trailName)
   local flags = {}
   for index, offset in ipairs(sites.flags) do
@@ -152,6 +181,10 @@ function markers.install(trailName, sheetPath, count)
     if flags[index] == nil then return end
   end
   if furthest == nil or scores == nil or hit == nil or miss == nil or positions == nil or resolveNative() == nil then
+    return
+  end
+  if bound and core.readInteger(bound + 2) ~= core.readInteger(furthest + 2) then
+    log(WARNING, "custom-skirmish-trails: unexpected game code for side missions; door pictures are switched off")
     return
   end
   local resolved, reason = winfiles.scopedPath(sheetPath)
@@ -170,7 +203,11 @@ function markers.install(trailName, sheetPath, count)
   end
 
   local locks = core.allocate(patches.CAPACITY[trailName], true)
+  local reach = bound and core.allocate(4, true)
   local patched = { { address = hit, size = 6 } }
+  if bound then
+    table.insert(patched, { address = bound, size = 6 })
+  end
   for _, flag in ipairs(flags) do
     table.insert(patched, { address = flag, size = 5 })
   end
@@ -192,6 +229,11 @@ function markers.install(trailName, sheetPath, count)
     -- cmp byte [edx + locks], 0 / jne miss / mov [selected], edx
     core.insertCode(hit, 6, { 0x80, 0xBA, core.itob(locks), 0x00, 0x0F, 0x85, core.relTo(miss, -4),
       0x89, 0x15, core.itob(core.readInteger(hit + 2)) })
+    if bound then
+      -- mov ebx, [reach]: the last mission that can be clicked, side missions included
+      core.writeInteger(reach, core.readInteger(core.readInteger(furthest + 2)))
+      core.writeCodeInteger(bound + 2, reach)
+    end
   end)
   if not ok then
     log(WARNING, "custom-skirmish-trails: door pictures are switched off: " .. tostring(err))
@@ -199,7 +241,7 @@ function markers.install(trailName, sheetPath, count)
   end
   native.detoured = true
   doors[trailName] = {
-    token = token, count = count, locks = locks, positions = positions,
+    token = token, count = count, locks = locks, positions = positions, route = r, reach = reach or nil,
     furthest = core.readInteger(furthest + 2), scores = core.readInteger(scores + 3),
   }
   log(INFO, string.format("custom-skirmish-trails: %s door pictures from %s", trailName, sheetPath))

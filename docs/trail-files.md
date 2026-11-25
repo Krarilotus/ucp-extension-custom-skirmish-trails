@@ -124,3 +124,42 @@ trails without a sheet keep the game's markers.
 "trail_visuals": { "trail_marker_sheet": "doors.gm1" }
 "marker": { "locked": 0, "available": 1, "won": 2 }
 ```
+
+### Side missions (`trail_route`)
+
+`trail_route` in the trail settings file names the trail's missions as nodes, each under an id of
+your own. Without it, or without side missions in it, the trail plays its missions in their order
+as before.
+
+```json
+"trail_route": {
+  "coast": { "mission": 1 },
+  "castle": { "mission": 3 },
+  "ambush": { "mission": 2, "kind": "side", "requires": ["coast"] },
+  "market": { "mission": 4, "kind": "side", "requires_any": ["castle", "ambush"] }
+}
+```
+
+- `mission`: the mission's number in the mission data (its csv line or mission file).
+- `kind`: `main` (also when it is not set) or `side`.
+- `requires`: for a side mission, the nodes that must all be won; `requires_any`: the nodes of
+  which one must be won. A main mission counts as won once the trail has passed it, also with a
+  chicken. A node may have other fields; they are not used.
+- Main missions, listed or not, are played in their order as before, with the trail's furthest
+  mission, the chickens and `progress_by_difficulty`. They are listed only for side missions to
+  require them, and take no `requires`.
+- Side missions are missions of the trail like the others: they count to its missions (see
+  `trail_mission_positions`) and have a position, mission data and a `marker`. The trail's last
+  mission must be a main mission.
+- A side mission can be played once its `requires` are won and its door is open (date and map),
+  and played again after a win. Winning it returns to the trail map with the next main mission
+  selected; it doesn't move the trail on, and chickens only skip main missions.
+- Side missions need door pictures (`trail_marker_sheet` and a `marker` for each side mission):
+  the game's own markers only show the missions up to the trail's furthest one. Without door
+  pictures, the side missions are played as main missions in their order (reported in the log).
+- Won side missions are kept in `ucp/custom-skirmish-trails-sides-<trail>-<difficulty>.txt`
+  with `progress_by_difficulty`, otherwise in `ucp/custom-skirmish-trails-sides-<trail>.txt`, one
+  node id per line.
+- A route with a mission outside the trail, two nodes on one mission, an id in `requires` that is
+  not a node, `requires` on a main mission or a side mission as the last mission is reported in
+  the log, and the trail plays its missions in their order.

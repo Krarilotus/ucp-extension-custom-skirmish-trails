@@ -22,6 +22,7 @@ local progress = require("customskirmishtrails.progress")
 local scenario = require("customskirmishtrails.scenario")
 local unitlimits = require("customskirmishtrails.unitlimits")
 local markers = require("customskirmishtrails.markers")
+local route = require("customskirmishtrails.route")
 
 local TRAIL_PROGRESS_ADDRESSES = memory.TRAIL_PROGRESS_ADDRESSES
 local REGISTRY = memory.REGISTRY
@@ -192,6 +193,31 @@ local function hookPlayerNaming()
   end)
 end
 
+---The side missions of a trail settings file's trail_route, played where door pictures show them;
+---nil when the trail has none or they can't be played (logged).
+local function installRoute(trail, settings, count, difficulty)
+  if settings.route == nil then
+    return nil
+  end
+  local suffix = settings.progressByDifficulty and ("-" .. difficulty) or ""
+  local sides = route.load(settings.path, settings.route, count,
+    string.format("ucp/custom-skirmish-trails-sides-%s%s.txt", trail.name, suffix))
+  if sides == nil then
+    return nil
+  end
+  if settings.visuals.markerSheet == nil then
+    log(WARNING, string.format("custom-skirmish-trails: %s: side missions need door pictures "
+      .. "(trail_marker_sheet); the trail plays its missions in their order", settings.path))
+    return nil
+  end
+  if not progress.installRoute(trail.name, sides) then
+    log(WARNING, string.format("custom-skirmish-trails: %s: side missions are switched off; the trail plays its "
+      .. "missions in their order", settings.path))
+    return nil
+  end
+  return sides
+end
+
 -- Settings -------------------------------------------------------------------------------
 
 local function nonEmpty(value)
@@ -353,7 +379,12 @@ return {
       extremeTrail = extremeTrailMissions,
     }
 
-    -- trail settings files: mission count and positions, start years, texts, visuals
+    local difficulty = type(config.difficulty) == "string" and config.difficulty:lower() or "normal"
+    if difficulty ~= "story" and difficulty ~= "hard" and difficulty ~= "very_hard" then
+      difficulty = "normal"
+    end
+
+    -- trail settings files: mission count and positions, start years, texts, visuals, progress
     local trailSettings = {}
     local missionCounts = {}
     local startYears = {}
@@ -391,9 +422,17 @@ return {
         if not okVisuals then
           log(WARNING, string.format("custom-skirmish-trails: %s trail visuals: %s", trail.type, tostring(visualsError)))
         end
+        if settings.progressByDifficulty then
+          progress.install(trail.name, difficulty, missionCounts[trail.name])
+        end
+        local okRoute, sides = pcall(installRoute, trail, settings, missionCounts[trail.name], difficulty)
+        if not okRoute then
+          log(WARNING, string.format("custom-skirmish-trails: %s side missions: %s", trail.type, tostring(sides)))
+          sides = nil
+        end
         if settings.visuals.markerSheet ~= nil then
           local okMarkers, markersError = pcall(markers.install, trail.name, settings.visuals.markerSheet,
-            missionCounts[trail.name])
+            missionCounts[trail.name], sides)
           if not okMarkers then
             log(WARNING, string.format("custom-skirmish-trails: %s door pictures: %s", trail.type, tostring(markersError)))
           end
@@ -406,18 +445,11 @@ return {
     patches.setStartYears(startYears)
 
     local chickenBudgets = {}
-    local difficulty = type(config.difficulty) == "string" and config.difficulty:lower() or "normal"
-    if difficulty ~= "story" and difficulty ~= "hard" and difficulty ~= "very_hard" then
-      difficulty = "normal"
-    end
     for index, trailName in pairs(memory.TRAIL_TYPES) do
       local settings = trailSettings[trailName]
       local budget = settings and settings.chickens and settings.chickens[difficulty]
       -- One more than the number of rows keeps a chicken available after every possible skip.
       chickenBudgets[index] = budget == "unlimited" and patches.CAPACITY[trailName] + 1 or budget
-      if settings and settings.progressByDifficulty then
-        progress.install(trailName, difficulty, missionCounts[trailName])
-      end
     end
     patches.setChickenBudgets(chickenBudgets)
 

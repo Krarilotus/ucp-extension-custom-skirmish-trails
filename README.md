@@ -22,6 +22,7 @@ This tool is recommended to manipulate the csv files https://edit-csv.net/
 14. Troop limits per mission and difficulty, for example Crusader's limits in an Extreme trail (`unit_limit`)
 15. Door pictures per mission: locked, available and won, with locked missions not clickable (`trail_marker_sheet`, `marker`)
 16. Player colours per mission: an AI player's skirmish colour (`player2_color` .. `player8_color`)
+17. Side missions on a trail: optional missions with their own door, opened by the missions they require, that don't move the trail on (`trail_route`)
 
 See `docs/trail-files.md` for the details.
 

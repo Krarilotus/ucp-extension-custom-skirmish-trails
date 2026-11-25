@@ -293,6 +293,8 @@ function settings.load(path, trailName)
   end
 
   result.positions = readPositions(path, data.trail_mission_positions, trailName)
+  -- checked by route.lua once the trail's mission count is known
+  result.route = data.trail_route
   result.missions = readMissions(path, directory, data.trail_missions)
   result.textFiles = readTextFiles(path, directory, data.trail_text_files)
   result.aiMapping, result.hasAiMapping = readAiMapping(path, data.ai_character_mapping)
