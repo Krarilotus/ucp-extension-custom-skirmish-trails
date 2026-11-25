@@ -259,27 +259,12 @@ function settings.load(path, trailName)
     end
   end
 
-  local function isBudget(value)
-    return value == "unlimited" or (type(value) == "number" and math.tointeger(value) ~= nil
-      and value >= 0 and value <= 2147483647)
-  end
-  if data.chickens ~= nil then
-    local byLevel = type(data.chickens) == "table"
-    result.chickens = {}
-    for _, level in ipairs({ "story", "normal", "hard", "very_hard" }) do
-      local value = data.chickens
-      if byLevel then
-        value = data.chickens[level]
-      end
-      if isBudget(value) then
-        result.chickens[level] = value
-      elseif byLevel and value ~= nil then
-        warn(path, "chickens.%s must be a non-negative 32-bit integer or 'unlimited'", level)
-      end
-    end
-    if not byLevel and not isBudget(data.chickens) then
-      warn(path, "chickens must be a non-negative 32-bit integer, 'unlimited' or an object of them by difficulty")
-    end
+  local chickens = data.chickens
+  if chickens == "unlimited" or (type(chickens) == "number" and math.tointeger(chickens) ~= nil
+      and chickens >= 0 and chickens <= 2147483647) then
+    result.chickens = chickens
+  elseif chickens ~= nil then
+    warn(path, "chickens must be a non-negative 32-bit integer or 'unlimited'")
   end
 
   if data.starting_year ~= nil then

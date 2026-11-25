@@ -311,7 +311,7 @@ function patches.setChickenBudgets(budgets)
   local site = siteAddress({
     fn = "open", offset = 0x93,
     bytes = "BA 03 00 00 00 89 15 ? ? ? ? 75 2A 8B 0D ? ? ? ? 33 C0",
-  }, "difficulty-specific chicken budgets")
+  }, "the trails' chicken budgets")
   if site == nil then return end
   local tableAddress = core.allocate(12, true)
   for index = 0, 2 do

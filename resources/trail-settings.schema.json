@@ -77,20 +77,8 @@
       "type": "boolean"
     },
     "chickens": {
-      "description": "Total skip tokens: one budget for every difficulty, or one per Trails difficulty, where omitted difficulties use the native budget.",
-      "oneOf": [
-        { "$ref": "#/definitions/chickenBudget" },
-        {
-          "type": "object",
-          "properties": {
-            "story": { "description": "Total skips on Story, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
-            "normal": { "description": "Total skips on Normal, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
-            "hard": { "description": "Total skips on Hard, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
-            "very_hard": { "description": "Total skips on Very Hard, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" }
-          },
-          "additionalProperties": false
-        }
-      ]
+      "description": "Total skip tokens of the trail, from 0 to 2147483647 or unlimited; omission keeps the game's budget.",
+      "$ref": "#/definitions/chickenBudget"
     },
     "starting_year": {
       "description": "The year the trail's first mission starts in. The game uses 1100 for the first trail and 1130 for the Warchest and the Extreme trail.",

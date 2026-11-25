@@ -494,7 +494,7 @@ return {
     local chickenBudgets = {}
     for index, trailName in pairs(memory.TRAIL_TYPES) do
       local settings = trailSettings[trailName]
-      local budget = settings and settings.chickens and settings.chickens[difficulty]
+      local budget = settings and settings.chickens
       -- the chickens of the route's rewards won so far
       local r = routes[trailName]
       if r ~= nil and r.rewards and budget ~= "unlimited" then
