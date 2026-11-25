@@ -131,6 +131,7 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
           trailName, index, tostring(entry.map_name), reason))
       else
         entry.map_name = fileName
+        scenario.applyMapLords(entry, fileName)
       end
     end
   end
