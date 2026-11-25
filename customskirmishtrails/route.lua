@@ -53,27 +53,66 @@ local function playerList(value)
   return #players > 0 and #players == #list and players or nil
 end
 
----A node's unlock { "won": id, "difficulty": name, "lord_alive": players, "player_alive": players }
----as { won, difficulty, lords, players }, or nil and the problem.
-local function readUnlock(value)
-  if type(value) ~= "table" or type(value.won) ~= "string" then
-    return nil, "unlock needs \"won\", a node id"
+-- What an unlock condition can ask of a win. Every key of a condition is one test, and all of them
+-- must hold at the same win. Later versions can add keys here; a key this version doesn't know
+-- makes its condition false, so an old version never opens a door it can't judge.
+local CONDITIONS = {
+  won = function(value)
+    return type(value) == "string" and value or nil
+  end,
+  difficulty = function(value)
+    return DIFFICULTIES[value] and value or nil
+  end,
+  lord_alive = playerList,
+  player_alive = playerList,
+}
+local CONDITION_PROBLEMS = {
+  won = "must be a node id",
+  difficulty = "must be story, normal, hard or very_hard",
+  lord_alive = string.format("must be a player from 1 to %d or a list of them", MAX_PLAYERS),
+  player_alive = string.format("must be a player from 1 to %d or a list of them", MAX_PLAYERS),
+}
+
+---One unlock condition { "won": id, "difficulty": name, "lord_alive": players, ... } as
+---{ won, difficulty, lords, players }, or { never = true } and the problem when it can't be judged.
+local function readCondition(value)
+  if type(value) ~= "table" or value.won == nil then
+    return { never = true }, "a condition needs \"won\", a node id"
   end
-  if value.difficulty ~= nil and not DIFFICULTIES[value.difficulty] then
-    return nil, "unlock.difficulty must be story, normal, hard or very_hard"
-  end
-  local unlock = { won = value.won, difficulty = value.difficulty }
-  for key, players in pairs(value) do
-    if PLAYER_FACTS[key] ~= nil then
-      unlock[PLAYER_FACTS[key]] = playerList(players)
-      if unlock[PLAYER_FACTS[key]] == nil then
-        return nil, string.format("unlock.%s must be a player from 1 to %d or a list of them", key, MAX_PLAYERS)
-      end
-    elseif key ~= "won" and key ~= "difficulty" then
-      return nil, string.format("unlock.%s is not won, difficulty, lord_alive or player_alive", tostring(key))
+  local condition = {}
+  for key, entry in pairs(value) do
+    local read = CONDITIONS[key]
+    if read == nil then
+      return { never = true }, string.format("'%s' is not a condition this version knows", tostring(key))
+    end
+    condition[key] = read(entry)
+    if condition[key] == nil then
+      return { never = true }, string.format("%s %s", key, CONDITION_PROBLEMS[key])
     end
   end
-  return unlock
+  return { won = condition.won, difficulty = condition.difficulty, lords = condition.lord_alive,
+    players = condition.player_alive }
+end
+
+---A node's unlock, one condition or a list of them of which one must hold, as a list of
+---conditions and the problems of those that never hold; nil and the problem when it is neither.
+local function readUnlock(value)
+  local list = value
+  if type(value) ~= "table" or next(value) == nil then
+    return nil, "unlock must be a condition or a list of conditions"
+  end
+  if #value == 0 then
+    list = { value }
+  end
+  local conditions, problems = {}, {}
+  for index, entry in ipairs(list) do
+    local condition, problem = readCondition(entry)
+    conditions[index] = condition
+    if problem ~= nil then
+      table.insert(problems, string.format("unlock condition %d never holds: %s", index, problem))
+    end
+  end
+  return conditions, problems
 end
 
 ---A node's reward { "chickens": n } as { chickens }, or nil and the problem.
@@ -85,7 +124,8 @@ local function readReward(value)
   return { chickens = chickens }
 end
 
----Every node `node` needs before it can be played: requires, requires_any and unlock.won.
+---Every node `node` needs before it can be played: requires, requires_any and the won of its
+---unlock conditions.
 local function needs(node)
   local list = {}
   for _, ids in ipairs({ node.requires, node.requiresAny }) do
@@ -93,8 +133,8 @@ local function needs(node)
       table.insert(list, id)
     end
   end
-  if node.unlock ~= nil then
-    table.insert(list, node.unlock.won)
+  for _, condition in ipairs(node.unlock or {}) do
+    table.insert(list, condition.won)
   end
   return list
 end
@@ -166,7 +206,7 @@ local function parse(value, count)
   if type(value) ~= "table" then
     return nil, "trail_route must be an object of node ids"
   end
-  local nodes, rows, rewards, ending = {}, {}, false, nil
+  local nodes, rows, rewards, ending, warnings = {}, {}, false, nil, {}
   for id, entry in pairs(value) do
     if type(id) ~= "string" or not id:match("^[%w_%-]+$") or type(entry) ~= "table" then
       return nil, "every trail_route entry must be an object under a node id of letters, digits, _ and -"
@@ -194,6 +234,9 @@ local function parse(value, count)
       unlock, problem = readUnlock(entry.unlock)
       if unlock == nil then
         return nil, string.format("node '%s': %s", id, problem)
+      end
+      for _, never in ipairs(problem) do
+        table.insert(warnings, string.format("node '%s': %s", id, never))
       end
     end
     if entry.reward ~= nil then
@@ -248,7 +291,7 @@ local function parse(value, count)
     return nil, "these nodes wait on a circle of requires and can never be played: " .. table.concat(circled, ", ")
   end
   markChain(nodes, rows, count)
-  return { nodes = nodes, rows = rows, rewards = rewards }
+  return { nodes = nodes, rows = rows, rewards = rewards, warnings = warnings }
 end
 
 local function readLines(path)
@@ -327,6 +370,9 @@ function route.load(settingsPath, value, count, passedPath, resultsPath, difficu
       settingsPath, problem))
     return nil
   end
+  for _, warning in ipairs(parsed.warnings) do
+    log(WARNING, string.format("custom-skirmish-trails: %s: %s", settingsPath, warning))
+  end
   parsed.graph = false
   for row = 0, count - 1 do
     parsed.graph = parsed.graph or not parsed.rows[row].chain
@@ -404,16 +450,26 @@ function Route:seed(furthest)
   end
 end
 
----True when one win of the unlock's node was at its difficulty with all its players alive.
-function Route:isUnlocked(unlock)
-  for _, result in ipairs(self.results[unlock.won] or {}) do
-    local met = unlock.difficulty == nil or result.difficulty == unlock.difficulty
+---True when one win of a condition's node was at its difficulty with all its players alive.
+local function holds(r, condition)
+  for _, result in ipairs(not condition.never and r.results[condition.won] or {}) do
+    local met = condition.difficulty == nil or result.difficulty == condition.difficulty
     for _, key in ipairs({ "lords", "players" }) do
-      for _, player in ipairs(unlock[key] or {}) do
+      for _, player in ipairs(condition[key] or {}) do
         met = met and result[key][player] == true
       end
     end
     if met then
+      return true
+    end
+  end
+  return false
+end
+
+---True when one of the unlock's conditions holds.
+function Route:isUnlocked(unlock)
+  for _, condition in ipairs(unlock) do
+    if holds(self, condition) then
       return true
     end
   end
