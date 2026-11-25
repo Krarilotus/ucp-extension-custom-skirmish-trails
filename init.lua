@@ -103,23 +103,6 @@ local function insertPostSkirmishSetupDetour()
   end, core.AOBScan("A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? 89 44 24 10 "), 5)
 end
 
----A per-difficulty map_name ("Door01; hard: Door01-hard", read as unit_limit is) becomes the map
----of the difficulty that is set; no entry for it and no default leaves the column empty. A name
----that can't be read stays as it is.
-local function resolveMapName(entry, where)
-  if type(entry.map_name) ~= "string" or entry.map_name == "" then
-    return
-  end
-  local names, reason = unitlimits.byDifficulty(entry.map_name, function(name)
-    return name ~= "" and name or nil, "no map name"
-  end)
-  if names == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s: map_name %s", where, reason))
-    return
-  end
-  entry.map_name = unitlimits.atDifficulty(names)
-end
-
 local function applyTrail(trailName, path, missions, limit, languageTexts, startInstalled, keys)
   local result, err = cst_io.readCSV(path, limit + 1) -- one for the header
   if result == nil then error(err) end
@@ -140,7 +123,6 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
   end
   MAP_OVERRIDES[trailName] = nil
   for index, entry in ipairs(result) do
-    resolveMapName(entry, string.format("%s mission %d", trailName, index))
     interface.applyColors(entry, string.format("%s mission %d", trailName, index))
     local kind = scenario.kind(entry)
     if kind == nil then

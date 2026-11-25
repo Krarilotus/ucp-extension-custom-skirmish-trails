@@ -14,7 +14,7 @@
       "const": 1
     },
     "map_name": {
-      "description": "Required map filename for the mission, with or without .map; scenario maps use a bare Latin-1 filename of at most 200 bytes. For a map per difficulty, use entries like 'Door01; hard: Door01-hard' as in unit_limit.",
+      "description": "Required map filename for the mission, with or without .map; scenario maps use a bare Latin-1 filename of at most 200 bytes.",
       "type": "string"
     },
     "mission_name": {
@@ -34,7 +34,7 @@
       "enum": [0, 1]
     },
     "unit_limit": {
-      "description": "Player troop cap, capped by the game's skirmish limit. Use native (the default), formula BASE OFFSET (BASE divided by living lords minus OFFSET), or by_alive LORDS=LIMIT pairs such as by_alive 8=250 1=2000. For difficulty-specific rules, use entries like 'story: native; hard: formula 2400 40' with story, normal, hard, very_hard or default.",
+      "description": "Player troop cap, capped by the game's skirmish limit. Use native (the default), formula BASE OFFSET (BASE divided by living lords minus OFFSET), or by_alive LORDS=LIMIT pairs such as by_alive 8=250 1=2000.",
       "type": "string"
     },
     "scenario_briefing": {

@@ -1,4 +1,4 @@
--- Troop limits per trail mission and difficulty (unit_limit). The game computes the player's
+-- Troop limits per trail mission (unit_limit). The game computes the player's
 -- troop limit every tick in one function: in single-player games (custom scenarios) it is 10000,
 -- otherwise base / living lords - offset (base 2400 in Crusader, 9900 in Extreme, offset 40). A
 -- mission's policy replaces the stored value while that mission is played:
@@ -8,8 +8,7 @@
 --                        rounded down ("by_alive 8=250 4=500 2=1000 1=2000")
 -- The result never exceeds the game's skirmish formula for the living lords, also in scenarios,
 -- where the game itself has no limit (10000). The mission comes from the game's trail state
--- (skirmish missions) or the scenario the trail started (see scenario.session), the policy from
--- the difficulty option.
+-- (skirmish missions) or the scenario the trail started (see scenario.session).
 --
 -- The function is found by AOB, the same in both 1.41 executables, with the operands decoded.
 -- The game counts the lords of the skirmish lobby's slots, which don't describe a scenario. So
@@ -50,8 +49,15 @@ local session = nil
 local isPlayedMission = function() return true end
 local installed = { skirmish = false, scenario = false }
 
----Reads one policy ("native", "formula 2400 40"), or nil and a reason.
-local function parsePolicy(text)
+---Reads a unit_limit cell ("native", "formula 2400 40"; empty is native). Returns the policy or
+---nil and a reason.
+function unitlimits.parse(text)
+  if text == nil or text == "" then
+    return { kind = "native" }
+  end
+  if type(text) ~= "string" then
+    return nil, "must be a text"
+  end
   local words = {}
   for word in text:gmatch("%S+") do words[#words + 1] = word:lower() end
   if #words == 1 and words[1] == "native" then
@@ -84,48 +90,6 @@ local function parsePolicy(text)
     .. "(each LORDS 1-8 once, LIMIT at most %d)", text, MAX_LIMIT)
 end
 
----Reads a per-difficulty cell (unit_limit, map_name): one value for every difficulty, or
----"story: ...; hard: ..." with an optional "default: ...". `read(text)` reads one value, or gives
----nil and a reason. Returns a table (difficulty -> value) or nil and a reason.
-function unitlimits.byDifficulty(text, read)
-  if text == nil or text == "" then
-    return {}
-  end
-  if type(text) ~= "string" then
-    return nil, "must be a text"
-  end
-  local result = {}
-  if not text:find(":") then
-    local value, reason = read(text)
-    if value == nil then return nil, reason end
-    result.default = value
-    return result
-  end
-  for part in text:gmatch("[^;]+") do
-    local key, cell = part:match("^%s*([%w_]+)%s*:%s*(.-)%s*$")
-    key = key and key:lower() or nil
-    if key == nil or (key ~= "default" and not DIFFICULTIES[key]) then
-      return nil, string.format("'%s' is not 'difficulty: value' (story, normal, hard, very_hard, default)", part)
-    end
-    local value, reason = read(cell)
-    if value == nil then return nil, reason end
-    result[key] = value
-  end
-  return result
-end
-
----The value of a byDifficulty table at the difficulty that is set: its own entry, else default,
----else nil.
-function unitlimits.atDifficulty(values)
-  return values[difficulty] or values.default
-end
-
----Reads a unit_limit cell (see byDifficulty). Returns a table (difficulty -> policy) or nil and a
----reason.
-function unitlimits.parse(text)
-  return unitlimits.byDifficulty(text, parsePolicy)
-end
-
 ---A policy's limit for `lords` living lords. by_alive interpolates linearly between the listed
 ---counts and keeps the nearest listed limit outside them.
 function unitlimits.value(policy, lords)
@@ -145,7 +109,7 @@ function unitlimits.value(policy, lords)
   return points[#points].limit
 end
 
----The policy a mission plays with at the difficulty that is set, or nil for the game's own value.
+---The policy a mission plays with, or nil for the game's own value.
 function unitlimits.policy(entry)
   return type(entry) == "table" and entry.unit_limit_policy or nil
 end
@@ -354,7 +318,7 @@ function unitlimits.enable(level)
 end
 
 ---Reads the unit_limit of every mission and installs the troop limit when a mission has a policy
----other than native at the difficulty that is set. Call it after the trails' missions are loaded.
+---other than native. Call it after the trails' missions are loaded.
 ---`scenarioSession` (scenario.session(), or nil) is needed for scenario missions;
 ---`playedMission(entry)` (scenario.isPlayedMission) is false for a scenario mission not played.
 function unitlimits.apply(trails, scenarioSession, playedMission)
@@ -363,12 +327,10 @@ function unitlimits.apply(trails, scenarioSession, playedMission)
   local any = false
   for trailName, missions in pairs(trails) do
     for index, entry in ipairs(missions) do
-      local policies, reason = unitlimits.parse(entry.unit_limit)
-      if policies == nil then
+      local policy, reason = unitlimits.parse(entry.unit_limit)
+      if policy == nil then
         log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unit_limit %s", trailName, index, reason))
-        policies = {}
       end
-      local policy = unitlimits.atDifficulty(policies)
       entry.unit_limit_policy = (policy ~= nil and policy.kind ~= "native") and policy or nil
       any = any or entry.unit_limit_policy ~= nil
     end

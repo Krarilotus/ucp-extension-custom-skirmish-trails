@@ -10,7 +10,7 @@ This tool is recommended to manipulate the csv files https://edit-csv.net/
 2. Disable producibility of weapons
 3. Start gold per player and mission (gold_player_1 for the human, gold_player_2 .. gold_player_8 for each AI); an empty cell keeps the game's start gold
 4. For each mission, configure which AI starts on which spot on the map
-5. Change the map, also per difficulty (`map_name`)
+5. Change the map
 6. Specify which castle the AI builds
 7. Specify the starting resources
 8. Disable tradeability of certain goods
@@ -19,7 +19,7 @@ This tool is recommended to manipulate the csv files https://edit-csv.net/
 11. Mission data as a csv file and/or a folder of mission JSON files (resources/mission.schema.json), kept in step at every start
 12. Language files with only the texts per game language
 13. Scenario missions: a mission can be a custom scenario map, started as Play a Map starts it, with its own events, goals and players; a win moves the trail on (`mission_kind`)
-14. Troop limits per mission and difficulty, for example Crusader's limits in an Extreme trail (`unit_limit`)
+14. Troop limits per mission, for example Crusader's limits in an Extreme trail (`unit_limit`)
 15. Door pictures per mission: locked, available and won, each optional (the game's marker where one is left out), with locked missions not clickable (`trail_marker_sheet`, `marker`)
 16. Player colours per mission: an AI player's skirmish colour (`player2_color` .. `player8_color`)
 17. A trail route: missions as named nodes that require each other, so a trail can branch into parallel paths, join again and have side missions; unlock conditions on a win's result and chicken rewards (`trail_route`)
