@@ -293,7 +293,7 @@ function settings.load(path, trailName)
   end
 
   result.positions = readPositions(path, data.trail_mission_positions, trailName)
-  -- checked by route.lua once the trail's mission count is known
+  -- read by route.lua: by init.lua before the mission count for a route of files, after it otherwise
   result.route = data.trail_route
   result.missions = readMissions(path, directory, data.trail_missions)
   result.textFiles = readTextFiles(path, directory, data.trail_text_files)

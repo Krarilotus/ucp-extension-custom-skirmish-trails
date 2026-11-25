@@ -103,17 +103,22 @@ local function insertPostSkirmishSetupDetour()
   end, core.AOBScan("A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? 89 44 24 10 "), 5)
 end
 
-local function applyTrail(trailName, path, missions, limit, languageTexts, startInstalled)
+local function applyTrail(trailName, path, missions, limit, languageTexts, startInstalled, keys)
   local result, err = cst_io.readCSV(path, limit + 1) -- one for the header
   if result == nil then error(err) end
   -- the game language's texts over the default texts of the csv
-  textsModule.apply(languageTexts, result)
-  for index, mapName in pairs(MAP_OVERRIDES[trailName] or {}) do
+  textsModule.apply(languageTexts, result, keys)
+  local rowOf = {}
+  for row, key in ipairs(keys or {}) do
+    rowOf[key] = row
+  end
+  for mission, mapName in pairs(MAP_OVERRIDES[trailName] or {}) do
+    local index = rowOf[mission] or mission
     if result[index] ~= nil then
       result[index].map_name = mapName
     else
-      log(WARNING, string.format("custom-skirmish-trails: setMissionMap: the trail has no mission %d; %s is not used",
-        index, mapName))
+      log(WARNING, string.format("custom-skirmish-trails: setMissionMap: the trail has no mission %s; %s is not used",
+        tostring(mission), mapName))
     end
   end
   MAP_OVERRIDES[trailName] = nil
@@ -200,7 +205,7 @@ local function installRoute(trail, settings, count, difficulty)
     return nil
   end
   local suffix = settings.progressByDifficulty and ("-" .. difficulty) or ""
-  local r = route.load(settings.path, settings.route, count,
+  local r = route.load(settings.routeFiles or route.read(settings.path, settings.route, count), count,
     string.format("ucp/custom-skirmish-trails-sides-%s%s.txt", trail.name, suffix),
     string.format("ucp/custom-skirmish-trails-results-%s%s.txt", trail.name, suffix), difficulty)
   if r == nil then
@@ -217,6 +222,36 @@ local function installRoute(trail, settings, count, difficulty)
     return nil
   end
   return r
+end
+
+---A route of mission files is the trail's mission data: it gives the order of the missions (the
+---rows of the csv the game loads), their positions and their keys in language files.
+local function readRouteFiles(trail, settings)
+  local parsed = route.read(settings.path, settings.route, nil)
+  local problem = parsed == nil and ""
+    or settings.missions == nil and "a route of mission files needs trail_missions.base_name to name its csv"
+    or parsed.count > patches.CAPACITY[trail.name]
+      and string.format("the route has %d missions; this trail can have at most %d", parsed.count,
+        patches.CAPACITY[trail.name])
+  if problem then
+    if problem ~= "" then
+      log(WARNING, string.format("custom-skirmish-trails: %s: %s; the trail's missions are not loaded",
+        settings.path, problem))
+    end
+    settings.route, settings.missions = nil, nil
+    return
+  end
+  if settings.positions ~= nil then
+    log(WARNING, string.format("custom-skirmish-trails: %s: a route of mission files has the positions; "
+      .. "trail_mission_positions is not used", settings.path))
+  end
+  local directory = settingsModule.directoryOf(settings.path)
+  local files = {}
+  for row, file in ipairs(parsed.files) do
+    files[row] = settingsModule.resolveRelative(directory, file)
+  end
+  settings.missions.files, settings.missions.mode = files, "json_folder"
+  settings.positions, settings.missionKeys, settings.routeFiles = parsed.positions, parsed.keys, parsed
 end
 
 -- Settings -------------------------------------------------------------------------------
@@ -394,6 +429,9 @@ return {
       local settings = loadTrailSettings(config, trail)
       trailSettings[trail.name] = settings
       missionCounts[trail.name] = patches.VANILLA_COUNT[trail.name]
+      if settings ~= nil and route.hasFiles(settings.route) then
+        readRouteFiles(trail, settings)
+      end
 
       if settings ~= nil then
         if settings.positions ~= nil then
@@ -522,7 +560,8 @@ return {
         if nonEmpty(path) then
           log(INFO, string.format("custom-skirmish-trails: %s trail (%s): %s", trail.type, language, path))
           local okTrail, trailError = pcall(applyTrail, trail.name, path, missionTables[trail.name],
-            missionCounts[trail.name], languageTexts, startInstalled)
+            missionCounts[trail.name], languageTexts, startInstalled,
+            trailSettings[trail.name] and trailSettings[trail.name].missionKeys)
           if not okTrail then
             log(WARNING, string.format("custom-skirmish-trails: the trail csv file %s cannot be used, so the %s "
               .. "trail keeps the game's own missions: %s", path, trail.type, tostring(trailError)))
@@ -595,17 +634,18 @@ return {
     
     core.writeInteger(progressAddr, progress)
   end,
-  ---A plugin gives mission `mission` (1, 2, ...) of a trail ("First", "Warchest" or "Extreme")
-  ---another map file, for example the map in the language a player chose. Call it while
-  ---extensions are enabled; it applies when the trail's missions are loaded.
+  ---A plugin gives mission `mission` (1, 2, ..., or a node id of a route of mission files) of a
+  ---trail ("First", "Warchest" or "Extreme") another map file, for example the map in the language
+  ---a player chose. Call it while extensions are enabled; it applies when the trail's missions are
+  ---loaded.
   setMissionMap = function(self, trailType, mission, mapName)
     local trailName = settingsModule.TRAIL_TYPES[trailType]
     if trailName == nil then
       error(string.format("no such trail: %s", tostring(trailType)))
     end
-    local index = math.tointeger(mission)
-    if index == nil or index < 1 or type(mapName) ~= "string" or mapName == "" then
-      error("setMissionMap: a mission number and a map name are needed")
+    local index = type(mission) == "string" and mission ~= "" and mission or math.tointeger(mission)
+    if index == nil or (type(index) == "number" and index < 1) or type(mapName) ~= "string" or mapName == "" then
+      error("setMissionMap: a mission number or node id and a map name are needed")
     end
     MAP_OVERRIDES[trailName] = MAP_OVERRIDES[trailName] or {}
     MAP_OVERRIDES[trailName][index] = mapName

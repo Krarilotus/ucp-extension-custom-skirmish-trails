@@ -42,10 +42,26 @@ local function readState(trailName)
   return state
 end
 
+---The mission files { number, name, path } of `missions`: the files a route names, in its order,
+---or the numbered files of the folder.
+local function missionFiles(missions)
+  local files = {}
+  for number, path in ipairs(missions.files or {}) do
+    -- the name holds the row, so a new order of the same files is a change
+    files[number] = { number = number, name = number .. ":" .. path, path = path }
+  end
+  if missions.files == nil then
+    for _, file in ipairs(conversion.listMissionFiles(missions.folder, missions.name)) do
+      table.insert(files, { number = file.number, name = file.name, path = missions.folder .. "/" .. file.name })
+    end
+  end
+  return files
+end
+
 local function currentStamps(missions)
   local stamps = { csv = winfiles.fileStamp(missions.csv) or "missing", files = {} }
-  for _, file in ipairs(conversion.listMissionFiles(missions.folder, missions.name)) do
-    stamps.files[file.name] = winfiles.fileStamp(missions.folder .. "/" .. file.name) or "missing"
+  for _, file in ipairs(missionFiles(missions)) do
+    stamps.files[file.name] = winfiles.fileStamp(file.path) or "missing"
   end
   return stamps
 end
@@ -94,8 +110,9 @@ local function rowsEqual(a, b)
   return true
 end
 
----Runs the sync of one trail. `missions` = { csv, folder, name, mode } from the trail settings
----file. Returns a list of messages (empty when nothing had to be done).
+---Runs the sync of one trail. `missions` = { csv, folder, name, mode, files } from the trail
+---settings file (files: the mission files of a route, read in json_folder mode). Returns a list
+---of messages (empty when nothing had to be done).
 function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, trailSettings)
   local messages = {}
   local function say(message, ...)
@@ -109,10 +126,10 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, trai
 
   local csv = conversion.readTable(missions.csv)
   local reverse = conversion.reverseMapping(aiMapping)
-  local files = conversion.listMissionFiles(missions.folder, missions.name)
+  local files = missionFiles(missions)
   local byNumber, highest = {}, 0
   for _, file in ipairs(files) do
-    local path = missions.folder .. "/" .. file.name
+    local path = file.path
     local cells = conversion.readMission(path, reverse)
     byNumber[file.number] = { cells = cells, path = path, time = winfiles.fileTime(path) or 0, name = file.name }
     highest = math.max(highest, file.number)
@@ -309,7 +326,8 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, trai
       local written, writeError = false, folderError
       if folderMade then
         written, writeError = winfiles.writeFile(textFolder .. "_template.json",
-          texts.format(current.missions, trailSettings.title, trailSettings.summary, trailSettings.lockedText))
+          texts.format(current.missions, trailSettings.title, trailSettings.summary, trailSettings.lockedText,
+            trailSettings.missionKeys))
       end
       if not written then
         say("the translation template %s_template.json is not written: %s", textFolder, tostring(writeError))

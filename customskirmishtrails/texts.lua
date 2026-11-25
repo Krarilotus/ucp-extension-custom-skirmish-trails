@@ -10,8 +10,8 @@ local winfiles = require("customskirmishtrails.winfiles")
 --     }
 --   }
 --
--- A mission is found by its number (1, 2, ...). A text the language file does not have keeps
--- the default text from the csv.
+-- A mission is found by its number (1, 2, ...), or by its node id when the trail's route names its
+-- missions by file. A text the language file does not have keeps the default text from the csv.
 
 local settingsModule = require("customskirmishtrails.settings")
 local conversion = require("customskirmishtrails.conversion")
@@ -37,9 +37,10 @@ function texts.setStrict(value)
   strict = value == true
 end
 
----The key of a mission in a language file: its number.
-function texts.missionKey(_, index)
-  return tostring(index)
+---The key of mission `index` in a language file: its node id in `keys` (a route of mission
+---files), otherwise its number.
+function texts.missionKey(index, keys)
+  return keys and keys[index] or tostring(index)
 end
 
 ---The language file of `language` for a trail: `textFiles` is a folder (files named
@@ -119,14 +120,15 @@ function texts.load(path)
   return result
 end
 
----Puts the texts of a language file over the missions read from the csv (in place).
-function texts.apply(languageTexts, entries)
+---Puts the texts of a language file over the missions read from the csv (in place); `keys` as for
+---missionKey.
+function texts.apply(languageTexts, entries, keys)
   if languageTexts == nil then
     return
   end
   local used = {}
   for index, entry in ipairs(entries) do
-    local key = texts.missionKey(entry, index)
+    local key = texts.missionKey(index, keys)
     local mission = languageTexts.missions[key]
     if mission ~= nil then
       used[key] = true
@@ -154,8 +156,9 @@ end
 
 -- Writing language files -------------------------------------------------------------------
 
----The JSON text of a language file with the texts of `entries` (only non-empty texts).
-function texts.format(entries, title, summary, lockedText)
+---The JSON text of a language file with the texts of `entries` (only non-empty texts); `keys` as
+---for missionKey.
+function texts.format(entries, title, summary, lockedText, keys)
   local q = conversion.jsonString
   local lines = { "{" }
   if title ~= nil then
@@ -177,7 +180,7 @@ function texts.format(entries, title, summary, lockedText)
         table.insert(fields, string.format("      %s: %s", q(column), q(value)))
       end
     end
-    table.insert(missions, string.format("    %s: {\n%s\n    }", q(texts.missionKey(entry, index)),
+    table.insert(missions, string.format("    %s: {\n%s\n    }", q(texts.missionKey(index, keys)),
       table.concat(fields, ",\n")))
   end
   table.insert(lines, table.concat(missions, ",\n"))

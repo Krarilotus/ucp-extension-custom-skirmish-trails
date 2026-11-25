@@ -200,22 +200,69 @@ local function markChain(nodes, rows, count)
   end
 end
 
----The trail's route from `value` (trail_route) for a trail of `count` missions, or nil and the
----problem. Other fields of a node are not used.
+---True when the route `value` names its missions by file instead of by number.
+function route.hasFiles(value)
+  for _, entry in pairs(type(value) == "table" and value or {}) do
+    if type(entry) == "table" and entry.file ~= nil then
+      return true
+    end
+  end
+  return false
+end
+
+-- the trail screen is 800 x 600
+local MAX_X, MAX_Y = 800, 600
+
+---A node's position { "x": .., "y": .. } on the trail screen, or nil.
+local function readPosition(value)
+  local x = type(value) == "table" and math.tointeger(value.x)
+  local y = type(value) == "table" and math.tointeger(value.y)
+  return x and y and x >= 0 and y >= 0 and x <= MAX_X and y <= MAX_Y and { x = x, y = y } or nil
+end
+
+---The rows of a route of files: every main node as soon as what it needs is placed, then the side
+---nodes the same way (by id where several can go), and the end last.
+local function placeRows(nodes, ending, count)
+  local rows, placed = {}, {}
+  for row = 0, count - 2 do
+    local pick = nil
+    for id, node in pairs(nodes) do
+      local ready = not placed[id] and node ~= ending
+      for _, needed in ipairs(needs(node)) do
+        ready = ready and placed[needed]
+      end
+      if ready and (pick == nil or (pick.side and not node.side) or (pick.side == node.side and id < pick.id)) then
+        pick = node
+      end
+    end
+    pick.row, rows[row], placed[pick.id] = row, pick, true
+  end
+  ending.row, rows[count - 1] = count - 1, ending
+  return rows
+end
+
+---The trail's route from `value` (trail_route) for a trail of `count` missions (nil for a route of
+---files, which has one mission per node), or nil and the problem. Other fields of a node are not
+---used.
 local function parse(value, count)
   if type(value) ~= "table" then
     return nil, "trail_route must be an object of node ids"
   end
-  local nodes, rows, rewards, ending, warnings = {}, {}, false, nil, {}
+  local files = route.hasFiles(value)
+  local nodes, rows, rewards, ending, warnings, size = {}, {}, false, nil, {}, 0
   for id, entry in pairs(value) do
     if type(id) ~= "string" or not id:match("^[%w_%-]+$") or type(entry) ~= "table" then
       return nil, "every trail_route entry must be an object under a node id of letters, digits, _ and -"
     end
     local mission = math.tointeger(entry.mission)
-    if mission == nil or mission < 1 or mission > count then
+    local position = files and readPosition(entry.position)
+    if files and (type(entry.file) ~= "string" or entry.file == "" or entry.mission ~= nil or position == nil) then
+      return nil, string.format("node '%s' needs a file and a position inside 800 x 600 and no mission, as every "
+        .. "node of a route of files", id)
+    elseif not files and (mission == nil or mission < 1 or mission > count) then
       return nil, string.format("node '%s' needs a mission from 1 to %d", id, count)
     end
-    if rows[mission - 1] ~= nil then
+    if not files and rows[mission - 1] ~= nil then
       return nil, string.format("nodes '%s' and '%s' have the same mission %d", rows[mission - 1].id, id, mission)
     end
     local kind = entry.kind or "main"
@@ -246,20 +293,26 @@ local function parse(value, count)
       end
       rewards = true
     end
-    local node = { id = id, row = mission - 1, side = kind == "side", requires = requires, requiresAny = requiresAny,
-      unlock = unlock, reward = reward }
+    local node = { id = id, row = mission and mission - 1, side = kind == "side", requires = requires,
+      requiresAny = requiresAny, unlock = unlock, reward = reward, file = entry.file, position = position }
     if entry["end"] then
       if ending ~= nil then
         return nil, string.format("nodes '%s' and '%s' are both the end", ending.id, id)
       end
       ending = node
     end
-    nodes[id], rows[mission - 1] = node, node
+    nodes[id], size = node, size + 1
+    if not files then
+      rows[mission - 1] = node
+    end
   end
-  -- missions the route doesn't name are main missions; a main mission without requires follows
-  -- the main mission before it
+  if files then
+    count = size
+  end
+  -- by number, missions the route doesn't name are main missions, and a main mission without
+  -- requires follows the main mission before it
   local previous = nil
-  for row = 0, count - 1 do
+  for row = 0, files and -1 or count - 1 do
     if rows[row] == nil then
       rows[row] = { id = "#" .. (row + 1), row = row, side = false, requires = {}, requiresAny = {} }
       nodes[rows[row].id] = rows[row]
@@ -272,15 +325,36 @@ local function parse(value, count)
       previous = node
     end
   end
-  local last = rows[count - 1]
-  if last.side or (ending ~= nil and ending ~= last) then
-    return nil, string.format("the trail's end must be a main mission and its last mission (%d)", count)
-  end
   for id, node in pairs(nodes) do
     for _, needed in ipairs(needs(node)) do
       if nodes[needed] == nil then
         return nil, string.format("node '%s' requires '%s', which is not a node", id, needed)
       end
+    end
+  end
+  -- by file, without "end" the end is the one main node no other node needs
+  if files and ending == nil then
+    local needed = {}
+    for _, node in pairs(nodes) do
+      for _, id in ipairs(needs(node)) do
+        needed[id] = true
+      end
+    end
+    for id, node in pairs(nodes) do
+      if not node.side and not needed[id] then
+        if ending ~= nil then
+          return nil, string.format("'%s' and '%s' could both be the end; mark the end with \"end\": true", ending.id, id)
+        end
+        ending = node
+      end
+    end
+  end
+  local last = files and ending or rows[count - 1]
+  if last == nil or last.side or (ending ~= nil and ending ~= last) then
+    return nil, string.format("the trail's end must be a main mission and its last mission (%d)", count)
+  end
+  for id, node in pairs(nodes) do
+    for _, needed in ipairs(needs(node)) do
       if needed == last.id then
         return nil, string.format("node '%s' requires the end '%s'; winning the end ends the trail", id, needed)
       end
@@ -290,8 +364,32 @@ local function parse(value, count)
   if circled ~= nil then
     return nil, "these nodes wait on a circle of requires and can never be played: " .. table.concat(circled, ", ")
   end
-  markChain(nodes, rows, count)
-  return { nodes = nodes, rows = rows, rewards = rewards, warnings = warnings }
+  local parsed = { nodes = nodes, rows = rows, count = count, rewards = rewards, warnings = warnings }
+  if files then
+    parsed.rows = placeRows(nodes, last, count)
+    parsed.files, parsed.positions, parsed.keys = {}, {}, {}
+    for row = 0, count - 1 do
+      local node = parsed.rows[row]
+      parsed.files[row + 1], parsed.positions[row + 1], parsed.keys[row + 1] = node.file, node.position, node.id
+    end
+  end
+  markChain(nodes, parsed.rows, count)
+  return parsed
+end
+
+---The route of `value` (trail_route of the settings file `settingsPath`) for a trail with `count`
+---missions (nil for a route of files), with its problems logged; nil when it can't be used.
+function route.read(settingsPath, value, count)
+  local parsed, problem = parse(value, count)
+  if parsed == nil then
+    log(WARNING, string.format("custom-skirmish-trails: %s: %s; %s", settingsPath, problem, route.hasFiles(value)
+      and "the trail's missions are not loaded" or "the trail plays its missions in their order"))
+    return nil
+  end
+  for _, warning in ipairs(parsed.warnings) do
+    log(WARNING, string.format("custom-skirmish-trails: %s: %s", settingsPath, warning))
+  end
+  return parsed
 end
 
 local function readLines(path)
@@ -359,19 +457,12 @@ local function addResult(r, line)
   return true
 end
 
----Reads `value` (trail_route of the settings file `settingsPath`) for a trail with `count`
----missions, played at `difficulty`; passed nodes are kept in `passedPath`, the results of node
----wins in `resultsPath`. Returns the route when the trail needs it (a node that is not a chain
----node, or a reward), nil otherwise or when it can't be used (logged).
-function route.load(settingsPath, value, count, passedPath, resultsPath, difficulty)
-  local parsed, problem = parse(value, count)
-  if parsed == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s: %s; the trail plays its missions in their order",
-      settingsPath, problem))
+---The route `parsed` (route.read) of a trail with `count` missions, played at `difficulty`; passed
+---nodes are kept in `passedPath`, the results of node wins in `resultsPath`. Returns the route when
+---the trail needs it (a node that is not a chain node, or a reward), nil otherwise.
+function route.load(parsed, count, passedPath, resultsPath, difficulty)
+  if parsed == nil or parsed.count ~= count then
     return nil
-  end
-  for _, warning in ipairs(parsed.warnings) do
-    log(WARNING, string.format("custom-skirmish-trails: %s: %s", settingsPath, warning))
   end
   parsed.graph = false
   for row = 0, count - 1 do
@@ -380,7 +471,7 @@ function route.load(settingsPath, value, count, passedPath, resultsPath, difficu
   if not parsed.graph and not parsed.rewards then
     return nil
   end
-  parsed.count, parsed.path, parsed.passed = count, passedPath, readWins(passedPath)
+  parsed.path, parsed.passed = passedPath, readWins(passedPath)
   parsed.resultsPath, parsed.difficulty, parsed.results, parsed.lines = resultsPath, difficulty, {}, {}
   for _, line in ipairs(readLines(resultsPath)) do
     addResult(parsed, line)
