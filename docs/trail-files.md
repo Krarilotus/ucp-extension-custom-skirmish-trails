@@ -113,8 +113,10 @@ skip every mission on that trail.
 
 `trail_visuals.trail_marker_sheet` names a .gm1 file laid out like the game's
 `skirmish_trail_icons.gm1`: 130 pictures of 100 x 100, the same GM1 type. A mission's
-`marker` names its pictures (numbered from 0), one per state, drawn where the game
-draws its flag. Each one is optional:
+`marker` names its pictures (numbered from 0), one per state, each centred on the
+mission's position, where its click is taken. Every line of a picture spans its 100
+pixels, transparent runs included, as in the game's sheet; a picture whose lines end
+early is drawn shifted. Each picture is optional:
 
 - `locked`: the mission can't be clicked yet. Leave it out to draw nothing while the
   mission is locked, so the trail background shows.

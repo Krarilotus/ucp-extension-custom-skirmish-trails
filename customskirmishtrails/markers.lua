@@ -25,8 +25,10 @@ markers.PICTURES = 130
 local STATES = { "locked", "available", "won" }
 local SKIPPED = -1200 -- the score of a mission a chicken skipped
 
--- the markers' screen offsets are in ESI / EDI and the trail in EDX: test edx, edx / mov [esp+14h], 0
+-- test edx, edx / mov [esp+14h], 0: the trail is in EDX, and ECX / EAX hold the trail screen's origin
+-- ((width - 800) / 2, (height - 600) / 2), from which the click test measures a mission's position
 local RENDER_SITE = { fn = "render", offset = 0x125, bytes = "85 D2 C7 44 24 14 00 00 00 00" }
+local HALF_PICTURE = 50 -- the sheet's pictures are 100 x 100
 local RENDER_SIZE = 10
 -- the Warchest's next-mission marker: push sheet / mov ecx, screen / call draw (thiscall: sheet, picture, x, y)
 local DRAW_SITE = { fn = "render", offset = 0x88F, bytes = "68 ? ? ? ? B9 ? ? ? ? E8 ? ? ? ?" }
@@ -168,8 +170,9 @@ local function onRender(registers)
     if open and slot > reach then
       reach = slot
     end
-    local x = core.readInteger(door.positions + slot * 8) + registers.ESI
-    local y = core.readInteger(door.positions + slot * 8 + 4) + registers.EDI
+    -- a door is centred where the click test takes the mission
+    local x = core.readInteger(door.positions + slot * 8) + registers.ECX - HALF_PICTURE
+    local y = core.readInteger(door.positions + slot * 8 + 4) + registers.EAX - HALF_PICTURE
     -- the game's draw counts pictures from 1
     local picture = open and pictures[2] or not open and pictures[1]
     if picture then
