@@ -4,8 +4,7 @@
 -- trail's last row, is won. Passed nodes are kept in a file of node ids. The game's furthest row
 -- is the first main row not passed (the frontier), so its markers, chicken count and chicken skip
 -- keep working for the nodes it can describe. Every win of a node is kept in a results file with
--- its difficulty and the players whose lord, and who themselves, were alive at that win; an unlock
--- needs one such win, and a node's reward is given at its first win. Rows are 0-based here, as in
+-- the players whose lord, and who themselves, were alive at that win; an unlock needs one such win, and a node's reward is given at its first win. Rows are 0-based here, as in
 -- the game.
 
 local winfiles = require("customskirmishtrails.winfiles")
@@ -35,7 +34,6 @@ end
 
 local MAX_PLAYERS = 8
 local MAX_REWARD = 1000
-local DIFFICULTIES = { story = true, normal = true, hard = true, very_hard = true }
 -- unlock fields with players, and the facts of a win each one reads
 local PLAYER_FACTS = { lord_alive = "lords", player_alive = "players" }
 
@@ -60,21 +58,17 @@ local CONDITIONS = {
   won = function(value)
     return type(value) == "string" and value or nil
   end,
-  difficulty = function(value)
-    return DIFFICULTIES[value] and value or nil
-  end,
   lord_alive = playerList,
   player_alive = playerList,
 }
 local CONDITION_PROBLEMS = {
   won = "must be a node id",
-  difficulty = "must be story, normal, hard or very_hard",
   lord_alive = string.format("must be a player from 1 to %d or a list of them", MAX_PLAYERS),
   player_alive = string.format("must be a player from 1 to %d or a list of them", MAX_PLAYERS),
 }
 
----One unlock condition { "won": id, "difficulty": name, "lord_alive": players, ... } as
----{ won, difficulty, lords, players }, or { never = true } and the problem when it can't be judged.
+---One unlock condition { "won": id, "lord_alive": players, ... } as
+---{ won, lords, players }, or { never = true } and the problem when it can't be judged.
 local function readCondition(value)
   if type(value) ~= "table" or value.won == nil then
     return { never = true }, "a condition needs \"won\", a node id"
@@ -90,8 +84,7 @@ local function readCondition(value)
       return { never = true }, string.format("%s %s", key, CONDITION_PROBLEMS[key])
     end
   end
-  return { won = condition.won, difficulty = condition.difficulty, lords = condition.lord_alive,
-    players = condition.player_alive }
+  return { won = condition.won, lords = condition.lord_alive, players = condition.player_alive }
 end
 
 ---A node's unlock, one condition or a list of them of which one must hold, as a list of
@@ -422,9 +415,9 @@ local function readWins(path)
   return wins
 end
 
--- A results line, one per different win: "<node id> <difficulty> lords=1,3 players=1"
-local function resultLine(id, difficulty, facts)
-  local fields = { id, difficulty }
+-- A results line, one per different win: "<node id> lords=1,3 players=1"
+local function resultLine(id, facts)
+  local fields = { id }
   for _, key in ipairs({ "lords", "players" }) do
     local players = {}
     for player = 1, MAX_PLAYERS do
@@ -438,12 +431,13 @@ local function resultLine(id, difficulty, facts)
 end
 
 ---Adds the win of results line `line` to the route; false when it is kept already or not a line.
+---Other words after the node id, such as a difficulty, are skipped.
 local function addResult(r, line)
-  local id, difficulty, rest = line:match("^(%S+)%s+(%S+)(.*)$")
+  local id, rest = line:match("^(%S+)(.*)$")
   if id == nil or r.lines[line] then
     return false
   end
-  local result = { difficulty = difficulty, lords = {}, players = {} }
+  local result = { lords = {}, players = {} }
   for key, list in rest:gmatch("(%a+)=(%S*)") do
     if key == "lords" or key == "players" then
       for player in list:gmatch("%d+") do
@@ -457,10 +451,10 @@ local function addResult(r, line)
   return true
 end
 
----The route `parsed` (route.read) of a trail with `count` missions, played at `difficulty`; passed
+---The route `parsed` (route.read) of a trail with `count` missions; passed
 ---nodes are kept in `passedPath`, the results of node wins in `resultsPath`. Returns the route when
 ---the trail needs it (a node that is not a chain node, or a reward), nil otherwise.
-function route.load(parsed, count, passedPath, resultsPath, difficulty)
+function route.load(parsed, count, passedPath, resultsPath)
   if parsed == nil or parsed.count ~= count then
     return nil
   end
@@ -472,7 +466,7 @@ function route.load(parsed, count, passedPath, resultsPath, difficulty)
     return nil
   end
   parsed.path, parsed.passed = passedPath, readWins(passedPath)
-  parsed.resultsPath, parsed.difficulty, parsed.results, parsed.lines = resultsPath, difficulty, {}, {}
+  parsed.resultsPath, parsed.results, parsed.lines = resultsPath, {}, {}
   for _, line in ipairs(readLines(resultsPath)) do
     addResult(parsed, line)
   end
@@ -552,10 +546,10 @@ function Route:seed(furthest)
   end
 end
 
----True when one win of a condition's node was at its difficulty with all its players alive.
+---True when one win of a condition's node had all its players alive.
 local function holds(r, condition)
   for _, result in ipairs(not condition.never and r.results[condition.won] or {}) do
-    local met = condition.difficulty == nil or result.difficulty == condition.difficulty
+    local met = true
     for _, key in ipairs({ "lords", "players" }) do
       for _, player in ipairs(condition[key] or {}) do
         met = met and result[key][player] == true
@@ -603,7 +597,7 @@ function Route:isOpen(row)
   return self:isPassed(row) or self:isAvailable(row)
 end
 
----Keeps the win of the node at `row` with the difficulty and `facts` ({ lords = { [player] = true },
+---Keeps the win of the node at `row` with `facts` ({ lords = { [player] = true },
 ---players = ... }, nil when the game's players can't be read). Returns the chickens of the node's
 ---reward at its first win, 0 otherwise.
 function Route:recordResult(row, facts)
@@ -612,7 +606,7 @@ function Route:recordResult(row, facts)
     return 0
   end
   local first = self.results[node.id] == nil
-  if addResult(self, resultLine(node.id, self.difficulty, facts or { lords = {}, players = {} })) then
+  if addResult(self, resultLine(node.id, facts or { lords = {}, players = {} })) then
     local lines = {}
     for line in pairs(self.lines) do
       table.insert(lines, line)

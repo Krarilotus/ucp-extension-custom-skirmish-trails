@@ -207,12 +207,12 @@ end
 
 ---The trail_route of a trail settings file; nil when the trail doesn't need it or it can't be
 ---played (logged).
-local function installRoute(trail, settings, count, difficulty)
+local function installRoute(trail, settings, count)
   if settings.route == nil then
     return nil
   end
   local r = route.load(settings.routeFiles or route.read(settings.path, settings.route, count), count,
-    stateFile("sides", trail, settings), stateFile("results", trail, settings), difficulty)
+    stateFile("sides", trail, settings), stateFile("results", trail, settings))
   if r == nil then
     return nil
   end
@@ -465,7 +465,7 @@ return {
         if settings.id ~= nil then
           progress.install(trail.name, stateFile("progress", trail, settings), missionCounts[trail.name])
         end
-        local okRoute, sides = pcall(installRoute, trail, settings, missionCounts[trail.name], difficulty)
+        local okRoute, sides = pcall(installRoute, trail, settings, missionCounts[trail.name])
         if not okRoute then
           log(WARNING, string.format("custom-skirmish-trails: %s trail route: %s", trail.type, tostring(sides)))
           sides = nil

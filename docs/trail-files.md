@@ -233,17 +233,15 @@ counts as passed, so progress from before the trail had its route is kept.
 ```json
 "pigs": { "file": "missions/pigs.json", "position": { "x": 90, "y": 260 }, "kind": "side",
           "unlock": { "won": "door05", "lord_alive": [3, 4, 5] }, "reward": { "chickens": 1 } },
-"hard": { "file": "missions/hard.json", "position": { "x": 300, "y": 400 }, "kind": "side",
-          "unlock": [ { "won": "door15", "difficulty": "hard" },
-                      { "won": "door15", "difficulty": "very_hard" } ] }
+"keep": { "file": "missions/keep.json", "position": { "x": 300, "y": 400 }, "kind": "side",
+          "unlock": [ { "won": "door15", "lord_alive": 2 },
+                      { "won": "door16", "player_alive": 2 } ] }
 ```
 
 - `unlock` (any node): one condition, or a list of conditions of which one must hold. A condition is
   an object in which every key is one test, and all of them must hold at the same win of the node
   `won`:
   - `won` (needed): the node whose win is judged;
-  - `difficulty`: the win was at this difficulty (`story`, `normal`, `hard`, `very_hard`, as the
-    module setting `custom-skirmish-trails.difficulty`);
   - `lord_alive`: the lords of these players were all alive at the win;
   - `player_alive`: these players were all still in the game (lord alive and keep standing).
 
@@ -260,6 +258,7 @@ counts as passed, so progress from before the trail had its route is kept.
   with `"unlimited"` nothing changes.
 - Every win of a route node is kept in `ucp/custom-skirmish-trails-results-<trail>.txt` (named as
   the passed nodes' file), one line per different win:
-  `door05 hard lords=1,3,4,5 players=1,3,4,5`, the node, the difficulty and the players whose
-  lord, and who themselves, were alive at the win. A skip with a chicken is not a win. Delete the
+  `door05 lords=1,3,4,5 players=1,3,4,5`, the node and the players whose lord, and who
+  themselves, were alive at the win. Other words after the node, such as a difficulty, are
+  skipped. A skip with a chicken is not a win. Delete the
   file to start the trail's unlocks and rewards over.

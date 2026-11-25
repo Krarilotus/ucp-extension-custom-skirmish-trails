@@ -22,11 +22,6 @@
       "type": "object",
       "properties": {
         "won": { "description": "Needed: the node id whose win is judged.", "type": "string" },
-        "difficulty": {
-          "description": "That win was at this Trails difficulty.",
-          "type": "string",
-          "enum": ["story", "normal", "hard", "very_hard"]
-        },
         "lord_alive": {
           "description": "The lords of these players (one player slot or a list) were all alive at that win. Slots 1-8 are the game's player slots (colour slots); slot 1 is you.",
           "$ref": "#/definitions/players"
