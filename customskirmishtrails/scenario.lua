@@ -19,6 +19,7 @@
 local patches = require("customskirmishtrails.patches")
 local memory = require("customskirmishtrails.memory")
 local unitlimits = require("customskirmishtrails.unitlimits")
+local description = require("customskirmishtrails.description")
 
 local scenario = {}
 
@@ -57,6 +58,11 @@ local EXTRACTS = {
   -- Restart of a Play a Map game: "mov [currentMenuView], 0x31 / call ResetSomeValues (cdecl, no
   -- arguments)", then the launcher with 1
   restart = "C7 05 I(? ? ? ?) 31 00 00 00 E8 I(? ? ? ?) 0F B7 05",
+  -- FilePackager::readMapOrSavFile reads the map's description: "read(file, flag, 4)", "read(file,
+  -- index, 4)", then it decodes the text into the text buffer. The game's briefings show the
+  -- buffer while the flag is 0, and the index's text otherwise.
+  description = "6A 04 68 I(? ? ? ?) 57 E8 ? ? ? ? 6A 04 68 ? ? ? ? 57 E8 ? ? ? ? 8B 44 24 28 8B 4C 24 2C"
+    .. " 83 C0 F8 50 51 57 E8 ? ? ? ? 8B 54 24 38 83 C4 24 68 I(? ? ? ?) 52 B9",
 }
 
 local ARMY_CUT_JE_OFFSET = 0x0F
@@ -64,6 +70,7 @@ local RESTART_CALL_END = 15 -- the end of the restart AOB's call, from which its
 local TRAIL_BRIEFING_VIEW = 0x38 -- the trail's mission briefing (CrusadeMissionIntro)
 local RESTART_VIEW = 0x31
 local SAVE_LOADED_OFFSET = 0x19
+local DESCRIPTION_SIZE = 1000 -- the text buffer, with its final 0
 
 -- In the mission finished screen ("win" in patches.lua): the branch that picks the follow-up by
 -- game mode, and the values the game's trail branch reads.
@@ -89,8 +96,20 @@ local RESOURCE_PATH_SIZE = 1001
 local RESOURCE_TYPE_OFFSET = 0xBC4
 local MAP_PATH_OFFSET = 0x7AEE0 + MAP_RESOURCE * RESOURCE_PATH_SIZE
 
+-- Map body section 1124 (uncompressed): the AI lord of each slot (dwords from +0x84, slot 0
+-- first; 0 is none) and each slot's team (bytes from +0x62 for slots 1 .. 8; -1 unused, 0 none).
+-- The file layout before the sections is sourcehold-maps'.
+local LORDS_SECTION = 1124
+local LORDS_AI_OFFSET = 0x84
+local LORDS_TEAM_OFFSET = 0x62
+local LORDS_SIZE = LORDS_AI_OFFSET + 4 * (MAX_PLAYERS + 1)
+local MAP_HEADER_BLOCKS = 5 -- description and U1 .. U4, each a size and its data
+local MAP_DIRECTORY_SLOTS = { old = 100, new = 150, newFrom = 161 }
+local OPEN_READ_BINARY = 0x8000
+
 local bindings = nil
 local mapLookup = nil
+local mapReader = nil -- { open, read, seek, close, path, buffer } once the map lookup is bound
 local trailOf = nil -- function(trailName) -> missions of that trail, set by enable
 local active = nil  -- the session: { trailName, index, entry, fileName }
 
@@ -226,6 +245,8 @@ local function resolve()
     winners = core.readInteger(winnersSite + 9),
     armyCutJe = jeSite,
     armyCutSkip = jeSite + 6 + core.readInteger(jeSite + 2),
+    descriptionFlag = found.description[1],
+    descriptionText = found.description[2],
   }
 end
 
@@ -291,6 +312,17 @@ local function bindMapLookup()
   assert(patches.isUnique(existsPattern, existsAddress))
   local resolveMap = core.exposeCode(resolveAddress, 3, 1)
   local fileExists = core.exposeCode(existsAddress, 2, 1)
+  -- the existence check's "call _open": the game's open, which the Files module redirects and
+  -- answers with a ucrt file descriptor
+  local openCall = existsAddress + 12
+  mapReader = {
+    open = core.exposeCode(openCall + 5 + core.readInteger(openCall + 1), 3, 0),
+    read = core.exposeCode(io.ucrt._read, 3, 0),
+    seek = core.exposeCode(io.ucrt._lseek, 3, 0),
+    close = core.exposeCode(io.ucrt._close, 1, 0),
+    path = core.allocate(RESOURCE_PATH_SIZE, true),
+    buffer = core.allocate(12 * MAP_DIRECTORY_SLOTS.new, true),
+  }
   local nameBuffer = core.allocate(NAME_BUFFER + #".map", true)
   local resourceType = manager + RESOURCE_TYPE_OFFSET
   local mapPath = manager + MAP_PATH_OFFSET
@@ -298,14 +330,107 @@ local function bindMapLookup()
     writeName(nameBuffer, name .. ".map")
     local savedType = core.readInteger(resourceType)
     local savedPath = core.readBytes(mapPath, RESOURCE_PATH_SIZE)
-    local ok, exists = pcall(function()
+    local ok, path = pcall(function()
       resolveMap(manager, MAP_RESOURCE, nameBuffer)
-      return fileExists(manager, mapPath) == 1
+      return fileExists(manager, mapPath) == 1 and core.readString(mapPath) or nil
     end)
     core.writeBytes(mapPath, savedPath)
     core.writeInteger(resourceType, savedType)
-    if not ok then error(exists, 0) end
-    return exists
+    if not ok then error(path, 0) end
+    return path
+  end
+end
+
+---Reads `size` bytes of section `wanted` of the map file at `path` into mapReader.buffer. False
+---when the file can't be opened, has no such section or it is compressed or shorter.
+local function readMapSection(path, wanted, size)
+  local r = mapReader
+  writeName(r.path, path)
+  local fd = r.open(r.path, OPEN_READ_BINARY, 0)
+  if fd < 0 or fd == 0xFFFFFFFF then
+    return false
+  end
+  local function at(offset, count)
+    if r.seek(fd, offset, 0) ~= offset or r.read(fd, r.buffer, count) ~= count then
+      error("the map file ends early")
+    end
+  end
+  local function int(offset)
+    at(offset, 4)
+    return core.readInteger(r.buffer)
+  end
+  local ok, found = pcall(function()
+    local pos = 8 + int(4) -- magic, preview
+    for _ = 1, MAP_HEADER_BLOCKS do
+      pos = pos + 4 + int(pos)
+    end
+    pos = pos + 4
+    at(pos, 16)
+    local directorySize, count = core.readInteger(r.buffer), core.readInteger(r.buffer + 8)
+    local slots = core.readInteger(r.buffer + 12) >= MAP_DIRECTORY_SLOTS.newFrom and MAP_DIRECTORY_SLOTS.new
+      or MAP_DIRECTORY_SLOTS.old
+    if count < 0 or count > slots then
+      return false
+    end
+    at(pos + 32 + 4 * slots, 12 * slots) -- lengths, section numbers, compressed flags
+    local section = pos + directorySize
+    for i = 0, count - 1 do
+      local length = core.readInteger(r.buffer + 4 * i)
+      if core.readInteger(r.buffer + 4 * (slots + i)) == wanted then
+        if core.readInteger(r.buffer + 4 * (2 * slots + i)) == 1 or length < size then
+          return false
+        end
+        at(section, size)
+        return true
+      end
+      section = section + length
+    end
+    return false
+  end)
+  r.close(fd)
+  return ok and found
+end
+
+local function signedByte(address)
+  local value = core.readByte(address) & 0xFF
+  return value >= 0x80 and value - 0x100 or value
+end
+
+local function isEmpty(value)
+  return value == nil or value == ""
+end
+
+---A scenario mission's briefing shows the AI lords and teams of its map: player2 .. player8 and
+---team1 .. team8 come from the map where the mission leaves them empty, and num_players then
+---counts up to the map's last AI lord. The scenario start doesn't use these columns.
+function scenario.applyMapLords(entry, fileName)
+  if mapLookup == nil or not scenario.availability(entry) then
+    return
+  end
+  local ok, read = pcall(function()
+    local path = mapLookup(fileName)
+    return path ~= nil and readMapSection(path, LORDS_SECTION, LORDS_SIZE)
+  end)
+  if not ok or not read then
+    log(VERBOSE, string.format("custom-skirmish-trails: no lords from map %s: %s", fileName, tostring(read)))
+    return
+  end
+  local buffer, last = mapReader.buffer, 0
+  for slot = 1, MAX_PLAYERS do
+    local ai = slot > 1 and core.readInteger(buffer + LORDS_AI_OFFSET + 4 * slot) or 0
+    local playerColumn, teamColumn = "player" .. slot, "team" .. slot
+    if slot > 1 and isEmpty(entry[playerColumn]) then
+      entry[playerColumn] = ai
+      if ai ~= 0 then
+        last = slot
+      end
+    end
+    if isEmpty(entry[teamColumn]) then
+      entry[teamColumn] = math.max(signedByte(buffer + LORDS_TEAM_OFFSET + slot - 1), 0)
+    end
+  end
+  if last > (math.tointeger(tonumber(entry.num_players)) or 0) then
+    entry.num_players = last
   end
 end
 
@@ -357,6 +482,12 @@ local function launch(b, mission, how)
   writeName(b.chosenMap, mission.fileName)
   core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
   b.launcher(how)
+  -- scenario_briefing: the mission's own briefing text instead of the map's description
+  local briefing = mission.entry.scenario_briefing
+  if type(briefing) == "string" and briefing ~= "" then
+    core.writeInteger(b.descriptionFlag, 0)
+    description.writeGameText(b.descriptionText, DESCRIPTION_SIZE, briefing)
+  end
   if core.readInteger(b.syncMode) == SYNC_MODE_SKIRMISH then
     selectTrailMission(mission.trailName, mission.index)
   end
@@ -553,8 +684,8 @@ function scenario.isOpen(entry)
   if fileName == nil or (kind == "scenario" and not scenario.availability(entry)) then
     return false
   end
-  local ok, exists = pcall(mapLookup, fileName)
-  return ok and exists == true
+  local ok, path = pcall(mapLookup, fileName)
+  return ok and path ~= nil
 end
 
 ---The mission as its briefing shows it: a scenario mission that isn't open yet shows

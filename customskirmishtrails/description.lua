@@ -19,6 +19,15 @@ local textLines = {
   core.allocate(LINE_CAPACITY, true),
 }
 
+---Writes `text` in the game's text encoding (textResourceModifier) into the `capacity` bytes at
+---`address`, cut to fit.
+local function writeGameText(address, capacity, text)
+  local transformed = modules.textResourceModifier:TransformText(text)
+  local bounded = transformed:match("^[^%z]*"):sub(1, capacity - 1)
+  core.writeString(address, bounded)
+  core.writeByte(address + #bounded, 0)
+end
+
 local function genRenderText(address, xOffset, yOffset)
   return core.AssemblyLambda([[
     pushad
@@ -64,11 +73,9 @@ return {
   setText = function(line, text)
     local address = textLines[line]
     if address == nil or type(text) ~= "string" then return end
-    local transformed = modules.textResourceModifier:TransformText(text)
-    local bounded = transformed:match("^[^%z]*"):sub(1, LINE_CAPACITY - 1)
-    core.writeString(address, bounded)
-    core.writeByte(address + #bounded, 0)
+    writeGameText(address, LINE_CAPACITY, text)
   end,
+  writeGameText = writeGameText,
   getText = function(line)
     local address = textLines[line]
     return address and core.readString(address) or nil

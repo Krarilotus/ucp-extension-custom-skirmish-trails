@@ -143,7 +143,7 @@ function missionjson.fromRow(header, cells, aiMapping)
   put(mission, "format", { raw = tostring(missionjson.FORMAT) })
   put(mission, "map_name", take("map_name"))
   put(mission, "mission_name", take("mission_name"))
-  for _, column in ipairs({ "mission_kind", "unit_limit" }) do
+  for _, column in ipairs({ "mission_kind", "unit_limit", "scenario_briefing" }) do
     local value = take(column)
     if value ~= "" then
       put(mission, column, value)
@@ -264,7 +264,7 @@ end
 
 local STRUCTURED_FIELDS = {
   ["$schema"] = true, format = true, map_name = true, mission_name = true, mission_kind = true,
-  keep_start_army = true, unit_limit = true, text_description = true, advantage = true,
+  keep_start_army = true, unit_limit = true, scenario_briefing = true, text_description = true, advantage = true,
   start_mode = true, players = true, extra = true,
 }
 for _, group in ipairs(GROUPS) do
@@ -337,7 +337,7 @@ function missionjson.toRow(data, reverseMapping, file)
   local cells = {}
   cells.map_name = cellOf(data.map_name, file .. ": map_name")
   cells.mission_name = cellOf(data.mission_name, file .. ": mission_name")
-  for _, column in ipairs({ "mission_kind", "keep_start_army", "unit_limit" }) do
+  for _, column in ipairs({ "mission_kind", "keep_start_army", "unit_limit", "scenario_briefing" }) do
     cells[column] = cellOf(data[column], file .. ": " .. column)
   end
   local lines = data.text_description

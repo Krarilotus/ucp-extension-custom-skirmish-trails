@@ -94,6 +94,10 @@
             "player8_name": {
               "description": "Translated name for player 8 in the briefing and game; omission keeps the original name.",
               "type": "string"
+            },
+            "scenario_briefing": {
+              "description": "Translated briefing text of a scenario mission, shown instead of the map's own description; omission keeps the original text.",
+              "type": "string"
             }
           }
         }
