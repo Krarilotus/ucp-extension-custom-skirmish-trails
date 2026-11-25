@@ -16,6 +16,28 @@
         { "type": "integer", "minimum": 1, "maximum": 8 },
         { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1, "maximum": 8 } }
       ]
+    },
+    "condition": {
+      "description": "A condition on one win: every key is one test, and all must hold at the same win of the node won. Later versions can add tests (for example the months a win took, the troops left or a date); a key this version doesn't know, or a value it can't read, is reported in the log and makes the condition false.",
+      "type": "object",
+      "properties": {
+        "won": { "description": "Needed: the node id whose win is judged.", "type": "string" },
+        "difficulty": {
+          "description": "That win was at this Trails difficulty.",
+          "type": "string",
+          "enum": ["story", "normal", "hard", "very_hard"]
+        },
+        "lord_alive": {
+          "description": "The lords of these players (one player slot or a list) were all alive at that win. Slots 1-8 are the game's player slots (colour slots); slot 1 is you.",
+          "$ref": "#/definitions/players"
+        },
+        "player_alive": {
+          "description": "These players (one player slot or a list) were all still in the game at that win: lord alive and keep standing.",
+          "$ref": "#/definitions/players"
+        }
+      },
+      "required": ["won"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -89,7 +111,7 @@
       "additionalProperties": false
     },
     "trail_mission_positions": {
-      "description": "One button position per mission on the 800 x 600 trail screen (up to 50 for First or 30 for Warchest and Extreme); omission keeps the game's positions.",
+      "description": "One button position per mission on the 800 x 600 trail screen (up to 50 for First or 30 for Warchest and Extreme); omission keeps the game's positions. Not used with a route of files, whose nodes have the positions.",
       "type": "array",
       "minItems": 1,
       "maxItems": 50,
@@ -117,70 +139,62 @@
       }
     },
     "trail_route": {
-      "description": "The trail's missions as nodes, keyed by an id. Main missions are played in the trail's order as before; side missions open when the nodes they require are won and never move the trail on. Side missions need door pictures (trail_marker_sheet and a marker), and the trail's last mission must be a main mission. Missions not listed are main missions.",
+      "description": "The trail's missions as nodes keyed by an id of your own (letters, digits, _ and -). Nodes require other nodes, so the trail can branch into parallel paths and join again, and can have side missions. A node names its mission by file and position (a route of files: Trails orders the rows itself, the end last) or by mission number (a route by number); one route uses one of the two. Side missions and parallel paths need door pictures. Omit to play the missions in their order.",
       "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z0-9_-]+$" },
       "additionalProperties": {
         "type": "object",
         "properties": {
+          "file": {
+            "description": "A route of files: this node's mission file (format 1, mission.schema.json), relative to this file. Every node of the route then has a file and a position.",
+            "type": "string",
+            "minLength": 1
+          },
+          "position": {
+            "description": "A route of files: the node's button on the 800 x 600 trail screen.",
+            "type": "object",
+            "properties": {
+              "x": { "description": "Horizontal position in pixels (0-800).", "type": "integer", "minimum": 0, "maximum": 800 },
+              "y": { "description": "Vertical position in pixels (0-600).", "type": "integer", "minimum": 0, "maximum": 600 }
+            },
+            "required": ["x", "y"],
+            "additionalProperties": false
+          },
           "mission": {
-            "description": "The mission's number in the trail's mission data: its mission file's number (or csv line).",
+            "description": "A route by number: the mission's number in the trail's mission data, its mission file's number (or csv line). Missions the route doesn't name are main missions.",
             "type": "integer",
             "minimum": 1,
             "maximum": 50
           },
           "kind": {
-            "description": "main (the default): played in the trail's order. side: opens when its requires and unlock are met and doesn't move the trail on.",
+            "description": "main (the default) or side. A side mission doesn't move the trail on, can't be skipped with a chicken and can't be the end.",
             "type": "string",
-            "enum": [
-              "main",
-              "side"
-            ],
+            "enum": ["main", "side"],
             "default": "main"
           },
+          "end": {
+            "description": "true for the node whose win finishes the trail; nothing may require it. Without it the end is the one main node no other node requires (a route by number: its last mission).",
+            "type": "boolean"
+          },
           "requires": {
-            "description": "Side missions: node ids that must all be won. A main mission counts as won once the trail has passed it, also with a chicken.",
+            "description": "Node ids that must all be passed first. A node is passed once it is won, a main node also when a chicken skipped it. In a route by number a main mission without requires and requires_any follows the main mission before it.",
             "type": "array",
             "items": { "type": "string" }
           },
           "requires_any": {
-            "description": "Side missions: node ids of which at least one must be won.",
+            "description": "Node ids of which at least one must be passed first.",
             "type": "array",
             "items": { "type": "string" }
           },
           "unlock": {
-            "description": "Side missions: opens only once one win of the node won met every other entry here.",
-            "type": "object",
-            "properties": {
-              "won": {
-                "description": "The node id whose win is checked.",
-                "type": "string"
-              },
-              "difficulty": {
-                "description": "That win was at this Trails difficulty.",
-                "type": "string",
-                "enum": [
-                  "story",
-                  "normal",
-                  "hard",
-                  "very_hard"
-                ]
-              },
-              "lord_alive": {
-                "description": "The lords of these players (one player slot or a list) were all alive at that win. Slots 1-8 are the game's player slots (colour slots); slot 1 is you.",
-                "$ref": "#/definitions/players"
-              },
-              "player_alive": {
-                "description": "These players (one player slot or a list) were all still in the game at that win: lord alive and keep standing.",
-                "$ref": "#/definitions/players"
-              }
-            },
-            "required": [
-              "won"
-            ],
-            "additionalProperties": false
+            "description": "The node opens only once a win met a condition: one condition, or a list of conditions of which one must hold.",
+            "oneOf": [
+              { "$ref": "#/definitions/condition" },
+              { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/condition" } }
+            ]
           },
           "reward": {
-            "description": "Given once, at the node's first win (not at a skip with a chicken). Needs a route with side missions.",
+            "description": "Given once, at the node's first win (not at a skip with a chicken).",
             "type": "object",
             "properties": {
               "chickens": {
@@ -190,14 +204,13 @@
                 "maximum": 1000
               }
             },
-            "required": [
-              "chickens"
-            ],
+            "required": ["chickens"],
             "additionalProperties": false
           }
         },
-        "required": [
-          "mission"
+        "oneOf": [
+          { "required": ["file", "position"], "not": { "required": ["mission"] } },
+          { "required": ["mission"], "not": { "anyOf": [{ "required": ["file"] }, { "required": ["position"] }] } }
         ]
       }
     },

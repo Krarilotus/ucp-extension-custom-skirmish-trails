@@ -244,17 +244,13 @@
       }
     },
     "marker": {
-      "description": "Three picture indices from trail_marker_sheet for the mission door; omit to keep the game's flag.",
+      "description": "Door pictures of the mission from trail_marker_sheet, one per state and each optional; a state without a picture shows the game's own marker. A mission off the trail's order (a side mission, a parallel path) needs its available picture.",
       "type": "object",
       "properties": {
-        "locked": { "description": "Picture index (0-129) for a mission that cannot be opened yet. Leave it out to draw nothing until the mission is open.", "type": "integer", "minimum": 0, "maximum": 129 },
-        "available": { "description": "Required picture index (0-129) for a mission that can be opened.", "type": "integer", "minimum": 0, "maximum": 129 },
-        "won": { "description": "Required picture index (0-129) drawn over the locked picture after a win.", "type": "integer", "minimum": 0, "maximum": 129 }
+        "locked": { "description": "Picture index (0-129) while the mission can't be clicked yet. Leave it out to draw nothing until it opens.", "type": "integer", "minimum": 0, "maximum": 129 },
+        "available": { "description": "Picture index (0-129) while the mission can be clicked. Leave it out to show the game's marker of the next mission. With it, the door also stays locked until its date and its map.", "type": "integer", "minimum": 0, "maximum": 129 },
+        "won": { "description": "Picture index (0-129) drawn over the available picture after a win (not after a chicken). Leave it out to show the game's flag.", "type": "integer", "minimum": 0, "maximum": 129 }
       },
-      "required": [
-        "available",
-        "won"
-      ],
       "additionalProperties": false
     },
     "extra": {

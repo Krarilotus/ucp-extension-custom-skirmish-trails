@@ -27,7 +27,7 @@ Trail missions with a custom map name can only start when the game can open that
   - For other maps, the trail remembers the scenario it started until the next trail Start, until the Play a Map list is opened, until a save of another map is loaded or until the game is closed. While it does, Restart and loaded saves of that map count as this mission (also a save of another game on that map); a save that names no map ends it. A save loaded after the game was started again plays without the mission's `keep_start_army` on Restart and without its `unit_limit`, and winning it doesn't count for the trail.
   - **Dates:** a map with a date in an `availability.json` of the files module (files 1.5.0) can be started only from its date on. Until then the briefing shows the trail settings file's `trail_locked_text` (a language file can give its own), in which `{date}` becomes the date. Without that text the mission's own description is shown, and Start does nothing. With an older files module no map has a date.
 
-A plugin can give a mission of a trail's mission data (csv or mission files) another map, for example the map in the language a player chose, from its `init.lua`: `modules["custom-skirmish-trails"]:setMissionMap("Warchest", 5, "Türchen05")` (trail `First`, `Warchest` or `Extreme`, the mission number, the map name). Call it while extensions are enabled; it applies when the trail's missions are loaded, and a mission the data doesn't have is reported in the log.
+A plugin can give a mission of a trail's mission data (csv or mission files) another map, for example the map in the language a player chose, from its `init.lua`: `modules["custom-skirmish-trails"]:setMissionMap("Warchest", 5, "Türchen05")` (trail `First`, `Warchest` or `Extreme`, the mission number or, for a route of mission files, the node id, the map name). Call it while extensions are enabled; it applies when the trail's missions are loaded, and a mission the data doesn't have is reported in the log.
 
 ## Troop limits (`unit_limit`)
 The game limits each player's troops: in Crusader to 2400 / living lords - 40, in Extreme to 9900 / living lords - 40, and not at all in custom scenarios. The optional column `unit_limit` (`"unit_limit"` in a mission file) sets the limit for this mission:
@@ -47,20 +47,21 @@ Each trail can have a trail settings file (a .json file, set in the GUI) with ev
 - `trail_locked_text`: the briefing of a scenario mission whose map isn't open yet (see Scenario missions); `{date}` becomes the date.
 - `starting_year`: the year the first mission starts in.
 - `trail_visuals`: `trail_button_idle` and `trail_button_highlighted` (pictures, for example .png, for the trail's button in the skirmish menu), and `trail_background` (the trail screen's background: a .tgx file, or a .png/.jpg/.bmp that the game turns into a .tgx once and keeps in `ucp/.cache`; use the size of the game's own file), and `trail_marker_sheet` (door pictures, see below).
-- `trail_mission_positions`: a list of `{ "x": .., "y": .. }` points on the 800 x 600 trail screen, one per mission. Their number is the trail's number of missions (at most 50 for the first trail, 30 for the Warchest and the Extreme trail).
+- `trail_mission_positions`: a list of `{ "x": .., "y": .. }` points on the 800 x 600 trail screen, one per mission. Their number is the trail's number of missions (at most 50 for the first trail, 30 for the Warchest and the Extreme trail). A route of mission files (see Trail route) gives the positions and the number of missions instead.
+- `trail_route`: the trail's missions as a graph of nodes, see Trail route.
 - `ai_character_mapping`: your own names for the AI keys (`"SK_RICHARD": "Robert"`). Mission files use them, and the csv file may use them in player1 to player8.
 
 Relative paths in the file are taken from the file's own folder.
 
 ## Mission data: csv file and mission files
-**Write mission files; the csv is generated.** With `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "json_folder" }`, a trail needs only its trail settings file and the mission files `missions/my_trail/my_trail_mission_01.json`, `..._02.json`, ... (numbered without gaps; a route's `mission` is that number). There is no csv to write: the first start writes `missions/my_trail.csv` from the mission files, and every start after a change writes it again. Don't edit the csv; it is only what the game loads.
+**Write mission files; the csv is generated.** With `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "json_folder" }`, a trail needs only its trail settings file and the mission files `missions/my_trail/my_trail_mission_01.json`, `..._02.json`, ... (numbered without gaps; a route's `mission` is that number). A route of mission files names each file itself instead (see Trail route). There is no csv to write: the first start writes `missions/my_trail.csv` from the mission files, and every start after a change writes it again. Don't edit the csv; it is only what the game loads.
 
 `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` names both the csv file (`missions/my_trail.csv`) and a folder of mission files (`missions/my_trail/my_trail_mission_01.json`, ...). A mission file (format 1, `resources/mission.schema.json`) holds the same data as one csv line, laid out for reading and editing:
 - `mission_name` and `text_description` (a list of the 8 lines) at the top;
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; the csv's fairness 1-5) and `start_mode` (`normal`, `crusader`, `deathmatch`; the csv's start_levels 1-3). Numbers work too;
 - `players`: one entry per player, so their number is the mission's number of players. `players[0]` is the human player: it may have `lord` and `skip_start_units`, never `ai`. The others always have `ai`, never `lord`. All have `name`, `start_position`, `team`, `aiv_type` and `gold` as needed, and AI players `color`;
 - `producible`, `recruitable`, `resources`, `tradeable`: the csv's prefixed columns as objects;
-- `marker`: `locked`, `available` and `won`, the csv's `marker_locked`, `marker_available` and `marker_won` (door pictures, see below);
+- `marker`: `locked`, `available` and `won`, the csv's `marker_locked`, `marker_available` and `marker_won` (door pictures, each optional, see below);
 - `extra`: any csv value that has no place above, so that nothing gets lost. A conflicting value in `extra` takes precedence and logs a warning before it can be written to CSV.
 
 `data_mode` says which one is the ground truth. It is applied at every game start:
@@ -84,7 +85,7 @@ The mission data holds one set of texts, the default language. Each further lang
 }
 ```
 
-Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number. A text a language file does not have shows the mission data's text; strict mode lists those. With `trail_missions`, `texts/_template.json` is written with all texts of the mission data, as a starting point for translators.
+Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number, or by their node id when the trail's route names its missions by file (`"door05": { ... }`). A text a language file does not have shows the mission data's text; strict mode lists those. With `trail_missions`, `texts/_template.json` is written with all texts of the mission data, as a starting point for translators.
 
 ## File paths
 Each trail's "File paths" panel lists the files set for it and clears them (the GUI's own reset only works right after a path was set).
@@ -109,81 +110,132 @@ skip every mission on that trail.
 ### Door pictures
 
 `trail_visuals.trail_marker_sheet` names a .gm1 file laid out like the game's
-`skirmish_trail_icons.gm1`: 130 pictures of 100 x 100, the same GM1 type. A mission
-with a `marker` shows its pictures (numbered from 0) in place of the game's flag,
-drawn where the game draws its flag:
+`skirmish_trail_icons.gm1`: 130 pictures of 100 x 100, the same GM1 type. A mission's
+`marker` names its pictures (numbered from 0), one per state, drawn where the game
+draws its flag. Each one is optional:
 
-- `locked`: the mission can't be clicked yet. It is open once the trail has reached
-  it, its date has come (see Scenario missions) and its map is installed. Leave it
-  out to draw nothing while the mission is locked, so the trail background shows.
-- `available`: an open mission; it can be clicked.
+- `locked`: the mission can't be clicked yet. Leave it out to draw nothing while the
+  mission is locked, so the trail background shows.
+- `available`: the mission can be clicked. Leave it out to show the game's own marker
+  of the next mission. A mission with an available picture is also locked until its
+  date has come (see Scenario missions) and its map is installed.
 - `won`: drawn over the available picture once the mission is won (not when a chicken
-  skipped it).
+  skipped it). Leave it out to show the game's own flag of a won mission.
+
+For a state without a picture the game draws its own marker, so a mission without
+`marker` looks as it does without a sheet. The game's markers follow the trail's
+order: every mission before the next one is drawn won (or skipped), the next one
+available. In a trail with a route (below) that is right only for a *chain mission*:
+a main mission without `unlock` that needs only main missions before it, and that
+every main mission before it leads to through `requires`. Every other mission (side
+missions, the missions of parallel paths) is drawn only by its own pictures and needs
+at least an `available` picture to be played.
 
 Pictures are drawn over the trail background: transparent parts of a picture show it.
-
-The game's chicken stays on the selected mission. Missions without a `marker` and
-trails without a sheet keep the game's markers.
+The game's chicken stays on the selected mission.
 
 ```json
 "trail_visuals": { "trail_marker_sheet": "doors.gm1" }
 "marker": { "locked": 0, "available": 1, "won": 2 }
+"marker": { "available": 7 }
 ```
 
-### Side missions (`trail_route`)
+### Trail route (`trail_route`)
 
 `trail_route` in the trail settings file names the trail's missions as nodes, each under an id of
-your own. Without it, or without side missions in it, the trail plays its missions in their order
-as before.
+your own (letters, digits, `_` and `-`). Nodes require other nodes, so a trail can branch into
+parallel paths and join again, and have side missions. Without `trail_route` the trail plays its
+missions in their order as before.
 
 ```json
 "trail_route": {
-  "coast": { "mission": 1 },
-  "castle": { "mission": 3 },
-  "ambush": { "mission": 2, "kind": "side", "requires": ["coast"] },
-  "market": { "mission": 4, "kind": "side", "requires_any": ["castle", "ambush"] }
+  "door01": { "file": "missions/door01.json", "position": { "x": 50, "y": 166 } },
+  "door02": { "file": "missions/door02.json", "position": { "x": 81, "y": 170 }, "requires": ["door01"] },
+  "forest": { "file": "missions/forest.json", "position": { "x": 120, "y": 220 }, "requires": ["door02"] },
+  "river":  { "file": "missions/river.json",  "position": { "x": 140, "y": 120 }, "requires": ["door02"] },
+  "castle": { "file": "missions/castle.json", "position": { "x": 200, "y": 170 },
+              "requires": ["forest", "river"], "end": true },
+  "pigs":   { "file": "missions/pigs.json",   "position": { "x": 90, "y": 260 }, "kind": "side",
+              "unlock": { "won": "door02", "lord_alive": [3, 4, 5] }, "reward": { "chickens": 1 } }
 }
 ```
 
-- `mission`: the mission's number in the mission data (its csv line or mission file).
-- `kind`: `main` (also when it is not set) or `side`.
-- `requires`: for a side mission, the nodes that must all be won; `requires_any`: the nodes of
-  which one must be won. A main mission counts as won once the trail has passed it, also with a
-  chicken. A node may have other fields; they are not used.
-- Main missions, listed or not, are played in their order as before, with the trail's furthest
-  mission, the chickens and `progress_by_difficulty`. They are listed only for side missions to
-  require them, and take no `requires`.
-- Side missions are missions of the trail like the others: they count to its missions (see
-  `trail_mission_positions`) and have a position, mission data and a `marker`. The trail's last
-  mission must be a main mission.
-- A side mission can be played once its `requires` are won and its door is open (date and map),
-  and played again after a win. Winning it returns to the trail map with the next main mission
-  selected; it doesn't move the trail on, and chickens only skip main missions.
-- Side missions need door pictures (`trail_marker_sheet` and a `marker` for each side mission):
-  the game's own markers only show the missions up to the trail's furthest one. Without door
-  pictures, the side missions are played as main missions in their order (reported in the log).
-- Won side missions are kept in `ucp/custom-skirmish-trails-sides-<trail>-<difficulty>.txt`
-  with `progress_by_difficulty`, otherwise in `ucp/custom-skirmish-trails-sides-<trail>.txt`, one
-  node id per line.
-- A route with a mission outside the trail, two nodes on one mission, an id in `requires` that is
-  not a node, `requires` on a main mission or a side mission as the last mission is reported in
-  the log, and the trail plays its missions in their order. So is an `unlock` or `reward` that
-  doesn't have the form below.
+A node has:
 
-#### Unlocks and rewards
+- `file`: its mission file (relative to the trail settings file), and `position`: `{ "x": .., "y": .. }`
+  on the 800 x 600 trail screen. Or, in a route by number, `mission` instead (see below). A route
+  uses either files or numbers for all its nodes.
+- `kind`: `main` (also when it is not set) or `side`. Side missions are extra missions: they don't
+  move the trail on, chickens don't skip them, and they can't be the end.
+- `requires`: the nodes that must all be passed first; `requires_any`: the nodes of which one must
+  be passed. A node is passed once it is won; a main node also when a chicken skipped it.
+- `unlock`: conditions on the result of a win, see below.
+- `reward`: `{ "chickens": n }`, see below.
+- `end`: `true` for the node whose win finishes the trail. Without it, the end is the one main node
+  that no other node requires (a route by number: its last mission). Nothing can require the end.
+- Other fields of a node are not used.
+
+A node can be played once its `requires` and `requires_any` are passed, its `unlock` holds and its
+door is open (date and map), and played again after that. After a win or a chicken, the trail map
+selects the first main mission in the trail's order that can be played.
+
+**The order.** The game keeps a trail as rows in order and ends it when its last row is won. With
+files, Trails gives every node its row: the main nodes in the order their `requires` allow (by id
+where several could go), then the side nodes, and the end last. It writes the csv the game loads
+from the node files in that order, at every start after a change (`trail_missions.base_name` names
+the csv; `data_mode` is not used: the files are the mission data). The route gives the positions;
+`trail_mission_positions` is not used. A mission file holds the mission as in a numbered folder,
+`marker` included.
+
+**The game's furthest mission** is the first main mission in that order that isn't passed. Every
+mission before it is passed or a side mission, so the game's own displays, the chicken count and
+`progress_by_difficulty` keep working. A chicken skips that mission (also when its `requires` or
+`unlock` don't hold yet); it can't skip the end.
+
+**Door pictures** (`trail_marker_sheet`, see above) are needed for a route with side missions or
+parallel paths, and every mission that isn't a chain mission needs its `available` picture. Without
+the sheet such a route plays its missions in their order (reported in the log). A route of only
+chain missions and rewards needs no pictures.
+
+**A route by number.** A node can name its mission by its number in the mission data (`"mission": 5`,
+its csv line or numbered mission file) instead of a file; such a route keeps the trail's mission data,
+positions and language keys. Missions it doesn't name are main missions. A main mission without
+`requires` and `requires_any` follows the main mission before it, so a route that only adds side
+missions reads as before. The end is the trail's last mission, which must be a main mission.
 
 ```json
 "trail_route": {
   "door05": { "mission": 5 },
-  "door15": { "mission": 15 },
-  "pigs": { "mission": 25, "kind": "side", "unlock": { "won": "door05", "lord_alive": [3, 4, 5] },
-            "reward": { "chickens": 1 } },
-  "hard": { "mission": 26, "kind": "side", "unlock": { "won": "door15", "difficulty": "hard" } }
+  "ambush": { "mission": 6, "kind": "side", "requires": ["door05"] },
+  "door06": { "mission": 7 }
 }
 ```
 
-- `unlock` (side missions only): the side mission opens once one win of the node `won` met every
-  other entry of `unlock`, in addition to its `requires`:
+A route with a problem (a mission outside the trail, two nodes on one mission, an id in `requires`
+that is not a node, a circle of `requires`, a side mission or a node that something requires as the
+end, files and numbers mixed, a node of files without file or position, more nodes than the trail
+can have) is reported in the log. A route by number then plays its missions in their order; a route
+of files loads no missions.
+
+Passed nodes are kept in `ucp/custom-skirmish-trails-sides-<trail>-<difficulty>.txt` with
+`progress_by_difficulty`, otherwise in `ucp/custom-skirmish-trails-sides-<trail>.txt`, one node id
+per line. While that file names no main node, every main mission before the game's furthest mission
+counts as passed, so progress from before the trail had its route is kept.
+
+#### Unlocks and rewards
+
+```json
+"pigs": { "file": "missions/pigs.json", "position": { "x": 90, "y": 260 }, "kind": "side",
+          "unlock": { "won": "door05", "lord_alive": [3, 4, 5] }, "reward": { "chickens": 1 } },
+"hard": { "file": "missions/hard.json", "position": { "x": 300, "y": 400 }, "kind": "side",
+          "unlock": [ { "won": "door15", "difficulty": "hard" },
+                      { "won": "door15", "difficulty": "very_hard" } ] }
+```
+
+- `unlock` (any node): one condition, or a list of conditions of which one must hold. A condition is
+  an object in which every key is one test, and all of them must hold at the same win of the node
+  `won`:
+  - `won` (needed): the node whose win is judged;
   - `difficulty`: the win was at this difficulty (`story`, `normal`, `hard`, `very_hard`, as the
     module setting `custom-skirmish-trails.difficulty`);
   - `lord_alive`: the lords of these players were all alive at the win;
@@ -193,9 +245,13 @@ as before.
   colours; in a scenario mission the map's slots); slot 1 is you. Each win counts on its own: two
   wins with a different lord alive each don't make "both alive". A later win doesn't take an
   unlock back.
+
+  Later versions can add tests as new keys, for example the months a win took, the troops left or
+  a date. A key this version doesn't know, or a value it can't read, is reported in the log and
+  makes its condition false, so an older version never opens a door it can't judge.
 - `reward`: `chickens` (1-1000) more chickens on this trail, given at the node's first win and
   shown when the trail map opens. They count on top of the trail's `chickens` (or the game's 3);
-  with `"unlimited"` nothing changes. Rewards are given only by a route with side missions.
+  with `"unlimited"` nothing changes.
 - Every win of a route node is kept in `ucp/custom-skirmish-trails-results-<trail>.txt` (with
   `progress_by_difficulty`: `...-results-<trail>-<difficulty>.txt`), one line per different win:
   `door05 hard lords=1,3,4,5 players=1,3,4,5`, the node, the difficulty and the players whose

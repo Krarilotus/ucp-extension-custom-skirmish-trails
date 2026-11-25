@@ -141,9 +141,9 @@ Where JSON is genuinely better (lists of unknown length, per-player objects, com
 - Export can write a language file "template" with all text keys and the default texts, so a
   translator gets one complete file to fill in and never touches gameplay data.
 
-**Stable keys.** Keying by mission number breaks when a mission is inserted in the middle. Add an
-optional `mission_id` column (any text, e.g. `coast`); when present it is the key instead of the
-number. Trails that never reorder missions do not need it.
+**Stable keys.** Keying by mission number breaks when a mission is inserted in the middle. A trail
+route that names its missions by file (`trail-files.md`, Trail route) keys them by node id instead
+(e.g. `coast`). Trails that never reorder missions do not need it.
 
 **Migration from language CSVs:** for each language CSV, run the 4.5.3 comparison against the
 default CSV. If only text columns differ, write those texts into `texts/<language>.json` and drop

@@ -18,12 +18,12 @@
       "type": "string"
     },
     "missions": {
-      "description": "Translations keyed by mission number as text, starting at \"1\"; omission keeps the original mission text.",
+      "description": "Translations keyed by mission number as text, starting at \"1\", or by node id when the trail's route names its missions by file; omission keeps the original mission text.",
       "type": "object",
       "additionalProperties": false,
       "patternProperties": {
-        "^[1-9][0-9]*$": {
-          "description": "Translations for this mission number; omitted entries keep their original text.",
+        "^[A-Za-z0-9_-]+$": {
+          "description": "Translations for this mission (number or node id); omitted entries keep their original text.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
