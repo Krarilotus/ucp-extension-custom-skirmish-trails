@@ -196,7 +196,8 @@ mission before it is passed or a side mission, so the game's own displays, the c
 
 **Door pictures** (`trail_marker_sheet`, see above) are needed for a route with side missions or
 parallel paths, and every mission that isn't a chain mission needs its `available` picture. Without
-the sheet such a route plays its missions in their order (reported in the log). A route of only
+the sheet, or when the game can't use it, such a route plays its missions in their order (reported in
+the log); its wins and rewards still count. A route of only
 chain missions and rewards needs no pictures.
 
 **A route by number.** A node can name its mission by its number in the mission data (`"mission": 5`,

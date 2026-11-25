@@ -199,8 +199,8 @@ local function hookPlayerNaming()
   end)
 end
 
----The trail_route of a trail settings file, played where door pictures show what the game's own
----markers can't; nil when the trail doesn't need it or it can't be played (logged).
+---The trail_route of a trail settings file; nil when the trail doesn't need it or it can't be
+---played (logged).
 local function installRoute(trail, settings, count, difficulty)
   if settings.route == nil then
     return nil
@@ -210,11 +210,6 @@ local function installRoute(trail, settings, count, difficulty)
     string.format("ucp/custom-skirmish-trails-sides-%s%s.txt", trail.name, suffix),
     string.format("ucp/custom-skirmish-trails-results-%s%s.txt", trail.name, suffix), difficulty)
   if r == nil then
-    return nil
-  end
-  if r.graph and settings.visuals.markerSheet == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s: side missions and parallel paths need door pictures "
-      .. "(trail_marker_sheet); the trail plays its missions in their order", settings.path))
     return nil
   end
   if not progress.installRoute(trail.name, r) then
@@ -472,12 +467,17 @@ return {
           sides = nil
         end
         routes[trail.name] = sides
+        local pictures = false
         if settings.visuals.markerSheet ~= nil then
-          local okMarkers, markersError = pcall(markers.install, trail.name, settings.visuals.markerSheet,
+          local okMarkers, installed = pcall(markers.install, trail.name, settings.visuals.markerSheet,
             missionCounts[trail.name], sides)
           if not okMarkers then
-            log(WARNING, string.format("custom-skirmish-trails: %s door pictures: %s", trail.type, tostring(markersError)))
+            log(WARNING, string.format("custom-skirmish-trails: %s door pictures: %s", trail.type, tostring(installed)))
           end
+          pictures = okMarkers and installed
+        end
+        if not pictures then
+          progress.withoutPictures(trail.name, sides)
         end
         if settings.hasAiMapping then
           interface.setAiAliases(trail.name, settings.aiMapping)

@@ -119,6 +119,32 @@ local function onChicken()
   end
 end
 
+---The furthest row becomes the route's frontier, and a selected row that can't be played the
+---route's suggestion.
+local function follow(state)
+  local r = state.route
+  core.writeInteger(state.furthest, r:frontier())
+  local selected = core.readInteger(state.selected)
+  if selected < 0 or selected >= r.count or not r:isOpen(selected) then
+    core.writeInteger(state.selected, r:suggest())
+  end
+end
+
+---Without door pictures the route `r` of `trail` (nil for none) can't show side missions and
+---parallel paths: a route that has them plays its rows in order from now on.
+function progress.withoutPictures(trail, r)
+  if r == nil or not r.graph then
+    return
+  end
+  log(WARNING, string.format("custom-skirmish-trails: %s: side missions and parallel paths need door pictures "
+    .. "(trail_marker_sheet); the trail plays its missions in their order", trail))
+  r:playLinear()
+  local state = stores[trail]
+  if state ~= nil and state.route == r then
+    follow(state)
+  end
+end
+
 ---Plays `trail` by the route `r` (route.lua): every win and chicken skip passes its node, the
 ---furthest row is the route's frontier and the next playable main mission is selected. Each
 ---node's win is kept with the players alive then, and its reward of chickens is given at its
@@ -145,14 +171,11 @@ function progress.installRoute(trail, r)
     end, chicken, 5)
     chickenHooked = true
   end
-  state.route = r
+  -- the trail's wins and chickens come after afterInit, when the game has loaded its progress
   hooks.registerHookCallback("afterInit", function()
+    state.route = r
     r:seed(core.readInteger(state.furthest))
-    core.writeInteger(state.furthest, r:frontier())
-    local selected = core.readInteger(state.selected)
-    if selected < 0 or selected >= r.count or not r:isOpen(selected) then
-      core.writeInteger(state.selected, r:suggest())
-    end
+    follow(state)
   end)
   return true
 end

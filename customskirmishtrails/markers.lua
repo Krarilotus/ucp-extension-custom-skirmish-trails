@@ -13,6 +13,7 @@
 
 local memory = require("customskirmishtrails.memory")
 local patches = require("customskirmishtrails.patches")
+local progress = require("customskirmishtrails.progress")
 local scenario = require("customskirmishtrails.scenario")
 local winfiles = require("customskirmishtrails.winfiles")
 
@@ -136,6 +137,7 @@ local function onRender(registers)
     door.gm = modules.gmResourceModifier:GetReservedGm(door.token)
     if door.gm < 0 then
       log(WARNING, "custom-skirmish-trails: gmResourceModifier did not load the marker sheet; the game's markers stay")
+      progress.withoutPictures(trailName, door.route)
     end
   end
   if door == nil then
@@ -193,6 +195,7 @@ end
 ---Reserves `sheetPath` (a .gm1 file laid out as skirmish_trail_icons.gm1) for `trailName`, which
 ---has `count` missions, and takes over its markers and clicks. With `r` (route.lua), the missions
 ---off the trail's order are drawn and clicked by their own state. Call while extensions are enabled.
+---True when the doors are taken over.
 function markers.install(trailName, sheetPath, count, r)
   local sites = SITES[trailName]
   local furthest, scores = siteOf(sites.furthest), siteOf(sites.scores)
@@ -279,6 +282,7 @@ function markers.install(trailName, sheetPath, count, r)
     furthest = core.readInteger(furthest + 2), scores = core.readInteger(scores + 3),
   }
   log(INFO, string.format("custom-skirmish-trails: %s door pictures from %s", trailName, sheetPath))
+  return true
 end
 
 return markers
