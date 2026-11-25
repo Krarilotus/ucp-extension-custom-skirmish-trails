@@ -39,11 +39,7 @@ local SYNC_MODE_SKIRMISH = 99
 local MAX_LORDS = 8
 local MAX_LIMIT = 100000 -- above every limit the game computes
 
-local DIFFICULTIES = { story = true, normal = true, hard = true, very_hard = true }
-local DEFAULT_DIFFICULTY = "normal" -- the option's default
-
 local bindings = nil
-local difficulty = DEFAULT_DIFFICULTY
 local registry = nil
 local session = nil
 local isPlayedMission = function() return true end
@@ -292,16 +288,8 @@ local function installEntry(b, s)
   end)
 end
 
----Binds the troop limit. `level` is the difficulty option (story, normal, hard, very_hard); none
----means normal, the option's default.
-function unitlimits.enable(level)
-  difficulty = DEFAULT_DIFFICULTY
-  if type(level) == "string" and DIFFICULTIES[level:lower()] then
-    difficulty = level:lower()
-  elseif level ~= nil then
-    log(WARNING, string.format("custom-skirmish-trails: difficulty '%s' is not story, normal, hard or very_hard; "
-      .. "unit_limit uses normal", tostring(level)))
-  end
+---Binds the troop limit.
+function unitlimits.enable()
   local ok, result = pcall(resolve)
   if ok then
     bindings = result

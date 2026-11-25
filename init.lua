@@ -415,11 +415,6 @@ return {
       extremeTrail = extremeTrailMissions,
     }
 
-    local difficulty = type(config.difficulty) == "string" and config.difficulty:lower() or "normal"
-    if difficulty ~= "story" and difficulty ~= "hard" and difficulty ~= "very_hard" then
-      difficulty = "normal"
-    end
-
     -- trail settings files: mission count and positions, start years, texts, visuals, progress
     local trailSettings = {}
     local routes = {}
@@ -622,7 +617,7 @@ return {
     hookPlayerNaming()
     local _, installed = scenario.enable(function(trailName) return REGISTRY[trailName] end)
     startInstalled = installed
-    unitlimits.enable(config.difficulty)
+    unitlimits.enable()
   end,
   disable = function(self, config) end,
   getTrailProgress = function(self, trail)

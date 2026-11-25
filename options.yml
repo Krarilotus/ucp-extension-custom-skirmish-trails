@@ -196,25 +196,5 @@ options:
   contents:
     type: boolean
     value: false
-- category:
-  - '{{misc}}'
-  name: difficulty
-  hidden: true
-  hasHeader: false
-  header: Difficulty
-  text: The difficulty a plugin chose for the missions' unit_limit and map_name (story, normal, hard, very_hard).
-  display: Choice
-  url: custom-skirmish-trails.difficulty
-  contents:
-    choices:
-    - name: story
-      text: Story
-    - name: normal
-      text: Normal
-    - name: hard
-      text: Hard
-    - name: very_hard
-      text: Very hard
-    value: normal
 meta:
   version: 1.0.0
