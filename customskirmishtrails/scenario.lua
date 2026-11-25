@@ -2,9 +2,10 @@
 -- (map type 0, for example an Invasion map made in the editor or saved from a game). It starts
 -- the way Custom Scenarios -> Play a Map starts a map, so the map's events, goals, invasions,
 -- placed units and AI lords run as they do from Play a Map; an Invasion map opens the game's own
--- briefing. keep_start_army skips Play a Map's starting-army cut for one mission. A win of the
--- scenario the trail started is handed to the game's own trail code on the mission finished
--- screen, which advances the trail and returns to the trail map.
+-- briefing. keep_start_army skips Play a Map's starting-army cut for one mission. The scenario the
+-- trail started ends as the trail's skirmish mission: its end screen shows the skirmish
+-- statistics, and leaving it returns to the trail map through the game's own trail code, which
+-- advances the trail after a win.
 --
 -- The trail's Start records which mission it started (the session): its trail, number and map.
 -- The session holds while that map is played in this run of the game, through Restart and loaded
@@ -40,6 +41,10 @@ local SCANS = {
   -- the Load Game button's read of the save: "push / mov ecx / mov [callback], / call read"; after
   -- it (SAVE_LOADED_OFFSET) the chosen map holds the save's map name
   saveRead = "68 ? ? ? ? B9 ? ? ? ? C7 05 ? ? ? ? ? ? ? ? E8 ? ? ? ? B9 ? ? ? ? 89 2D ? ? ? ? 89 1D ? ? ? ? 89 1D",
+  -- the end screens' Prepare (cdecl, no arguments): the mission finished screen's and the game
+  -- lost screen's
+  wonPrepare = "81 EC 04 01 00 00 A1 ? ? ? ? 33 C4 89 84 24 00 01 00 00 53 FF 15 ? ? ? ? 2B 05 ? ? ? ? 33 DB 83 3D ? ? ? ? 01 A3",
+  lostPrepare = "53 FF 15 ? ? ? ? 2B 05 ? ? ? ? 33 DB 53 6A FF B9 ? ? ? ? A3 ? ? ? ? 89 1D ? ? ? ? 89 1D ? ? ? ? 89 1D ? ? ? ? 88 1D",
 }
 -- with operands
 local EXTRACTS = {
@@ -72,8 +77,17 @@ local RESTART_VIEW = 0x31
 local SAVE_LOADED_OFFSET = 0x19
 local DESCRIPTION_SIZE = 1000 -- the text buffer, with its final 0
 
--- In the mission finished screen ("win" in patches.lua): the branch that picks the follow-up by
--- game mode, and the values the game's trail branch reads.
+-- The end screens' Prepare reads the game mode: the mission finished screen's skips Play a Map's
+-- score file for a skirmish ("cmp [gameMode], 3 / je"), the game lost screen's picks the campaign's
+-- video for mode 0 ("cmp [gameMode], ebx / jne").
+local WON_PREPARE_SIZE = 6  -- sub esp, 0x104
+local LOST_PREPARE_SIZE = 7 -- push ebx / call [import]
+local WON_PREPARE_MODE = { offset = 0x288, bytes = "83 3D ? ? ? ? 03 74" }
+local LOST_PREPARE_MODE = { offset = 0xED, bytes = "39 1D ? ? ? ? 75" }
+-- In the mission finished screen's DoEveryFrame ("win" in patches.lua) a skirmish shows its
+-- statistics until the player leaves them; then the branch that picks the follow-up by game mode
+-- takes the game's trail branch, which credits a win and opens the trail map. The values the trail
+-- branch reads follow.
 local WIN_BRANCH_SITE = { fn = "win", offset = 0xEF, bytes = "A1 ? ? ? ? 3B C7 0F 85" }   -- mov eax, [gameMode]
 local WIN_SYNC_MODE_SITE = { fn = "win", offset = 0xFC, bytes = "A1 ? ? ? ? 83 F8 63 0F 85" } -- mov eax, [syncMode]; cmp eax, 99
 local WIN_WINNERS_SITE = { fn = "win", offset = 0x1B0, bytes = "A1 ? ? ? ? 66 39 2C 45 ? ? ? ?" } -- mov eax, [humanSlot]; cmp word [eax*2 + winners], bp
@@ -216,13 +230,18 @@ local function resolve()
   local syncModeSite = patches.siteAddress(WIN_SYNC_MODE_SITE, "the mission finished screen")
   local winnersSite = patches.siteAddress(WIN_WINNERS_SITE, "the mission finished screen")
   local jeSite = found.armyCut.address + ARMY_CUT_JE_OFFSET
-  if branch == nil or syncModeSite == nil or winnersSite == nil or not patches.matches(jeSite, "0F 84 ? ? ? ?") then
+  local wonMode = found.wonPrepare.address + WON_PREPARE_MODE.offset
+  local lostMode = found.lostPrepare.address + LOST_PREPARE_MODE.offset
+  if branch == nil or syncModeSite == nil or winnersSite == nil or not patches.matches(jeSite, "0F 84 ? ? ? ?")
+      or not patches.matches(wonMode, WON_PREPARE_MODE.bytes) or not patches.matches(lostMode, LOST_PREPARE_MODE.bytes) then
     log(WARNING, "custom-skirmish-trails: unexpected game code; scenario missions are switched off")
     return nil
   end
   local list = found.listPrepare
-  -- the list and the mission finished screen must name the same game mode and human slot
-  if core.readInteger(syncModeSite + 1) ~= list[1] or core.readInteger(winnersSite + 1) ~= list[2] then
+  local gameMode = core.readInteger(branch + 1)
+  -- the list and the end screens must name the same sync mode, human slot and game mode
+  if core.readInteger(syncModeSite + 1) ~= list[1] or core.readInteger(winnersSite + 1) ~= list[2]
+      or core.readInteger(wonMode + 2) ~= gameMode or core.readInteger(lostMode + 2) ~= gameMode then
     log(WARNING, "custom-skirmish-trails: the game's mode and player slot don't match; scenario missions are switched off")
     return nil
   end
@@ -240,8 +259,9 @@ local function resolve()
     currentView = found.restart[1],
     resetGame = core.exposeCode(found.restart.address + RESTART_CALL_END + found.restart[2], 0, 0),
     listReparse = found.listFaded[2],
-    gameMode = core.readInteger(branch + 1),
-    winnersBranch = branch,
+    gameMode = gameMode,
+    wonPrepare = found.wonPrepare.address,
+    lostPrepare = found.lostPrepare.address,
     winners = core.readInteger(winnersSite + 9),
     armyCutJe = jeSite,
     armyCutSkip = jeSite + 6 + core.readInteger(jeSite + 2),
@@ -546,61 +566,77 @@ local function installListStart(b)
   end, b.listFrame, 6)
 end
 
----The trail and mission of a won scenario. A map saved from a skirmish game (sync 99): the trail
----mission the game's trail state names, when it is the scenario played. Otherwise the session's;
----a chosen map name must be the session's map (the Play a Map list empties it when it selects one).
-local function wonMission()
+---The trail and mission of the scenario played, or nil and the check that failed. It is the
+---session's mission while the chosen map name is the session's map. Otherwise a map saved from a
+---skirmish game (sync 99) is the trail mission the game's trail state names, when that mission
+---plays the chosen map.
+local function playedMission()
   local syncMode = core.readInteger(bindings.syncMode)
-  if syncMode == SYNC_MODE_SKIRMISH then
-    local ok, isTrail, _, trailName, mission = pcall(memory.fetchCurrentTrail)
-    local missions = ok and isTrail and trailOf(trailName) or nil
-    local entry = missions and missions[mission] or nil
-    if not scenario.isScenario(entry) or not scenario.isPlayedMission(entry) then
-      return nil
-    end
-    return trailName, mission, syncMode
-  end
-  if syncMode ~= SYNC_MODE_SINGLE_PLAYER then
-    return nil
+  if syncMode ~= SYNC_MODE_SINGLE_PLAYER and syncMode ~= SYNC_MODE_SKIRMISH then
+    return nil, "sync " .. syncMode
   end
   local current = session()
-  if current == nil then
-    return nil
+  if current ~= nil and core.readString(bindings.chosenMap) == current.fileName then
+    return current.trailName, current.index
   end
-  local chosen = core.readString(bindings.chosenMap) or ""
-  if chosen ~= "" and chosen ~= current.fileName then
-    return nil
+  if syncMode ~= SYNC_MODE_SKIRMISH then
+    return nil, current == nil and "session" or "name"
   end
-  return current.trailName, current.index, syncMode
+  local ok, isTrail, _, trailName, mission = pcall(memory.fetchCurrentTrail)
+  local missions = ok and isTrail and trailOf(trailName) or nil
+  local entry = missions and missions[mission] or nil
+  if not scenario.isScenario(entry) or not scenario.isPlayedMission(entry) then
+    return nil, "trail"
+  end
+  return trailName, mission
 end
 
----On the mission finished screen of a scenario (it opens only for a victory): a won trail mission
----takes the game's own trail branch, which credits the trail's selected mission, advances the
----trail and opens the trail map. That branch counts a win only when the human player's winner
----flag is set, which skirmish games set and scenarios don't, so it is set here, and the won
----mission is selected.
-local function installWinHandover(b)
-  core.detourCode(function(registers)
-    if bindings == nil or core.readInteger(b.gameMode) ~= GAME_MODE_SCENARIO then
-      return registers
+local function declined(check)
+  log(INFO, "custom-skirmish-trails: end screen without trail hand-over: " .. check)
+end
+
+---Before an end screen of a trail scenario prepares (`won`: the mission finished screen, else the
+---game lost screen), the game takes it for the trail's skirmish mission: the screen shows the
+---skirmish statistics, and leaving it takes the game's trail branch to the trail map, which
+---credits a win. That branch counts a win only when the human player's winner flag is set, which
+---skirmish games set and scenarios don't.
+local function handOver(b, won)
+  local mode = core.readInteger(b.gameMode)
+  if mode ~= GAME_MODE_SCENARIO then
+    if session() ~= nil then
+      declined("mode " .. mode)
     end
-    local slot = core.readInteger(b.humanSlot)
-    if slot < 1 or slot > MAX_PLAYERS then
-      return registers
-    end
-    local trailName, mission, syncMode = wonMission()
-    if trailName == nil then
-      return registers
-    end
-    log(INFO, string.format("custom-skirmish-trails: %s mission %d won", trailName, mission))
-    if syncMode ~= SYNC_MODE_SKIRMISH then
-      selectTrailMission(trailName, mission)
-      core.writeInteger(b.syncMode, SYNC_MODE_SKIRMISH)
-    end
+    return
+  end
+  local slot = core.readInteger(b.humanSlot)
+  if slot < 1 or slot > MAX_PLAYERS then
+    declined("slot " .. slot)
+    return
+  end
+  local trailName, mission = playedMission()
+  if trailName == nil then
+    declined(mission)
+    return
+  end
+  log(INFO, string.format("custom-skirmish-trails: %s mission %d %s", trailName, mission, won and "won" or "lost"))
+  selectTrailMission(trailName, mission)
+  core.writeInteger(b.syncMode, SYNC_MODE_SKIRMISH)
+  if won then
     core.writeSmallInteger(b.winners + 2 * slot, 1)
-    core.writeInteger(b.gameMode, GAME_MODE_SKIRMISH)
+  end
+  core.writeInteger(b.gameMode, GAME_MODE_SKIRMISH)
+end
+
+---The hand-over runs at the start of both end screens' Prepare, before it reads the game mode.
+local function installEndScreens(b)
+  core.detourCode(function(registers)
+    handOver(b, true)
     return registers
-  end, b.winnersBranch, 5)
+  end, b.wonPrepare, WON_PREPARE_SIZE)
+  core.detourCode(function(registers)
+    handOver(b, false)
+    return registers
+  end, b.lostPrepare, LOST_PREPARE_SIZE)
 end
 
 ---Opening the Play a Map list ends the session, and so does loading a save of another map.
@@ -777,13 +813,14 @@ function scenario.enable(missionsOf)
     { address = result.listPrepare, size = 6 },
     { address = result.saveLoaded, size = 5 },
     { address = result.listFrame, size = 6 },
-    { address = result.winnersBranch, size = 5 },
+    { address = result.wonPrepare, size = WON_PREPARE_SIZE },
+    { address = result.lostPrepare, size = LOST_PREPARE_SIZE },
   }
   local installed, err = pcall(patches.guarded, sites, function()
     installSameMap(result)
     installArmyCutSkip(result)
     installSessionEnd(result)
-    installWinHandover(result)
+    installEndScreens(result)
     installListStart(result)
   end)
   if not installed then
