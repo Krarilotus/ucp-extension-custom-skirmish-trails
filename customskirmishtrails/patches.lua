@@ -137,6 +137,15 @@ local AINAMES_LOOP_OFFSET = 0x10
 -- setup2 builds the players of the mission briefing; this is where it calls the naming loop.
 local BRIEFING_NAMES_CALL = { fn = "setup2", offset = 0xF0, bytes = "E8 ? ? ? ?" }
 
+-- The briefing draws the crusader shield of interface_icons2 (gm 46) for the crusader start mode
+-- only: "cmp [startMode], 2", "jne" past the drawing, ..., "push 604", "push 46", "call picture".
+local START_MODE_CHECK_SITE = { fn = "brief", offset = 0x462, bytes = "39 3D ? ? ? ? 75 29" }
+local START_MODE_SKIP = 8 + 0x29
+local START_MODE_FRAME_SITE = { fn = "brief", offset = 0x482, bytes = "68 5C 02 00 00 6A 2E" }
+-- The skirmish menu's start mode buttons in gm 46, highlighted, as the draw routine counts frames
+-- (from 1): normal (sword), crusader (crossed swords), deathmatch (skull).
+local START_MODE_FRAMES = { 685, 688, 691 }
+
 local NAME_STRIDE = 0xFA
 local SHORT_NAME_STRIDE = 0x5A
 
@@ -551,6 +560,31 @@ function patches.applyLord(entry)
     core.writeInteger(address, state.originalLord)
     state.originalLord = nil
   end
+end
+
+---The briefing shows the start mode button of the mission's start mode, where it showed the
+---crusader shield for the crusader start mode only.
+function patches.showStartModeIcons()
+  local check = siteAddress(START_MODE_CHECK_SITE, "the start mode picture in the briefing")
+  local frame = siteAddress(START_MODE_FRAME_SITE, "the start mode picture in the briefing")
+  if check == nil or frame == nil then
+    return
+  end
+  local startMode = core.readInteger(check + 2)
+  local frames = core.allocate(4 * #START_MODE_FRAMES, true)
+  for index, value in ipairs(START_MODE_FRAMES) do
+    core.writeInteger(frames + 4 * (index - 1), value)
+  end
+  patches.guarded({ { address = check, size = 8 }, { address = frame, size = 5 } }, function()
+    core.insertCode(check, 8, {
+      0x8B, 0x0D, core.itob(startMode),                    -- mov ecx, [startMode]
+      0x49,                                                -- dec ecx
+      0x83, 0xF9, #START_MODE_FRAMES - 1,                  -- cmp ecx, 2
+      0x0F, 0x87, core.relTo(check + START_MODE_SKIP, -4), -- ja past the drawing
+      0x8B, 0x0C, 0x8D, core.itob(frames),                 -- mov ecx, [ecx*4 + frames]
+    })
+    core.writeCode(frame, { 0x51, 0x90, 0x90, 0x90, 0x90 }) -- push ecx
+  end)
 end
 
 ---A routine for game code to call that runs `onCall(registers)` in Lua (5 nops the detour sits

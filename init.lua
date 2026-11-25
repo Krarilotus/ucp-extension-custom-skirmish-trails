@@ -524,7 +524,11 @@ return {
     tradeability.enable()
     producibility.enable()
     startgold.enable()
-    
+    local okIcons, iconsError = pcall(patches.showStartModeIcons)
+    if not okIcons then
+      log(WARNING, "custom-skirmish-trails: start mode pictures: " .. tostring(iconsError))
+    end
+
     detourSwitchToMenu()
     hookPlayerNaming()
     local _, installed = scenario.enable(function(trailName) return REGISTRY[trailName] end)
