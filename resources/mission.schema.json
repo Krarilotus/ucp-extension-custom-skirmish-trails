@@ -6,19 +6,23 @@
   "type": "object",
   "properties": {
     "$schema": {
+      "description": "Optional schema path or URL for editor validation and hover help.",
       "type": "string"
     },
     "format": {
+      "description": "Required mission file format number, currently 1.",
       "const": 1
     },
     "map_name": {
+      "description": "Required map filename for the mission, with or without .map; scenario maps use a bare Latin-1 filename of at most 200 bytes.",
       "type": "string"
     },
     "mission_name": {
+      "description": "Mission title in the briefing, blank if omitted and replaceable by a language file.",
       "type": "string"
     },
     "mission_kind": {
-      "description": "How the mission starts: skirmish (the default) sets up a skirmish on the map; scenario plays a custom scenario map as Custom Scenarios -> Play a Map does, with its own events, goals and players.",
+      "description": "Use skirmish (the default) for a trail battle or scenario to play the map with its own players, goals and events.",
       "type": "string",
       "enum": [
         "skirmish",
@@ -26,15 +30,15 @@
       ]
     },
     "keep_start_army": {
-      "description": "Scenario missions: 1 keeps the player's whole starting army when the trail starts the mission and on its Restart. Without it the game removes part of it, as Play a Map does on maps without invasion events.",
+      "description": "Use 1 to keep the full starting army on scenario start and restart, or 0 or omission to keep the normal scenario rules.",
       "enum": [0, 1]
     },
     "unit_limit": {
-      "description": "The player's troop limit in this mission: 'native', 'formula BASE OFFSET' (BASE / living lords - OFFSET; 'formula 2400 40' gives Crusader's limits in Extreme), 'by_alive 8=250 4=500 2=1000 1=2000' (limit per living lords, interpolated), or per difficulty, e.g. 'story: native; normal: formula 2400 40; hard: formula 2400 40' (story, normal, hard, very_hard, default). Never above the game's skirmish formula for the living lords, also in scenario missions.",
+      "description": "Player troop cap, capped by the game's skirmish limit. Use native (the default), formula BASE OFFSET (BASE divided by living lords minus OFFSET), or by_alive LORDS=LIMIT pairs such as by_alive 8=250 1=2000. For difficulty-specific rules, use entries like 'story: native; hard: formula 2400 40' with story, normal, hard, very_hard or default.",
       "type": "string"
     },
     "text_description": {
-      "description": "The 8 description lines of the briefing.",
+      "description": "Up to eight briefing lines in order, with missing lines left blank.",
       "type": "array",
       "items": {
         "type": "string"
@@ -42,7 +46,7 @@
       "maxItems": 8
     },
     "advantage": {
-      "description": "Who is favoured (csv: fairness 1-5).",
+      "description": "Starting advantage from human_large through human_small, neutral and ai_small to ai_large (1-5 in that order); omission supplies no advantage override.",
       "oneOf": [
         {
           "type": "string",
@@ -62,7 +66,7 @@
       ]
     },
     "start_mode": {
-      "description": "Starting conditions (csv: start_levels 1-3).",
+      "description": "Starting conditions for normal, crusader or deathmatch (1-3 in that order); omission supplies no start mode override.",
       "oneOf": [
         {
           "type": "string",
@@ -80,7 +84,7 @@
       ]
     },
     "players": {
-      "description": "One entry per player; their number is the mission's number of players.",
+      "description": "Required list of one to eight players, with the human first and AI opponents or allies after them.",
       "type": "array",
       "minItems": 1,
       "maxItems": 8,
@@ -90,34 +94,37 @@
           "description": "players[0]: the human player (player 1). Has no \"ai\".",
           "properties": {
             "lord": {
+              "description": "Use Arab or Europ for the player's lord and starting troops, or omit to keep the player's choice.",
               "type": "string",
               "enum": [
                 "Arab",
                 "Europ"
-              ],
-              "description": "The human player's lord (and starting troops) in this mission."
+              ]
             },
             "skip_start_units": {
+              "description": "Use 1 to start with only the lord, or 0 or omission to keep the starting troops.",
               "type": "integer",
               "enum": [
                 0,
                 1
-              ],
-              "description": "1: no starting troops (the lord still comes)."
+              ]
             },
             "name": {
-              "description": "The player's name in this mission; empty keeps the usual name.",
+              "description": "Name shown in the briefing and game, with the usual player or AI name used if omitted or empty.",
               "type": "string"
             },
             "start_position": {
+              "description": "Map starting position number as a non-negative integer, left unset if omitted.",
               "type": "integer",
               "minimum": 0
             },
             "team": {
+              "description": "Team number as a non-negative integer, with matching team numbers grouping players; omit to leave it unset.",
               "type": "integer",
               "minimum": 0
             },
             "aiv_type": {
+              "description": "AI castle layout index as a non-negative integer, left unset if omitted.",
               "type": "integer",
               "minimum": 0
             },
@@ -140,22 +147,25 @@
         "description": "players[1..7]: AI players. Has no \"lord\".",
         "properties": {
           "ai": {
-            "type": "string",
-            "description": "AI key (SK_RAT, ...) or its name from the trail settings file's ai_character_mapping."
+            "description": "Required AI key such as SK_RAT or its alias from ai_character_mapping.",
+            "type": "string"
           },
           "name": {
-            "description": "The player's name in this mission; empty keeps the usual name.",
+            "description": "Name shown in the briefing and game, with the usual player or AI name used if omitted or empty.",
             "type": "string"
           },
           "start_position": {
+            "description": "Map starting position number as a non-negative integer, left unset if omitted.",
             "type": "integer",
             "minimum": 0
           },
           "team": {
+            "description": "Team number as a non-negative integer, with matching team numbers grouping players; omit to leave it unset.",
             "type": "integer",
             "minimum": 0
           },
           "aiv_type": {
+            "description": "AI castle layout index as a non-negative integer, left unset if omitted.",
             "type": "integer",
             "minimum": 0
           },
@@ -165,7 +175,7 @@
             "minimum": 0
           },
           "color": {
-            "description": "The player's skirmish colour, which is its player slot (red, slot 1, is the human player's). Left out: the player's own slot.",
+            "description": "AI player slot as orange, yellow, blue, black, purple, lightblue or green (2-8 in that order); omission uses its own slot or the first free one.",
             "oneOf": [
               {
                 "type": "string",
@@ -194,7 +204,7 @@
       }
     },
     "producible": {
-      "description": "Weapons the player may produce: 1 / 0 (csv: producible_*).",
+      "description": "Weapon production switches keyed by CSV suffix (for example bows), where 1 enables and 0 disables; omitted entries keep the game's rules.",
       "type": "object",
       "additionalProperties": {
         "type": [
@@ -204,7 +214,7 @@
       }
     },
     "recruitable": {
-      "description": "Units the player may recruit: 1 / 0 (csv: recruitable_*).",
+      "description": "Recruitment switches keyed by CSV suffix (for example archers), where 1 enables and 0 disables; omitted entries keep the game's rules.",
       "type": "object",
       "additionalProperties": {
         "type": [
@@ -214,7 +224,7 @@
       }
     },
     "resources": {
-      "description": "Starting goods (csv: resource_*).",
+      "description": "Starting stock keyed by CSV suffix (for example wood), with counts as integers or numeric text; omitted entries keep the game's starting stock.",
       "type": "object",
       "additionalProperties": {
         "type": [
@@ -224,7 +234,7 @@
       }
     },
     "tradeable": {
-      "description": "Goods the market trades: 1 / 0 (csv: tradeable_*).",
+      "description": "Market trading switches keyed by CSV suffix (for example wood), where 1 enables and 0 disables; omitted entries keep the game's rules.",
       "type": "object",
       "additionalProperties": {
         "type": [
@@ -234,12 +244,12 @@
       }
     },
     "marker": {
-      "description": "Door pictures of the trail settings file's trail_marker_sheet, numbered from 0 (csv: marker_locked, marker_available, marker_won).",
+      "description": "Three picture indices from trail_marker_sheet for the mission door; omit to keep the game's flag.",
       "type": "object",
       "properties": {
-        "locked": { "type": "integer", "minimum": 0, "maximum": 129 },
-        "available": { "type": "integer", "minimum": 0, "maximum": 129 },
-        "won": { "type": "integer", "minimum": 0, "maximum": 129 }
+        "locked": { "description": "Required picture index (0-129) for a mission that cannot be opened yet.", "type": "integer", "minimum": 0, "maximum": 129 },
+        "available": { "description": "Required picture index (0-129) for a mission that can be opened.", "type": "integer", "minimum": 0, "maximum": 129 },
+        "won": { "description": "Required picture index (0-129) drawn over the locked picture after a win.", "type": "integer", "minimum": 0, "maximum": 129 }
       },
       "required": [
         "locked",
@@ -249,7 +259,7 @@
       "additionalProperties": false
     },
     "extra": {
-      "description": "Csv columns that have no place above, kept so that nothing is lost.",
+      "description": "Additional CSV columns as text, with conflicting values overriding structured fields; omit if you have none.",
       "type": "object",
       "additionalProperties": {
         "type": "string"
