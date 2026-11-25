@@ -247,12 +247,11 @@
       "description": "Three picture indices from trail_marker_sheet for the mission door; omit to keep the game's flag.",
       "type": "object",
       "properties": {
-        "locked": { "description": "Required picture index (0-129) for a mission that cannot be opened yet.", "type": "integer", "minimum": 0, "maximum": 129 },
+        "locked": { "description": "Picture index (0-129) for a mission that cannot be opened yet. Leave it out to draw nothing until the mission is open.", "type": "integer", "minimum": 0, "maximum": 129 },
         "available": { "description": "Required picture index (0-129) for a mission that can be opened.", "type": "integer", "minimum": 0, "maximum": 129 },
         "won": { "description": "Required picture index (0-129) drawn over the locked picture after a win.", "type": "integer", "minimum": 0, "maximum": 129 }
       },
       "required": [
-        "locked",
         "available",
         "won"
       ],

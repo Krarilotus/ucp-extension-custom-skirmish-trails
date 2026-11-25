@@ -114,10 +114,13 @@ with a `marker` shows its pictures (numbered from 0) in place of the game's flag
 drawn where the game draws its flag:
 
 - `locked`: the mission can't be clicked yet. It is open once the trail has reached
-  it, its date has come (see Scenario missions) and its map is installed.
+  it, its date has come (see Scenario missions) and its map is installed. Leave it
+  out to draw nothing while the mission is locked, so the trail background shows.
 - `available`: an open mission; it can be clicked.
-- `won`: drawn over the closed picture once the mission is won (not when a chicken
+- `won`: drawn over the available picture once the mission is won (not when a chicken
   skipped it).
+
+Pictures are drawn over the trail background: transparent parts of a picture show it.
 
 The game's chicken stays on the selected mission. Missions without a `marker` and
 trails without a sheet keep the game's markers.

@@ -85,8 +85,11 @@ end
 local function picturesOf(trailName, index, entry)
   local pictures = {}
   for number, state in ipairs(STATES) do
-    pictures[number] = math.tointeger(entry["marker_" .. state])
-    if pictures[number] == nil or pictures[number] < 0 or pictures[number] >= markers.PICTURES then
+    local value = entry["marker_" .. state]
+    pictures[number] = math.tointeger(value)
+    -- an empty locked picture draws nothing until the mission is open
+    local empty = state == "locked" and (value == nil or value == "")
+    if not empty and (pictures[number] == nil or pictures[number] < 0 or pictures[number] >= markers.PICTURES) then
       if entry.marker_locked ~= nil or entry.marker_available ~= nil or entry.marker_won ~= nil then
         log(WARNING, string.format("custom-skirmish-trails: %s mission %d: marker_locked, marker_available and "
           .. "marker_won must be pictures 0 to %d of the marker sheet", trailName, index, markers.PICTURES - 1))
@@ -153,7 +156,10 @@ local function onRender(registers)
       local x = core.readInteger(door.positions + slot * 8) + registers.ESI
       local y = core.readInteger(door.positions + slot * 8 + 4) + registers.EDI
       -- the game's draw counts pictures from 1
-      native.draw(native.screen, door.gm, (open and item.pictures[2] or item.pictures[1]) + 1, x, y)
+      local picture = open and item.pictures[2] or item.pictures[1]
+      if picture ~= nil then
+        native.draw(native.screen, door.gm, picture + 1, x, y)
+      end
       if won then
         native.draw(native.screen, door.gm, item.pictures[3] + 1, x, y)
       end
