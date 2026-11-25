@@ -553,6 +553,14 @@ function patches.applyLord(entry)
   end
 end
 
+---A routine for game code to call that runs `onCall(registers)` in Lua (5 nops the detour sits
+---on, ret). At the call, registers.ESP points at the return address into the calling code.
+function patches.luaStub(onCall)
+  local stub = core.allocateCode({ 0x90, 0x90, 0x90, 0x90, 0x90, 0xC3 })
+  core.detourCode(onCall, stub, 5)
+  return stub
+end
+
 ---Calls `onNamed(isTrailBriefing, callerReturn)` every time the game has named its AI players
 ---(for a mission briefing and when a map starts).
 function patches.hookPlayerNaming(onNamed)
@@ -567,9 +575,7 @@ function patches.hookPlayerNaming(onNamed)
   local loop = locate("ainames") + AINAMES_LOOP_OFFSET
   local briefingReturn = briefingCall + 5
 
-  -- a stub the Lua detour sits on: 5 nops, ret
-  local stub = core.allocateCode({ 0x90, 0x90, 0x90, 0x90, 0x90, 0xC3 })
-  core.detourCode(function(registers)
+  local stub = patches.luaStub(function(registers)
     -- stack: [stub return into the cave], saved edi, saved esi, return to the naming loop's caller
     local callerReturn = core.readInteger(registers.ESP + 12)
     local ok, err = pcall(onNamed, callerReturn == briefingReturn, callerReturn)
@@ -577,7 +583,7 @@ function patches.hookPlayerNaming(onNamed)
       log(WARNING, "custom-skirmish-trails: player names: " .. tostring(err))
     end
     return registers
-  end, stub, 5)
+  end)
 
   -- cave: jl loop / call stub / pop edi / pop esi / ret
   local cave = core.allocateCode({ 0x0F, 0x8C, 0, 0, 0, 0, 0xE8, 0, 0, 0, 0, 0x5F, 0x5E, 0xC3 })

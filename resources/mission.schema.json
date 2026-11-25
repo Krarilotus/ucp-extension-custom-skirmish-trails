@@ -122,7 +122,7 @@
               "minimum": 0
             },
             "gold": {
-              "description": "Start gold",
+              "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode.",
               "type": "integer",
               "minimum": 0
             }
@@ -160,7 +160,7 @@
             "minimum": 0
           },
           "gold": {
-            "description": "Start gold",
+            "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode.",
             "type": "integer",
             "minimum": 0
           }

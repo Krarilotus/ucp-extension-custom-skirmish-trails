@@ -52,6 +52,17 @@ local function fetchCurrentTrail()
     return isTrail, trail, trailName, mission
 end
 
+---The mission entry of the trail mission being prepared or played (or nil), and whether the
+---game is in a trail mission.
+local function currentEntry()
+  local ok, isTrail, _, trailName, mission = pcall(fetchCurrentTrail)
+  if not ok or trailName == nil then
+    return nil, false
+  end
+  local missions = REGISTRY[trailName]
+  return missions ~= nil and missions[mission] or nil, isTrail
+end
+
 return {
   STARTING_TROOPS = startingTroopsAddr,
   EURO_RECRUITABLE = euroRecruitableAddr,
@@ -65,6 +76,7 @@ return {
   WARCHEST_TRAIL_PROGRESS = warchestTrailProgressAddr,
   FIRST_EDITION_TRAIL_PROGRESS = firstEditionTrailProgressAddr,
   fetchCurrentTrail = fetchCurrentTrail,
+  currentEntry = currentEntry,
   TRAIL_PROGRESS_ADDRESSES = TRAIL_PROGRESS_ADDRESSES,
   TRAIL_TYPES = TRAIL_TYPES,
   REGISTRY = REGISTRY,

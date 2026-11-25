@@ -9,6 +9,9 @@ Optional csv columns, best placed at the end:
 - `player1_lord`: `Arab` or `Europ` gives the human player the Arabian or the European lord for this mission, and the starting troops of that lord. Empty keeps the player's own choice.
 - `player1_skip_start_units`: `1` gives the human player no starting troops in this mission (the lord still comes). Empty or `0` keeps them.
 
+## Start gold
+`gold_player_1` (the human player) to `gold_player_8` (`gold` of a player in a mission file) set a player's start gold in this mission; `0` is no gold. Empty keeps the game's start gold for the mission's advantage and start mode. The briefing shows the human player's gold and, when an AI player has its own gold, one value per AI player in player order, for example `4000 / 3000 / 4000`.
+
 ## Scenario missions
 Trail missions with a custom map name can only start when the game can open that map. The optional csv column `mission_kind` (`"mission_kind"` in a mission file) says how a mission starts:
 - `skirmish` (or empty): as before, the trail sets up a skirmish on the map with the mission's players, teams, gold and goods.

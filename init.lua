@@ -42,16 +42,7 @@ local MAP_OVERRIDES = {}
 -- per trail: the briefing text of a scenario mission that is not open yet
 local LOCKED_TEXTS = {}
 
----The mission entry of the trail mission being prepared or played (or nil), and whether the
----game is in a trail mission.
-local function currentEntry()
-  local ok, isTrail, _, trailName, mission = pcall(fetchCurrentTrail)
-  if not ok or trailName == nil then
-    return nil, false
-  end
-  local missions = REGISTRY[trailName]
-  return missions ~= nil and missions[mission] or nil, isTrail
-end
+local currentEntry = memory.currentEntry
 
 local function insertPostSkirmishSetupDetour()
   log(2, "insertPostSkirmishSetupDetour: setting up detour")
@@ -178,7 +169,6 @@ local function detourSwitchToMenu()
       end
       
       interface.commitTextDescription(scenario.briefingEntry(entry, LOCKED_TEXTS[trailName]))
-      interface.commitStartGoldDisplay(entry)
       patches.applyLord(entry)
       
     else

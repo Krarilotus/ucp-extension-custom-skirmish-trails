@@ -5,7 +5,6 @@ local producibility = require("customskirmishtrails.producibility")
 local recruitability = require("customskirmishtrails.recruitability")
 local descriptiveTexts = require("customskirmishtrails.descriptive_texts")
 local startgoods = require("customskirmishtrails.start_goods")
-local startgold = require("customskirmishtrails.startgold")
 local patches = require("customskirmishtrails.patches")
 
 -- 
@@ -181,16 +180,10 @@ local function commitTextDescription(entry)
   descriptiveTexts.setTextDescriptions(entry)
 end
 
-local function commitStartGoldDisplay(entry)
-  log(VERBOSE, string.format("commitStartGoldDisplay: %s => %s", entry, entry.gold_player_2))
-  startgold.setStartGoldDisplay(entry)
-end
-
 return {
   commitEntry = commitEntry,
   commitEntryExtra = commitEntryExtra,
   commitTextDescription = commitTextDescription,
-  commitStartGoldDisplay = commitStartGoldDisplay,
   setStartGoods = startgoods.setStartGoods,
   setAiAliases = setAiAliases,
   STRING_ADDRESSES = STRING_ADDRESSES,
