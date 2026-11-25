@@ -146,6 +146,15 @@ local START_MODE_FRAME_SITE = { fn = "brief", offset = 0x482, bytes = "68 5C 02 
 -- (from 1): normal (sword), crusader (crossed swords), deathmatch (skull).
 local START_MODE_FRAMES = { 685, 688, 691 }
 
+-- The briefing lists its lords sorted by team and draws the team separator before a lord whose
+-- team is higher than the last one's. It keeps the lords' teams in the order it lists the lords
+-- ("mov ecx, [esi*4 + teams]", "mov [esp + edi*4 + 0x2C], ecx") but reads them back by player
+-- slot ("mov eax, [esp + esi*4 + 0x28]", "cmp eax, [esp + 0x28]"), so a free slot before a lord
+-- moves the separator. The game mode ("mov eax, [mode]") is 1 in a multiplayer game.
+local BRIEFING_MODE_SITE = { fn = "brief", offset = 0x839, bytes = "A1 ? ? ? ?" }
+local BRIEFING_TEAMS_SITE = { fn = "brief", offset = 0x905, bytes = "8B 0C B5 ? ? ? ? 89 4C BC 2C" }
+local BRIEFING_SEPARATOR_SITE = { fn = "brief", offset = 0x9EC, bytes = "8B 44 B4 28 3B 44 24 28" }
+
 local NAME_STRIDE = 0xFA
 local SHORT_NAME_STRIDE = 0x5A
 
@@ -599,6 +608,26 @@ function patches.showStartModeIcons()
       0x8B, 0x0C, 0x8D, core.itob(frames),                 -- mov ecx, [ecx*4 + frames]
     })
     core.writeCode(frame, { 0x51, 0x90, 0x90, 0x90, 0x90 }) -- push ecx
+  end)
+end
+
+---Outside multiplayer, the briefing's team separator reads each lord's team by player slot.
+function patches.separateBriefingTeams()
+  local mode = siteAddress(BRIEFING_MODE_SITE, "the team separator in the briefing")
+  local teams = siteAddress(BRIEFING_TEAMS_SITE, "the team separator in the briefing")
+  local separator = siteAddress(BRIEFING_SEPARATOR_SITE, "the team separator in the briefing")
+  if mode == nil or teams == nil or separator == nil then
+    return
+  end
+  patches.guarded({ { address = separator, size = 8 } }, function()
+    core.insertCode(separator, 8, {
+      0x8B, 0x44, 0xB4, 0x28,                                -- mov eax, [esp + esi*4 + 0x28]
+      0x83, 0x3D, core.itob(core.readInteger(mode + 1)), 1,  -- cmp dword [mode], 1
+      0x74, core.byteRelTo("compare", -1),                   -- je compare
+      0x8B, 0x04, 0xB5, core.itob(core.readInteger(teams + 3)), -- mov eax, [esi*4 + teams]
+      "compare",
+      0x3B, 0x44, 0x24, 0x28,                                -- cmp eax, [esp + 0x28]
+    })
   end)
 end
 

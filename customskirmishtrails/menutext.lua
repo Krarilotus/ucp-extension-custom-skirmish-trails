@@ -86,7 +86,9 @@ end
 
 local textWidth = nil
 
-local function measure(textManager, text)
+---The width in pixels of `text` (in the game's encoding) in `font`, or nil when the game's text
+---width function is not found.
+function menutext.measure(textManager, text, font)
   if textWidth == nil then
     local computeTextWidth = scan("56 8B 74 24 08 85 F6 75 06 33 C0 5E C2 08 00 8B C6", "the text width function")
     if computeTextWidth == nil then
@@ -96,7 +98,7 @@ local function measure(textManager, text)
   end
   local buffer = core.allocate(#text + 1, true)
   writeCString(buffer, text)
-  local width = textWidth(textManager, buffer, SUMMARY_FONT)
+  local width = textWidth(textManager, buffer, font)
   core.deallocate(buffer)
   return width
 end
@@ -104,7 +106,7 @@ end
 ---Splits `text` (in the game's encoding) at spaces into a first line no wider than the limit
 ---and the rest.
 local function split(textManager, text)
-  local width = measure(textManager, text)
+  local width = menutext.measure(textManager, text, SUMMARY_FONT)
   if width == nil or width <= SUMMARY_MAX_WIDTH then
     return text, ""
   end
@@ -116,13 +118,13 @@ local function split(textManager, text)
   local used = 1
   for index = 2, #words do
     local candidate = first .. " " .. words[index]
-    if measure(textManager, candidate) > SUMMARY_MAX_WIDTH then
+    if menutext.measure(textManager, candidate, SUMMARY_FONT) > SUMMARY_MAX_WIDTH then
       break
     end
     first, used = candidate, index
   end
   local rest = table.concat(words, " ", used + 1)
-  if rest ~= "" and measure(textManager, rest) > SUMMARY_MAX_WIDTH then
+  if rest ~= "" and menutext.measure(textManager, rest, SUMMARY_FONT) > SUMMARY_MAX_WIDTH then
     log(WARNING, "custom-skirmish-trails: a trail summary needs more than two lines of 540 pixels; the second line is cut")
   end
   return first, rest

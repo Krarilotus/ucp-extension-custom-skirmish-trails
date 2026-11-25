@@ -486,8 +486,7 @@ function Route:needsPictures(row)
 end
 
 ---Makes every row a main node that requires the row before it, so the route plays its rows in
----order as the game does: the rows up to the frontier are open. Passed nodes, results and rewards
----stay.
+---order as the game does, by the game's furthest row. Passed nodes, results and rewards stay.
 function Route:playLinear()
   for row = 0, self.count - 1 do
     local node = self.rows[row]
@@ -495,9 +494,6 @@ function Route:playLinear()
     node.requires = row > 0 and { self.rows[row - 1].id } or {}
   end
   self.graph = false
-  self.isOpen = function(r, row)
-    return row <= r:frontier()
-  end
 end
 
 ---A node is passed once it is won, or, for a main node, skipped with a chicken.

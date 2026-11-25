@@ -609,6 +609,10 @@ return {
     if not okIcons then
       log(WARNING, "custom-skirmish-trails: start mode pictures: " .. tostring(iconsError))
     end
+    local okTeams, teamsError = pcall(patches.separateBriefingTeams)
+    if not okTeams then
+      log(WARNING, "custom-skirmish-trails: the briefing's team separator: " .. tostring(teamsError))
+    end
 
     detourSwitchToMenu()
     hookPlayerNaming()

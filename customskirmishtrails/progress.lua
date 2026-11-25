@@ -54,8 +54,9 @@ local function recordWin(state, row)
   end
 end
 
----The win store of `trail`, detoured once: with a route the won row is passed and the furthest row
----becomes the route's frontier, and the furthest row is saved when a path is set.
+---The win store of `trail`, detoured once: with a route the won row is passed and, for a route of
+---side missions or parallel paths, the furthest row becomes its frontier; the furthest row is saved
+---when a path is set.
 local function winStore(trail, purpose)
   if stores[trail] ~= nil then
     return stores[trail]
@@ -75,7 +76,7 @@ local function winStore(trail, purpose)
         -- the end: the game ends the trail without reaching the select store
         recordWin(state, row)
         registers.EAX = r.count
-      else
+      elseif r.graph then
         registers.EAX = r:frontier()
       end
     end
@@ -112,19 +113,29 @@ local function onChicken()
   local state = trail and stores[trail]
   local r = state and state.route
   if r ~= nil then
-    -- the game skipped its furthest row, the frontier, and moved past it
+    -- the game skipped its furthest row and moved past it
     r:pass(core.readInteger(state.furthest) - 1)
-    core.writeInteger(state.furthest, r:frontier())
-    core.writeInteger(state.selected, r:suggest())
+    if r.graph then
+      core.writeInteger(state.furthest, r:frontier())
+      core.writeInteger(state.selected, r:suggest())
+    end
   end
 end
 
----The furthest row becomes the route's frontier, and a selected row that can't be played the
----route's suggestion.
+---For a route of side missions or parallel paths the furthest row becomes its frontier, and a
+---selected row that can't be played its suggestion. Otherwise the game's furthest row leads, and a
+---selected row past it becomes that row.
 local function follow(state)
   local r = state.route
-  core.writeInteger(state.furthest, r:frontier())
   local selected = core.readInteger(state.selected)
+  if not r.graph then
+    local furthest = math.min(core.readInteger(state.furthest), r.count - 1)
+    if selected < 0 or selected > furthest then
+      core.writeInteger(state.selected, furthest)
+    end
+    return
+  end
+  core.writeInteger(state.furthest, r:frontier())
   if selected < 0 or selected >= r.count or not r:isOpen(selected) then
     core.writeInteger(state.selected, r:suggest())
   end
@@ -145,10 +156,10 @@ function progress.withoutPictures(trail, r)
   end
 end
 
----Plays `trail` by the route `r` (route.lua): every win and chicken skip passes its node, the
----furthest row is the route's frontier and the next playable main mission is selected. Each
----node's win is kept with the players alive then, and its reward of chickens is given at its
----first win. False when a game site is not found.
+---Plays `trail` by the route `r` (route.lua): every win and chicken skip passes its node; for a
+---route of side missions or parallel paths the furthest row is the route's frontier and the next
+---playable main mission is selected. Each node's win is kept with the players alive then, and its
+---reward of chickens is given at its first win. False when a game site is not found.
 function progress.installRoute(trail, r)
   local state = winStore(trail, "side missions")
   local selectSite = SELECT_STORES[trail]
@@ -161,7 +172,9 @@ function progress.installRoute(trail, r)
     local won = core.readInteger(state.selected)
     r:pass(won)
     recordWin(state, won)
-    registers[selectSite.register] = r:suggest()
+    if r.graph then
+      registers[selectSite.register] = r:suggest()
+    end
     return registers
   end, select, 6)
   if not chickenHooked then

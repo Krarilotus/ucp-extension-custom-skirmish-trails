@@ -10,7 +10,7 @@ Optional csv columns, best placed at the end:
 - `player1_skip_start_units`: `1` gives the human player no starting troops in this mission (the lord still comes). Empty or `0` keeps them.
 
 ## Start gold
-`gold_player_1` (the human player) to `gold_player_8` (`gold` of a player in a mission file) set a player's start gold in this mission; `0` is no gold. Empty keeps the game's start gold for the mission's advantage and start mode. The briefing shows the human player's gold and, when an AI player has its own gold, one value per AI player in player order, for example `4000 / 3000 / 4000`. As in every game, each player's keep pays the start gold out bit by bit at the start; the gold still to come shows as `Starting goods`.
+`gold_player_1` (the human player) to `gold_player_8` (`gold` of a player in a mission file) set a player's start gold in this mission; `0` is no gold. Empty keeps the game's start gold for the mission's advantage and start mode. The briefing shows the human player's gold and, when an AI player has its own gold, one value per AI player in player order, for example `4000 / 3000 / 4000`, or the lowest and highest (`3000 - 4000`) where those don't fit beside the label. As in every game, each player's keep pays the start gold out bit by bit at the start; the gold still to come shows as `Starting goods`.
 Below the gold, the briefing shows the skirmish menu's button picture of the mission's start mode (normal, crusader or deathmatch).
 
 ## Player colours
@@ -196,8 +196,9 @@ mission before it is passed or a side mission, so the game's own displays, the c
 
 **Door pictures** (`trail_marker_sheet`, see above) are needed for a route with side missions or
 parallel paths, and every mission that isn't a chain mission needs its `available` picture. Without
-the sheet, or when the game can't use it, such a route plays its missions in their order (reported in
-the log); its wins and rewards still count. A route of only
+the sheet, or when the game can't use it, such a route plays its missions in their order as the game
+plays a trail, from the game's furthest mission on, one mission per win or chicken (reported in the
+log); its wins and rewards still count. A route of only
 chain missions and rewards needs no pictures.
 
 **A route by number.** A node can name its mission by its number in the mission data (`"mission": 5`,

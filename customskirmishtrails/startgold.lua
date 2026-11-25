@@ -1,11 +1,12 @@
 -- Start gold per player: the game's own start gold (its skirmish value for the mission's
 -- advantage and start mode), or the mission's gold_player_1 .. gold_player_8 where it has one.
 -- The trail briefing shows the same: the human player's gold and, when the mission gives an AI
--- player its own gold, one value per AI player.
+-- player its own gold, one value per AI player, or the lowest and highest where those don't fit.
 
 local memory = require('customskirmishtrails.memory')
 local patches = require('customskirmishtrails.patches')
 local interface = require('customskirmishtrails.interface')
+local menutext = require('customskirmishtrails.menutext')
 
 local startgold = {}
 
@@ -22,15 +23,19 @@ local AI_TEXT_SIZE = 128
 -- The AI line's coin is drawn 0x46 px right of its number. The text routine right-aligns a text
 -- at x when its fourth argument is negative, so the AI players' gold text ends 8 px before the coin.
 local AI_TEXT_RIGHT = 0x3E
+-- The AI line's label (game text 0xF2, 8) starts 0xF8 px left of its number; both use font 0x11.
+local AI_LABEL_TEXT = { 0xF2, 8 }
+local AI_LABEL_LEFT = -0xF8
+local AI_FONT = 0x11
+local AI_TEXT_GAP = 8
 
 ---The mission's own start gold for a player slot (1 is the human player), or nil.
 local function gold(entry, player)
   return entry ~= nil and math.tointeger(tonumber(entry[string.format("gold_player_%d", player)])) or nil
 end
 
----The AI players' gold as the briefing shows it ("4000 / 3000 / 4000"), or nil when the mission
----gives no AI player its own gold.
-local function aiGoldText(entry, gameValue)
+---The AI players' gold in player order, or nil when the mission gives no AI player its own gold.
+local function aiGold(entry, gameValue)
   if entry == nil then
     return nil
   end
@@ -40,10 +45,24 @@ local function aiGoldText(entry, gameValue)
     if interface.hasAi(entry, player) then
       local value = gold(entry, player)
       own = own or value ~= nil
-      table.insert(values, tostring(value or gameValue))
+      table.insert(values, value or gameValue)
     end
   end
-  return own and table.concat(values, " / ") or nil
+  return own and values or nil
+end
+
+---The AI players' gold as the briefing shows it: every value ("4000 / 3000 / 4000") when that
+---fits between the label and the coin, else the lowest and highest ("3000 - 4000").
+local function aiGoldText(textObject, values)
+  local text = table.concat(values, " / ")
+  local label = menutext.measure(textObject,
+    modules.textResourceModifier:GetText(AI_LABEL_TEXT[1], AI_LABEL_TEXT[2]), AI_FONT)
+  local width = menutext.measure(textObject, text, AI_FONT)
+  if label == nil or width == nil or AI_LABEL_LEFT + label + AI_TEXT_GAP + width <= AI_TEXT_RIGHT then
+    return text
+  end
+  local low, high = math.min(table.unpack(values)), math.max(table.unpack(values))
+  return low == high and tostring(low) or string.format("%d - %d", low, high)
 end
 
 local function showInBriefing()
@@ -61,7 +80,7 @@ local function showInBriefing()
     gameValue[index] = byte & 0xFF
   end
   local aiText = core.allocate(AI_TEXT_SIZE, true)
-  local shownText = nil
+  local shownValues = nil
 
   -- EAX: the game's value; it becomes the mission's own value
   local humanStub = patches.luaStub(function(registers)
@@ -73,12 +92,13 @@ local function showInBriefing()
   end)
   -- EAX: the game's value; EDX becomes the text to draw instead, or 0
   local aiStub = patches.luaStub(function(registers)
-    local text = aiGoldText(memory.currentEntry(), registers.EAX)
-    if text ~= nil and text ~= shownText then
-      core.writeString(aiText, text:sub(1, AI_TEXT_SIZE - 1))
-      shownText = text
+    local values = aiGold(memory.currentEntry(), registers.EAX)
+    local key = values and table.concat(values, " / ")
+    if key ~= nil and key ~= shownValues then
+      core.writeString(aiText, aiGoldText(textObject, values):sub(1, AI_TEXT_SIZE - 1))
+      shownValues = key
     end
-    registers.EDX = text ~= nil and aiText or 0
+    registers.EDX = values ~= nil and aiText or 0
     return registers
   end)
 
