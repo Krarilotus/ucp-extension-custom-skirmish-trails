@@ -202,7 +202,7 @@ local function installRoute(trail, settings, count, difficulty)
   local suffix = settings.progressByDifficulty and ("-" .. difficulty) or ""
   local sides = route.load(settings.path, settings.route, count,
     string.format("ucp/custom-skirmish-trails-sides-%s%s.txt", trail.name, suffix),
-    string.format("ucp/custom-skirmish-trails-results-%s%s.txt", trail.name, suffix))
+    string.format("ucp/custom-skirmish-trails-results-%s%s.txt", trail.name, suffix), difficulty)
   if sides == nil then
     return nil
   end

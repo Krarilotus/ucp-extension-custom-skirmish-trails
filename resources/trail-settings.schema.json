@@ -10,6 +10,12 @@
         { "type": "integer", "minimum": 0, "maximum": 2147483647 },
         { "const": "unlimited" }
       ]
+    },
+    "players": {
+      "oneOf": [
+        { "type": "integer", "minimum": 1, "maximum": 8 },
+        { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1, "maximum": 8 } }
+      ]
     }
   },
   "properties": {
@@ -142,24 +148,30 @@
             "items": { "type": "string" }
           },
           "unlock": {
-            "description": "Side missions: opens only once the node won was won while the named players were alive. One such win is enough.",
+            "description": "Side missions: opens only once one win of the node won met every other entry here.",
             "type": "object",
             "properties": {
               "won": {
                 "description": "The node id whose win is checked.",
                 "type": "string"
               },
+              "difficulty": {
+                "description": "That win was at this Trails difficulty.",
+                "type": "string",
+                "enum": [
+                  "story",
+                  "normal",
+                  "hard",
+                  "very_hard"
+                ]
+              },
               "lord_alive": {
-                "description": "This player's lord was alive at that win. Players 1-8 are the game's player slots (colour slots); player 1 is you.",
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 8
+                "description": "The lords of these players (one player slot or a list) were all alive at that win. Slots 1-8 are the game's player slots (colour slots); slot 1 is you.",
+                "$ref": "#/definitions/players"
               },
               "player_alive": {
-                "description": "This player was still in the game at that win: lord alive and keep standing. Players 1-8 are the game's player slots; player 1 is you.",
-                "type": "integer",
-                "minimum": 1,
-                "maximum": 8
+                "description": "These players (one player slot or a list) were all still in the game at that win: lord alive and keep standing.",
+                "$ref": "#/definitions/players"
               }
             },
             "required": [

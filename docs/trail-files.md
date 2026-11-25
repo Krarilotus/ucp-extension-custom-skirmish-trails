@@ -172,21 +172,29 @@ as before.
 ```json
 "trail_route": {
   "door05": { "mission": 5 },
-  "bonus": { "mission": 6, "kind": "side", "requires": ["door05"],
-             "unlock": { "won": "door05", "lord_alive": 3 }, "reward": { "chickens": 1 } }
+  "door15": { "mission": 15 },
+  "pigs": { "mission": 25, "kind": "side", "unlock": { "won": "door05", "lord_alive": [3, 4, 5] },
+            "reward": { "chickens": 1 } },
+  "hard": { "mission": 26, "kind": "side", "unlock": { "won": "door15", "difficulty": "hard" } }
 }
 ```
 
-- `unlock` (side missions only): the side mission opens only once the node `won` was won while
-  the named players were alive, in addition to its `requires`. `lord_alive`: that player's lord was
-  alive; `player_alive`: that player was still in the game (lord alive and keep standing). Players
-  are numbered 1-8 as the game's player slots (the colour slots, see Player colours); player 1 is
-  you. A condition holds once one win of `won` met it; a later win doesn't take it back.
+- `unlock` (side missions only): the side mission opens once one win of the node `won` met every
+  other entry of `unlock`, in addition to its `requires`:
+  - `difficulty`: the win was at this difficulty (`story`, `normal`, `hard`, `very_hard`, as the
+    module setting `custom-skirmish-trails.difficulty`);
+  - `lord_alive`: the lords of these players were all alive at the win;
+  - `player_alive`: these players were all still in the game (lord alive and keep standing).
+
+  Players are a player slot or a list of them, 1-8 as in the game (the colour slots, see Player
+  colours; in a scenario mission the map's slots); slot 1 is you. Each win counts on its own: two
+  wins with a different lord alive each don't make "both alive". A later win doesn't take an
+  unlock back.
 - `reward`: `chickens` (1-1000) more chickens on this trail, given at the node's first win and
   shown when the trail map opens. They count on top of the trail's `chickens` (or the game's 3);
   with `"unlimited"` nothing changes. Rewards are given only by a route with side missions.
 - Every win of a route node is kept in `ucp/custom-skirmish-trails-results-<trail>.txt` (with
-  `progress_by_difficulty`: `...-results-<trail>-<difficulty>.txt`), one line per node:
-  `door05 lords=1,3 players=1,3`, the players whose lord, and who themselves, were alive at a win
-  of it. A skip with a chicken is not a win. Delete the file to start the trail's unlocks and
-  rewards over.
+  `progress_by_difficulty`: `...-results-<trail>-<difficulty>.txt`), one line per different win:
+  `door05 hard lords=1,3,4,5 players=1,3,4,5`, the node, the difficulty and the players whose
+  lord, and who themselves, were alive at the win. A skip with a chicken is not a win. Delete the
+  file to start the trail's unlocks and rewards over.
