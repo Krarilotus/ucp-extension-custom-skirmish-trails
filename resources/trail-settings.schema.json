@@ -72,10 +72,6 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
       "maxLength": 64
     },
-    "progress_by_difficulty": {
-      "description": "Use true to save trail progress separately by difficulty, or false or omission to share progress.",
-      "type": "boolean"
-    },
     "chickens": {
       "description": "Total skip tokens of the trail, from 0 to 2147483647 or unlimited; omission keeps the game's budget.",
       "$ref": "#/definitions/chickenBudget"

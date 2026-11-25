@@ -243,7 +243,6 @@ function settings.load(path, trailName)
 
   local directory = settings.directoryOf(path)
   local result = { path = path, trail = trailName }
-  result.progressByDifficulty = data.progress_by_difficulty == true
   if type(data.trail_id) == "string" and #data.trail_id <= 64 and data.trail_id:match("^[%w][%w_-]*$") then
     result.id = data.trail_id
   elseif data.trail_id ~= nil then

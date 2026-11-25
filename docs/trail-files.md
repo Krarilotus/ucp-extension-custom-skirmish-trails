@@ -42,7 +42,7 @@ The limit is never higher than the game's skirmish formula for the living lords 
 ## Trail settings file
 Each trail can have a trail settings file (a .json file, set in the GUI) with everything about the trail. `resources/trail-settings.schema.json` describes it, and `resources/trails/template-*-settings.json` hold the game's own values. Every entry is optional:
 - `trail_type`: `First`, `Warchest` or `Extreme`.
-- `trail_id`: names the files that keep the trail's progress (`ucp/custom-skirmish-trails-progress-<trail_id>.txt`), passed missions and results (see Trail route), so its progress stays apart from the game's own and from every other `trail_id`. 1 to 64 letters, digits, `-` or `_`. Without it the progress is the game's own (or, with `progress_by_difficulty`, kept in `ucp/custom-skirmish-trails-progress-<trail>-<difficulty>.txt`), and the other files are named by the trail.
+- `trail_id`: names the files that keep the trail's progress (`ucp/custom-skirmish-trails-progress-<trail_id>.txt`), passed missions and results (see Trail route), so its progress stays apart from the game's own and from every other `trail_id`. 1 to 64 letters, digits, `-` or `_`. Without it the progress is the game's own, and the other files are named by the trail.
 - `trail_missions`: the trail's mission data, see below.
 - `trail_text_files`: the trail's language files, see below.
 - `trail_title`, `trail_summary`: the texts under the trail's button in the skirmish menu. A summary wider than 540 pixels wraps into a second line; both texts then sit 10 pixels higher.
@@ -193,7 +193,7 @@ the csv; `data_mode` is not used: the files are the mission data). The route giv
 
 **The game's furthest mission** is the first main mission in that order that isn't passed. Every
 mission before it is passed or a side mission, so the game's own displays, the chicken count and
-`progress_by_difficulty` keep working. A chicken skips that mission (also when its `requires` or
+the progress file of `trail_id` keep working. A chicken skips that mission (also when its `requires` or
 `unlock` don't hold yet); it can't skip the end.
 
 **Door pictures** (`trail_marker_sheet`, see above) are needed for a route with side missions or
@@ -224,7 +224,7 @@ can have) is reported in the log. A route by number then plays its missions in t
 of files loads no missions.
 
 Passed nodes are kept in `ucp/custom-skirmish-trails-sides-<trail>.txt` (`<trail_id>` in place of
-`<trail>` when it is set, and `-<difficulty>` added with `progress_by_difficulty`), one node id
+`<trail>` when it is set), one node id
 per line. While that file names no main node, every main mission before the game's furthest mission
 counts as passed, so progress from before the trail had its route is kept.
 
