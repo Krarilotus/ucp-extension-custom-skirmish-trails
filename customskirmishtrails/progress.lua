@@ -96,13 +96,14 @@ local function winStore(trail, purpose)
   return state
 end
 
-function progress.install(trail, difficulty, count)
-  local state = winStore(trail, "difficulty-specific trail progress")
+---Keeps the furthest row of `trail` in the file `path` instead of the game's own progress.
+function progress.install(trail, path, count)
+  local state = winStore(trail, "the trail's own progress file")
   if state == nil then
     return
   end
   state.count = count
-  state.path = string.format("ucp/custom-skirmish-trails-progress-%s-%s.txt", trail, difficulty)
+  state.path = path
 
   hooks.registerHookCallback("afterInit", function()
     local value = readProgress(state.path, count)

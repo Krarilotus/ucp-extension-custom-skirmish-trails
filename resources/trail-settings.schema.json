@@ -66,20 +66,31 @@
       "description": "Briefing text shown before a dated scenario opens, with {date} replaced by its opening date; omission keeps the normal briefing unless translated.",
       "type": "string"
     },
+    "trail_id": {
+      "description": "Names the files that keep this trail's progress, passed missions and results (ucp/custom-skirmish-trails-progress-<trail_id>.txt and so on), apart from the game's own progress and every other trail_id. Omission names them by the trail and keeps the game's own progress.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
+      "maxLength": 64
+    },
     "progress_by_difficulty": {
       "description": "Use true to save trail progress separately by difficulty, or false or omission to share progress.",
       "type": "boolean"
     },
     "chickens": {
-      "description": "Total skip tokens per Trails difficulty. Omitted difficulties use the native budget.",
-      "type": "object",
-      "properties": {
-        "story": { "description": "Total skips on Story, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
-        "normal": { "description": "Total skips on Normal, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
-        "hard": { "description": "Total skips on Hard, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
-        "very_hard": { "description": "Total skips on Very Hard, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" }
-      },
-      "additionalProperties": false
+      "description": "Total skip tokens: one budget for every difficulty, or one per Trails difficulty, where omitted difficulties use the native budget.",
+      "oneOf": [
+        { "$ref": "#/definitions/chickenBudget" },
+        {
+          "type": "object",
+          "properties": {
+            "story": { "description": "Total skips on Story, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
+            "normal": { "description": "Total skips on Normal, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
+            "hard": { "description": "Total skips on Hard, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
+            "very_hard": { "description": "Total skips on Very Hard, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" }
+          },
+          "additionalProperties": false
+        }
+      ]
     },
     "starting_year": {
       "description": "The year the trail's first mission starts in. The game uses 1100 for the first trail and 1130 for the Warchest and the Extreme trail.",

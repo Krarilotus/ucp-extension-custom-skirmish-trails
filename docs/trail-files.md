@@ -46,6 +46,7 @@ The limit is never higher than the game's skirmish formula for the living lords 
 ## Trail settings file
 Each trail can have a trail settings file (a .json file, set in the GUI) with everything about the trail. `resources/trail-settings.schema.json` describes it, and `resources/trails/template-*-settings.json` hold the game's own values. Every entry is optional:
 - `trail_type`: `First`, `Warchest` or `Extreme`.
+- `trail_id`: names the files that keep the trail's progress (`ucp/custom-skirmish-trails-progress-<trail_id>.txt`), passed missions and results (see Trail route), so its progress stays apart from the game's own and from every other `trail_id`. 1 to 64 letters, digits, `-` or `_`. Without it the progress is the game's own (or, with `progress_by_difficulty`, kept in `ucp/custom-skirmish-trails-progress-<trail>-<difficulty>.txt`), and the other files are named by the trail.
 - `trail_missions`: the trail's mission data, see below.
 - `trail_text_files`: the trail's language files, see below.
 - `trail_title`, `trail_summary`: the texts under the trail's button in the skirmish menu. A summary wider than 540 pixels wraps into a second line; both texts then sit 10 pixels higher.
@@ -103,12 +104,13 @@ Each trail's "CSV data" panel in the GUI has an Export and an Import button, for
 
 ### Skip tokens by difficulty
 
-Set `chickens` in the trail settings JSON to change its total skip budget. The
-game subtracts spent tokens when it opens the trail screen. An omitted
-difficulty uses the game's default. `"unlimited"` supplies enough tokens to
-skip every mission on that trail.
+Set `chickens` in the trail settings JSON to change its total skip budget: one
+value for every difficulty, or one per difficulty. The game subtracts spent
+tokens when it opens the trail screen. An omitted difficulty uses the game's
+default. `"unlimited"` supplies enough tokens to skip every mission on that trail.
 
 ```json
+"chickens": 6
 "chickens": { "story": "unlimited", "normal": 6, "hard": 3, "very_hard": 0 }
 ```
 
@@ -226,8 +228,8 @@ end, files and numbers mixed, a node of files without file or position, more nod
 can have) is reported in the log. A route by number then plays its missions in their order; a route
 of files loads no missions.
 
-Passed nodes are kept in `ucp/custom-skirmish-trails-sides-<trail>-<difficulty>.txt` with
-`progress_by_difficulty`, otherwise in `ucp/custom-skirmish-trails-sides-<trail>.txt`, one node id
+Passed nodes are kept in `ucp/custom-skirmish-trails-sides-<trail>.txt` (`<trail_id>` in place of
+`<trail>` when it is set, and `-<difficulty>` added with `progress_by_difficulty`), one node id
 per line. While that file names no main node, every main mission before the game's furthest mission
 counts as passed, so progress from before the trail had its route is kept.
 
@@ -261,8 +263,8 @@ counts as passed, so progress from before the trail had its route is kept.
 - `reward`: `chickens` (1-1000) more chickens on this trail, given at the node's first win and
   shown when the trail map opens. They count on top of the trail's `chickens` (or the game's 3);
   with `"unlimited"` nothing changes.
-- Every win of a route node is kept in `ucp/custom-skirmish-trails-results-<trail>.txt` (with
-  `progress_by_difficulty`: `...-results-<trail>-<difficulty>.txt`), one line per different win:
+- Every win of a route node is kept in `ucp/custom-skirmish-trails-results-<trail>.txt` (named as
+  the passed nodes' file), one line per different win:
   `door05 hard lords=1,3,4,5 players=1,3,4,5`, the node, the difficulty and the players whose
   lord, and who themselves, were alive at the win. A skip with a chicken is not a win. Delete the
   file to start the trail's unlocks and rewards over.

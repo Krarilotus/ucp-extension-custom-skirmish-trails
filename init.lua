@@ -217,16 +217,21 @@ local function hookPlayerNaming()
   end)
 end
 
+---The file that keeps the trail's `kind` of state (progress, sides or results): named by the trail
+---settings' trail_id, else by the trail, and with progress_by_difficulty also by the difficulty.
+local function stateFile(kind, trail, settings, difficulty)
+  local suffix = settings.progressByDifficulty and ("-" .. difficulty) or ""
+  return string.format("ucp/custom-skirmish-trails-%s-%s%s.txt", kind, settings.id or trail.name, suffix)
+end
+
 ---The trail_route of a trail settings file; nil when the trail doesn't need it or it can't be
 ---played (logged).
 local function installRoute(trail, settings, count, difficulty)
   if settings.route == nil then
     return nil
   end
-  local suffix = settings.progressByDifficulty and ("-" .. difficulty) or ""
   local r = route.load(settings.routeFiles or route.read(settings.path, settings.route, count), count,
-    string.format("ucp/custom-skirmish-trails-sides-%s%s.txt", trail.name, suffix),
-    string.format("ucp/custom-skirmish-trails-results-%s%s.txt", trail.name, suffix), difficulty)
+    stateFile("sides", trail, settings, difficulty), stateFile("results", trail, settings, difficulty), difficulty)
   if r == nil then
     return nil
   end
@@ -476,8 +481,8 @@ return {
         if not okVisuals then
           log(WARNING, string.format("custom-skirmish-trails: %s trail visuals: %s", trail.type, tostring(visualsError)))
         end
-        if settings.progressByDifficulty then
-          progress.install(trail.name, difficulty, missionCounts[trail.name])
+        if settings.progressByDifficulty or settings.id ~= nil then
+          progress.install(trail.name, stateFile("progress", trail, settings, difficulty), missionCounts[trail.name])
         end
         local okRoute, sides = pcall(installRoute, trail, settings, missionCounts[trail.name], difficulty)
         if not okRoute then

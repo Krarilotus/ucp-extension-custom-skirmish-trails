@@ -42,7 +42,7 @@ io.open = function(name)
 end
 
 local progress = require("customskirmishtrails.progress")
-progress.install(trail, "normal", 3)
+progress.install(trail, path, 3)
 afterInit()
 assert(memoryWrites[300] == 0 and memoryWrites[200] == 0)
 local registers = { EAX = 3 }
@@ -50,7 +50,7 @@ assert(onWin(registers) == registers)
 assert(files[path] == "3\n")
 afterInit()
 assert(memoryWrites[300] == 3 and memoryWrites[200] == 2)
-progress.install(trail, "hard", 3)
+progress.install(trail, "ucp/custom-skirmish-trails-progress-warchestTrail-hard.txt", 3)
 afterInit()
 assert(memoryWrites[300] == 0 and memoryWrites[200] == 0)
 onWin({ EAX = 4 })

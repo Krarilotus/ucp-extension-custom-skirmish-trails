@@ -244,6 +244,11 @@ function settings.load(path, trailName)
   local directory = settings.directoryOf(path)
   local result = { path = path, trail = trailName }
   result.progressByDifficulty = data.progress_by_difficulty == true
+  if type(data.trail_id) == "string" and #data.trail_id <= 64 and data.trail_id:match("^[%w][%w_-]*$") then
+    result.id = data.trail_id
+  elseif data.trail_id ~= nil then
+    warn(path, "trail_id must be 1 to 64 letters, digits, '-' or '_', starting with a letter or digit")
+  end
 
   for key, field in pairs({ trail_title = "title", trail_summary = "summary", trail_locked_text = "lockedText" }) do
     local value = data[key]
@@ -254,19 +259,27 @@ function settings.load(path, trailName)
     end
   end
 
-  if type(data.chickens) == "table" then
+  local function isBudget(value)
+    return value == "unlimited" or (type(value) == "number" and math.tointeger(value) ~= nil
+      and value >= 0 and value <= 2147483647)
+  end
+  if data.chickens ~= nil then
+    local byLevel = type(data.chickens) == "table"
     result.chickens = {}
     for _, level in ipairs({ "story", "normal", "hard", "very_hard" }) do
-      local value = data.chickens[level]
-      if value == "unlimited" or (type(value) == "number" and math.tointeger(value)
-          and value >= 0 and value <= 2147483647) then
+      local value = data.chickens
+      if byLevel then
+        value = data.chickens[level]
+      end
+      if isBudget(value) then
         result.chickens[level] = value
-      elseif value ~= nil then
+      elseif byLevel and value ~= nil then
         warn(path, "chickens.%s must be a non-negative 32-bit integer or 'unlimited'", level)
       end
     end
-  elseif data.chickens ~= nil then
-    warn(path, "chickens must be an object")
+    if not byLevel and not isBudget(data.chickens) then
+      warn(path, "chickens must be a non-negative 32-bit integer, 'unlimited' or an object of them by difficulty")
+    end
   end
 
   if data.starting_year ~= nil then
