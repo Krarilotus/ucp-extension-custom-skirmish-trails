@@ -74,7 +74,7 @@ Relative paths in the file are taken from the file's own folder.
 Before files are changed, the previous csv is kept as `<csv>.bak` and the previous mission files in `<folder>/.bak` (one previous version each). When no file changed since the last start, nothing is read or written. Without a trail settings file, the csv file set in the GUI is used as before.
 
 ## Language files
-The mission data holds one set of texts, the default language. Each further language is one small JSON file with only its texts: `"trail_text_files": "texts/"` points to a folder with `english.json`, `german.json` and so on (or give an object of languages to files). A language file:
+The mission data holds one set of texts, the default language. Each further language is one small JSON file with only its texts: `"trail_text_files": "texts/"` points to a folder with one file per game language as UCP names it: `english.json`, `german.json`, `russian.json` and so on (or give an object of languages to files). A language file:
 
 ```json
 {

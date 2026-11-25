@@ -524,14 +524,7 @@ return {
 
     local startInstalled
     hooks.registerHookCallback("afterInit", function()
-      local language = ""
-      local texts = modules.textResourceModifier
-      if texts ~= nil and texts.GetLanguage ~= nil then
-        local gotLanguage, value = pcall(function() return texts:GetLanguage() end)
-        if gotLanguage and type(value) == "string" then
-          language = value:lower()
-        end
-      end
+      local language = data.version.getGameLanguage() or ""
 
       for _, trail in ipairs(TRAILS) do
         local trailSettingsForTexts = trailSettings[trail.name]
