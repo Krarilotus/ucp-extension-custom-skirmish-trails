@@ -133,13 +133,6 @@ end
 local function onRender(registers)
   local trailName = memory.TRAIL_TYPES[registers.EDX]
   local door = trailName and doors[trailName]
-  if door ~= nil and door.gm == nil then
-    door.gm = modules.gmResourceModifier:GetReservedGm(door.token)
-    if door.gm < 0 then
-      log(WARNING, "custom-skirmish-trails: gmResourceModifier did not load the marker sheet; the game's markers stay")
-      progress.withoutPictures(trailName, door.route)
-    end
-  end
   if door == nil then
     return registers
   end
@@ -276,11 +269,20 @@ function markers.install(trailName, sheetPath, count, r)
     return
   end
   native.detoured = true
-  doors[trailName] = {
-    token = token, count = count, locks = locks, hideWon = tables.hideWon, hideNext = tables.hideNext,
+  local door = {
+    count = count, locks = locks, hideWon = tables.hideWon, hideNext = tables.hideNext,
     positions = positions, route = r, reach = reach or nil,
     furthest = core.readInteger(furthest + 2), scores = core.readInteger(scores + 3),
   }
+  doors[trailName] = door
+  -- the game loads its gm files before afterInit
+  hooks.registerHookCallback("afterInit", function()
+    door.gm = modifier:GetReservedGm(token)
+    if door.gm < 0 then
+      log(WARNING, "custom-skirmish-trails: gmResourceModifier did not load the marker sheet; the game's markers stay")
+      progress.withoutPictures(trailName, r)
+    end
+  end)
   log(INFO, string.format("custom-skirmish-trails: %s door pictures from %s", trailName, sheetPath))
   return true
 end

@@ -67,7 +67,7 @@ local function winStore(trail, purpose)
   end
   local store = site + 3
   local state = { trail = trail, furthest = core.readInteger(store + 1), selected = memory.TRAIL_PROGRESS_ADDRESSES[trail] }
-  core.detourCode(function(registers)
+  local stub = patches.luaStub(function(registers)
     local r = state.route
     if r ~= nil then
       local row = core.readInteger(state.selected)
@@ -88,7 +88,10 @@ local function winStore(trail, purpose)
       end
     end
     return registers
-  end, store, 5)
+  end)
+  -- pushfd / call stub / popfd, then the store: the jge after the store reads the flags of the
+  -- row's compare before it, which a Lua detour doesn't keep
+  core.insertCode(store, 5, { 0x9C, core.callTo(stub), 0x9D }, nil, "after")
   stores[trail] = state
   return state
 end
@@ -152,6 +155,9 @@ function progress.withoutPictures(trail, r)
   r:playLinear()
   local state = stores[trail]
   if state ~= nil and state.route == r then
+    -- the game's rows from before the route's frontier replaced them
+    core.writeInteger(state.furthest, state.gameRows.furthest)
+    core.writeInteger(state.selected, state.gameRows.selected)
     follow(state)
   end
 end
@@ -188,6 +194,7 @@ function progress.installRoute(trail, r)
   hooks.registerHookCallback("afterInit", function()
     state.route = r
     r:seed(core.readInteger(state.furthest))
+    state.gameRows = { furthest = core.readInteger(state.furthest), selected = core.readInteger(state.selected) }
     follow(state)
   end)
   return true
