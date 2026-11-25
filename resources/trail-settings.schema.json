@@ -14,10 +14,11 @@
   },
   "properties": {
     "$schema": {
+      "description": "Optional schema path or URL for editor validation and hover help.",
       "type": "string"
     },
     "trail_type": {
-      "description": "The trail these settings are for. The file is ignored when it is set for another trail in the UCP GUI.",
+      "description": "Use First, Warchest or Extreme to restrict this file to that trail, or omit to use the trail selected in the UCP GUI.",
       "type": "string",
       "enum": [
         "First",
@@ -26,29 +27,29 @@
       ]
     },
     "trail_title": {
-      "description": "The trail's title under its button in the skirmish menu. A language file (trail_text_files) can give its own.",
+      "description": "Title under the trail button, with the game's title used if omitted and a language file able to override it.",
       "type": "string"
     },
     "trail_summary": {
-      "description": "The short description under the title in the skirmish menu. Longer than 540 pixels, it wraps into a second line. A language file (trail_text_files) can give its own.",
+      "description": "Summary under the trail title, wrapping after 540 pixels; omission keeps the game's text and a language file can override it.",
       "type": "string"
     },
     "trail_locked_text": {
-      "description": "Shown in the briefing instead of the mission description while a scenario mission's map is not open yet (a date in the files module's availability.json). {date} becomes the date it opens. A language file (trail_text_files) can give its own.",
+      "description": "Briefing text shown before a dated scenario opens, with {date} replaced by its opening date; omission keeps the normal briefing unless translated.",
       "type": "string"
     },
     "progress_by_difficulty": {
-      "type": "boolean",
-      "description": "Store the furthest mission separately for each launcher difficulty."
+      "description": "Use true to save trail progress separately by difficulty, or false or omission to share progress.",
+      "type": "boolean"
     },
     "chickens": {
       "description": "Total skip tokens per Trails difficulty. Omitted difficulties use the native budget.",
       "type": "object",
       "properties": {
-        "story": { "$ref": "#/definitions/chickenBudget" },
-        "normal": { "$ref": "#/definitions/chickenBudget" },
-        "hard": { "$ref": "#/definitions/chickenBudget" },
-        "very_hard": { "$ref": "#/definitions/chickenBudget" }
+        "story": { "description": "Total skips on Story, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
+        "normal": { "description": "Total skips on Normal, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
+        "hard": { "description": "Total skips on Hard, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" },
+        "very_hard": { "description": "Total skips on Very Hard, from 0 to 2147483647 or unlimited; omission keeps the game's budget.", "$ref": "#/definitions/chickenBudget" }
       },
       "additionalProperties": false
     },
@@ -63,26 +64,26 @@
       "type": "object",
       "properties": {
         "trail_button_idle": {
-          "description": "Picture file (for example .png) for the trail's button in the skirmish menu. Stronghold Crusader has buttons for the first and the Warchest trail (interface_icons2.gm1), Crusader Extreme for the Extreme trail (interface_icons3.gm1).",
+          "description": "Picture path for the trail button at rest, such as a .png; omission keeps the game's button.",
           "type": "string"
         },
         "trail_button_highlighted": {
-          "description": "Picture file for the button while the mouse is over it.",
+          "description": "Picture path for the trail button under the mouse, such as a .png; omission keeps the game's button.",
           "type": "string"
         },
         "trail_background": {
-          "description": "The trail screen's background, in place of skirmish_trail.tgx, skirmish_trail2.tgx or SHCX_Map.tgx: a .tgx file, or a picture (.png, .jpg, .bmp, .gif) that the game turns into a .tgx once (kept in ucp/.cache). Use the size of the game's own file.",
+          "description": "Trail background path at the game's original size (.tgx, .png, .jpg, .bmp or .gif); omission keeps the game's background.",
           "type": "string"
         },
         "trail_marker_sheet": {
-          "description": "Door pictures: a .gm1 file laid out like the game's skirmish_trail_icons.gm1 (130 pictures of 100 x 100, the same GM1 type). A mission with a marker (mission files: marker; csv: marker_locked, marker_available, marker_won) shows its pictures in place of the game's flag, drawn where the game draws it. Locked: not clickable until the trail reaches the mission, its date has come and its map is installed. Won: the won picture over the closed one.",
+          "description": "Path to a .gm1 sheet matching skirmish_trail_icons.gm1 (130 pictures of 100 x 100, same GM1 type); omission keeps the game's flags.",
           "type": "string"
         }
       },
       "additionalProperties": false
     },
     "trail_mission_positions": {
-      "description": "Where each mission's button sits on the trail screen (800 x 600; a click within 10 pixels of the point counts). The number of positions is the number of missions: at most 50 for the first trail and 30 for the Warchest and the Extreme trail. The game reads that many lines from the trail's csv file.",
+      "description": "One button position per mission on the 800 x 600 trail screen (up to 50 for First or 30 for Warchest and Extreme); omission keeps the game's positions.",
       "type": "array",
       "minItems": 1,
       "maxItems": 50,
@@ -90,11 +91,13 @@
         "type": "object",
         "properties": {
           "x": {
+            "description": "Required horizontal button coordinate in pixels (0-800).",
             "type": "integer",
             "minimum": 0,
             "maximum": 800
           },
           "y": {
+            "description": "Required vertical button coordinate in pixels (0-600).",
             "type": "integer",
             "minimum": 0,
             "maximum": 600
@@ -144,15 +147,15 @@
       }
     },
     "trail_missions": {
-      "description": "The trail's mission data: a csv file (<base_name>.csv) and a folder of mission JSON files (<base_name>/<name>_mission_NN.json, see mission.schema.json), kept in step at every game start. The number of missions read is the number of trail_mission_positions (if given).",
+      "description": "Synchronizes a mission JSON folder and its matching CSV at game start; omission leaves mission selection to the UCP GUI.",
       "type": "object",
       "properties": {
         "base_name": {
-          "description": "Path of the csv file without .csv, relative to this file. Also the mission folder.",
+          "description": "Required path to both the mission folder and the CSV, written without the .csv suffix.",
           "type": "string"
         },
         "data_mode": {
-          "description": "Which one is the ground truth. \"csv\": the game loads the csv and writes the mission files from it. \"json_folder\": the mission files are written into the csv, which the game then loads. \"automatic\": per mission, whichever was edited last wins. Before files are changed, the previous csv is kept as <csv>.bak and the previous mission files in <folder>/.bak. Nothing is done when no file changed since the last start.",
+          "description": "Use csv (the default) to export to JSON, json_folder to rebuild the CSV, or automatic to use the newer source for each mission, with CSV winning ties.",
           "type": "string",
           "enum": [
             "csv",
@@ -168,7 +171,7 @@
       "additionalProperties": false
     },
     "trail_text_files": {
-      "description": "Texts per game language: a folder with one <language>.json file per language (english.json, german.json, ...), or an object of languages to files. A language file has \"trail_title\", \"trail_summary\", \"trail_locked_text\" and \"missions\": { \"<mission number>\": { \"mission_name\": ..., \"text_description_line_01\": ..., \"player2_name\": ... } }. Texts it does not have keep the mission data's text. With trail_missions, <folder>/_template.json is written with the texts of the mission data, as a starting point for translators.",
+      "description": "Folder of <language>.json files or an object mapping languages to file paths; omission keeps the original text. See trail-language.schema.json for the file format.",
       "oneOf": [
         {
           "type": "string"
@@ -182,55 +185,71 @@
       ]
     },
     "ai_character_mapping": {
-      "description": "Names for the AI keys of the csv columns player1 to player8. Export CSV Data writes these names into the mission JSON files and Import CSV Data turns them back into the keys. The csv file may use them too. Each name must be unique and must not be another AI's key.",
+      "description": "Unique AI aliases for mission files and CSV, with omitted aliases keeping the original keys and other AI keys reserved.",
       "type": "object",
       "properties": {
         "SK_RAT": {
+          "description": "Text alias for SK_RAT, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_SNAKE": {
+          "description": "Text alias for SK_SNAKE, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_PIG": {
+          "description": "Text alias for SK_PIG, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_WOLF": {
+          "description": "Text alias for SK_WOLF, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_SALADIN": {
+          "description": "Text alias for SK_SALADIN, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_CALIPH": {
+          "description": "Text alias for SK_CALIPH, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_SULTAN": {
+          "description": "Text alias for SK_SULTAN, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_RICHARD": {
+          "description": "Text alias for SK_RICHARD, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_FREDERICK": {
+          "description": "Text alias for SK_FREDERICK, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_PHILLIP": {
+          "description": "Text alias for SK_PHILLIP, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_WAZIR": {
+          "description": "Text alias for SK_WAZIR, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_EMIR": {
+          "description": "Text alias for SK_EMIR, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_NIZAR": {
+          "description": "Text alias for SK_NIZAR, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_SHERIFF": {
+          "description": "Text alias for SK_SHERIFF, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_MARSHAL": {
+          "description": "Text alias for SK_MARSHAL, with the original key used if omitted or empty.",
           "type": "string"
         },
         "SK_ABBOT": {
+          "description": "Text alias for SK_ABBOT, with the original key used if omitted or empty.",
           "type": "string"
         }
       },
