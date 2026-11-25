@@ -429,15 +429,24 @@ local function numberify(name, index, expected, received, value)
   return nvalue
 end
 
+-- a scenario mission plays the map with its own players and ignores these columns
+local function scenarioUnused(name)
+  return name == "fairness" or name == "start_levels" or name:match("^start_position%d$")
+    or name:match("^team%d$") or name:match("^aiv_type%d$")
+end
+
 local function validateInput(input, index)
   index = index or "<NA>"
+  local isScenario = require("customskirmishtrails.scenario").isScenario(input)
 
   for name, value in pairs(input) do
     local t = HEADERS_TYPES[name]
     if name == "" then
       -- an unnamed column, from a trailing comma in the header line
       input[name] = nil
-    elseif t == nil then 
+    elseif isScenario and scenarioUnused(name) and tostring(value):match("^%s*$") then
+      input[name] = nil
+    elseif t == nil then
       fail(name, index, "nil", type(value), value)
     else
       local ty = type(value)
