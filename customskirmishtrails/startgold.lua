@@ -19,6 +19,9 @@ local AI_LABEL_CALL_SITE = { fn = "brief", offset = 0x368, bytes = "E8 ? ? ? ?" 
 local GAME_VALUE_SIZE = 10
 local AI_SITE_SIZE = 21
 local AI_TEXT_SIZE = 128
+-- The AI line's coin is drawn 0x46 px right of its number. The text routine right-aligns a text
+-- at x when its fourth argument is negative, so the AI players' gold text ends 8 px before the coin.
+local AI_TEXT_RIGHT = 0x3E
 
 ---The mission's own start gold for a player slot (1 is the human player), or nil.
 local function gold(entry, player)
@@ -88,6 +91,8 @@ local function showInBriefing()
       0x85, 0xD2,                          -- test edx, edx
       0x74, core.byteRelTo("number", -1),  -- jz number
       0x89, 0x14, 0x24,                    -- mov [esp], edx
+      0x83, 0x44, 0x24, 0x04, AI_TEXT_RIGHT, -- add dword [esp + 4], AI_TEXT_RIGHT (x)
+      0xC7, 0x44, 0x24, 0x0C, core.itob(-1), -- mov dword [esp + 12], -1 (right-aligned)
       0xB9, core.itob(textObject),         -- mov ecx, text
       core.callTo(drawText),
       0xEB, core.byteRelTo("done", -1),    -- jmp done
