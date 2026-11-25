@@ -401,8 +401,9 @@ local function isEmpty(value)
 end
 
 ---A scenario mission's briefing shows the AI lords and teams of its map: player2 .. player8 and
----team1 .. team8 come from the map where the mission leaves them empty, and num_players then
----counts up to the map's last AI lord. The scenario start doesn't use these columns.
+---team1 .. team8 come from the map where the mission leaves them empty or the slot lies past
+---num_players (the game ignores those columns), and num_players then counts up to the map's last
+---AI lord. The scenario start doesn't use these columns.
 function scenario.applyMapLords(entry, fileName)
   if mapLookup == nil or not scenario.availability(entry) then
     return
@@ -416,20 +417,21 @@ function scenario.applyMapLords(entry, fileName)
     return
   end
   local buffer, last = mapReader.buffer, 0
+  local players = math.tointeger(tonumber(entry.num_players)) or 0
   for slot = 1, MAX_PLAYERS do
     local ai = slot > 1 and core.readInteger(buffer + LORDS_AI_OFFSET + 4 * slot) or 0
     local playerColumn, teamColumn = "player" .. slot, "team" .. slot
-    if slot > 1 and isEmpty(entry[playerColumn]) then
+    if slot > 1 and (slot > players or isEmpty(entry[playerColumn])) then
       entry[playerColumn] = ai
       if ai ~= 0 then
         last = slot
       end
     end
-    if isEmpty(entry[teamColumn]) then
+    if slot > players or isEmpty(entry[teamColumn]) then
       entry[teamColumn] = math.max(signedByte(buffer + LORDS_TEAM_OFFSET + slot - 1), 0)
     end
   end
-  if last > (math.tointeger(tonumber(entry.num_players)) or 0) then
+  if last > players then
     entry.num_players = last
   end
 end
