@@ -16,6 +16,9 @@ Below the gold, the briefing shows the skirmish menu's button picture of the mis
 ## Player colours
 A player's skirmish colour is its player slot: red (the human player's), orange, yellow, blue, black, purple, lightblue and green. The optional columns `player2_color` to `player8_color` (`color` of an AI player in a mission file) put that AI player into the slot of a colour name or slot number (2-8). The other AI players keep their slot, or take the first free one when it is taken. Empty keeps the player's own slot. A colour that is red, unknown or already given to another player is reported in the log and not used.
 
+## Map per difficulty (`map_name`)
+A plain `map_name` is the map at every difficulty. Written as in `unit_limit` (see Troop limits), it names a map per difficulty: `Door01; hard: Door01-hard` plays `Door01-hard` at hard and `Door01` otherwise. A difficulty with no entry of its own and no `default` (`hard: Door01-hard` at normal) has no map, as an empty `map_name`. `setMissionMap` takes the same form.
+
 ## Scenario missions
 Trail missions with a custom map name can only start when the game can open that map. The optional csv column `mission_kind` (`"mission_kind"` in a mission file) says how a mission starts:
 - `skirmish` (or empty): as before, the trail sets up a skirmish on the map with the mission's players, teams, gold and goods.

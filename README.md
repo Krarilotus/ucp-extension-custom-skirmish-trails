@@ -10,7 +10,7 @@ This tool is recommended to manipulate the csv files https://edit-csv.net/
 2. Disable producibility of weapons
 3. Start gold per player and mission (gold_player_1 for the human, gold_player_2 .. gold_player_8 for each AI); an empty cell keeps the game's start gold
 4. For each mission, configure which AI starts on which spot on the map
-5. Change the map
+5. Change the map, also per difficulty (`map_name`)
 6. Specify which castle the AI builds
 7. Specify the starting resources
 8. Disable tradeability of certain goods

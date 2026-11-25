@@ -84,33 +84,46 @@ local function parsePolicy(text)
     .. "(each LORDS 1-8 once, LIMIT at most %d)", text, MAX_LIMIT)
 end
 
----Reads a unit_limit cell: one policy for every difficulty, or "story: ...; hard: ..." with an
----optional "default: ...". Returns a table (difficulty -> policy) or nil and a reason.
-function unitlimits.parse(text)
+---Reads a per-difficulty cell (unit_limit, map_name): one value for every difficulty, or
+---"story: ...; hard: ..." with an optional "default: ...". `read(text)` reads one value, or gives
+---nil and a reason. Returns a table (difficulty -> value) or nil and a reason.
+function unitlimits.byDifficulty(text, read)
   if text == nil or text == "" then
     return {}
   end
   if type(text) ~= "string" then
-    return nil, "unit_limit must be a text"
+    return nil, "must be a text"
   end
   local result = {}
   if not text:find(":") then
-    local policy, reason = parsePolicy(text)
-    if policy == nil then return nil, reason end
-    result.default = policy
+    local value, reason = read(text)
+    if value == nil then return nil, reason end
+    result.default = value
     return result
   end
   for part in text:gmatch("[^;]+") do
-    local key, value = part:match("^%s*([%w_]+)%s*:%s*(.-)%s*$")
+    local key, cell = part:match("^%s*([%w_]+)%s*:%s*(.-)%s*$")
     key = key and key:lower() or nil
     if key == nil or (key ~= "default" and not DIFFICULTIES[key]) then
-      return nil, string.format("'%s' is not 'difficulty: policy' (story, normal, hard, very_hard, default)", part)
+      return nil, string.format("'%s' is not 'difficulty: value' (story, normal, hard, very_hard, default)", part)
     end
-    local policy, reason = parsePolicy(value)
-    if policy == nil then return nil, reason end
-    result[key] = policy
+    local value, reason = read(cell)
+    if value == nil then return nil, reason end
+    result[key] = value
   end
   return result
+end
+
+---The value of a byDifficulty table at the difficulty that is set: its own entry, else default,
+---else nil.
+function unitlimits.atDifficulty(values)
+  return values[difficulty] or values.default
+end
+
+---Reads a unit_limit cell (see byDifficulty). Returns a table (difficulty -> policy) or nil and a
+---reason.
+function unitlimits.parse(text)
+  return unitlimits.byDifficulty(text, parsePolicy)
 end
 
 ---A policy's limit for `lords` living lords. by_alive interpolates linearly between the listed
@@ -355,7 +368,7 @@ function unitlimits.apply(trails, scenarioSession, playedMission)
         log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unit_limit %s", trailName, index, reason))
         policies = {}
       end
-      local policy = policies[difficulty] or policies.default
+      local policy = unitlimits.atDifficulty(policies)
       entry.unit_limit_policy = (policy ~= nil and policy.kind ~= "native") and policy or nil
       any = any or entry.unit_limit_policy ~= nil
     end

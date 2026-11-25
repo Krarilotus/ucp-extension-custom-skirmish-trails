@@ -202,7 +202,7 @@ options:
   hidden: true
   hasHeader: false
   header: Difficulty
-  text: The difficulty a plugin chose for the missions' unit_limit (story, normal, hard, very_hard).
+  text: The difficulty a plugin chose for the missions' unit_limit and map_name (story, normal, hard, very_hard).
   display: Choice
   url: custom-skirmish-trails.difficulty
   contents:

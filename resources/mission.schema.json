@@ -14,7 +14,7 @@
       "const": 1
     },
     "map_name": {
-      "description": "Required map filename for the mission, with or without .map; scenario maps use a bare Latin-1 filename of at most 200 bytes.",
+      "description": "Required map filename for the mission, with or without .map; scenario maps use a bare Latin-1 filename of at most 200 bytes. For a map per difficulty, use entries like 'Door01; hard: Door01-hard' as in unit_limit.",
       "type": "string"
     },
     "mission_name": {
