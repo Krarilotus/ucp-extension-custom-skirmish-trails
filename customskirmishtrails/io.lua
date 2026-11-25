@@ -145,6 +145,7 @@ local HEADERS_EXTRA = {
   "mission_kind",
   "keep_start_army",
   "unit_limit",
+  "scenario_briefing",
 }
 
 ---@alias binary 0|1
@@ -284,6 +285,7 @@ local HEADERS_TYPES = {
   ["mission_kind"] = "string",
   ["keep_start_army"] = "binary",
   ["unit_limit"] = "string",
+  ["scenario_briefing"] = "string",
   ["marker_locked"] = "integer",
   ["marker_available"] = "integer",
   ["marker_won"] = "integer",

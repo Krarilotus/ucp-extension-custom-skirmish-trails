@@ -37,6 +37,10 @@
       "description": "Player troop cap, capped by the game's skirmish limit. Use native (the default), formula BASE OFFSET (BASE divided by living lords minus OFFSET), or by_alive LORDS=LIMIT pairs such as by_alive 8=250 1=2000. For difficulty-specific rules, use entries like 'story: native; hard: formula 2400 40' with story, normal, hard, very_hard or default.",
       "type": "string"
     },
+    "scenario_briefing": {
+      "description": "Scenario missions only: the game's briefing text for this mission, shown instead of the map's own description, at most 999 bytes. A language file can give its own; omit to keep the map's text.",
+      "type": "string"
+    },
     "text_description": {
       "description": "Up to eight briefing lines in order, with missing lines left blank.",
       "type": "array",

@@ -19,6 +19,7 @@
 local patches = require("customskirmishtrails.patches")
 local memory = require("customskirmishtrails.memory")
 local unitlimits = require("customskirmishtrails.unitlimits")
+local description = require("customskirmishtrails.description")
 
 local scenario = {}
 
@@ -57,6 +58,11 @@ local EXTRACTS = {
   -- Restart of a Play a Map game: "mov [currentMenuView], 0x31 / call ResetSomeValues (cdecl, no
   -- arguments)", then the launcher with 1
   restart = "C7 05 I(? ? ? ?) 31 00 00 00 E8 I(? ? ? ?) 0F B7 05",
+  -- FilePackager::readMapOrSavFile reads the map's description: "read(file, flag, 4)", "read(file,
+  -- index, 4)", then it decodes the text into the text buffer. The game's briefings show the
+  -- buffer while the flag is 0, and the index's text otherwise.
+  description = "6A 04 68 I(? ? ? ?) 57 E8 ? ? ? ? 6A 04 68 ? ? ? ? 57 E8 ? ? ? ? 8B 44 24 28 8B 4C 24 2C"
+    .. " 83 C0 F8 50 51 57 E8 ? ? ? ? 8B 54 24 38 83 C4 24 68 I(? ? ? ?) 52 B9",
 }
 
 local ARMY_CUT_JE_OFFSET = 0x0F
@@ -64,6 +70,7 @@ local RESTART_CALL_END = 15 -- the end of the restart AOB's call, from which its
 local TRAIL_BRIEFING_VIEW = 0x38 -- the trail's mission briefing (CrusadeMissionIntro)
 local RESTART_VIEW = 0x31
 local SAVE_LOADED_OFFSET = 0x19
+local DESCRIPTION_SIZE = 1000 -- the text buffer, with its final 0
 
 -- In the mission finished screen ("win" in patches.lua): the branch that picks the follow-up by
 -- game mode, and the values the game's trail branch reads.
@@ -238,6 +245,8 @@ local function resolve()
     winners = core.readInteger(winnersSite + 9),
     armyCutJe = jeSite,
     armyCutSkip = jeSite + 6 + core.readInteger(jeSite + 2),
+    descriptionFlag = found.description[1],
+    descriptionText = found.description[2],
   }
 end
 
@@ -473,6 +482,12 @@ local function launch(b, mission, how)
   writeName(b.chosenMap, mission.fileName)
   core.writeInteger(b.difficulty, DIFFICULTY_NORMAL)
   b.launcher(how)
+  -- scenario_briefing: the mission's own briefing text instead of the map's description
+  local briefing = mission.entry.scenario_briefing
+  if type(briefing) == "string" and briefing ~= "" then
+    core.writeInteger(b.descriptionFlag, 0)
+    description.writeGameText(b.descriptionText, DESCRIPTION_SIZE, briefing)
+  end
   if core.readInteger(b.syncMode) == SYNC_MODE_SKIRMISH then
     selectTrailMission(mission.trailName, mission.index)
   end

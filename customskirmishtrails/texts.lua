@@ -26,6 +26,7 @@ texts.COLUMNS = {
   "text_description_line_07", "text_description_line_08",
   "player1_name", "player2_name", "player3_name", "player4_name",
   "player5_name", "player6_name", "player7_name", "player8_name",
+  "scenario_briefing",
 }
 local IS_TEXT = {}
 for _, column in ipairs(texts.COLUMNS) do
