@@ -290,7 +290,7 @@ counts as passed, so progress from before the trail had its route is kept.
 - `reward`: `chickens` (1-1000) more chickens on this trail, given at the node's first win and
   shown when the trail map opens. They count on top of the trail's `chickens` (or the game's 3);
   with `"unlimited"` nothing changes.
-- Every win of a route node is kept in `results-<trail_id>.txt` in the user data folder (named as
+- Every win of a route node, a replay too, is kept in `results-<trail_id>.txt` in the user data folder (named as
   the passed nodes' file), one line per different win:
   `door05 lords=1,3,4,5 players=1,3,4,5`, the node and the players whose lord, and who
   themselves, were alive at the win. Other words after the node, such as a difficulty, are

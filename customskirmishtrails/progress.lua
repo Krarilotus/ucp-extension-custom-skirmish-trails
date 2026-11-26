@@ -18,6 +18,13 @@ local SELECT_STORES = {
   warchestTrail = { fn = "win", offset = 0x312, bytes = "89 3D ? ? ? ? 66 85 C9", register = "EDI" },
   extremeTrail = { fn = "win", offset = 0x2A1, bytes = "89 15 ? ? ? ? 66 85 C9", register = "EDX" },
 }
+-- Every win of a trail mission, a replay and the end included, reaches "cmp row, [furthest]" before
+-- the game branches on them.
+local WIN_COMPARES = {
+  firstEditionTrail = { fn = "win", offset = 0x34E, bytes = "3B 0D ? ? ? ? 7C 11" },
+  warchestTrail = { fn = "win", offset = 0x2EC, bytes = "3B 3D ? ? ? ? 7C 11" },
+  extremeTrail = { fn = "win", offset = 0x27B, bytes = "3B 15 ? ? ? ? 7C 11" },
+}
 -- A chicken has advanced the selected and the furthest row of every trail when the click handler
 -- reaches "mov ecx, trails / call" (the trail's number is pushed).
 local CHICKEN_SITE = { fn = "click", offset = 0x71, bytes = "B9 ? ? ? ? E8 ? ? ? ? 29 2D" }
@@ -68,7 +75,6 @@ local function winStore(trail, purpose)
       r:pass(row)
       if row == r.count - 1 then
         -- the end: the game ends the trail without reaching the select store
-        recordWin(state, row)
         registers.EAX = r.count
       elseif r.graph then
         registers.EAX = r:frontier()
@@ -165,14 +171,20 @@ function progress.installRoute(trail, r)
   local state = winStore(trail, "side missions")
   local selectSite = SELECT_STORES[trail]
   local select = state and patches.siteAddress(selectSite, "side missions")
+  local compare = state and patches.siteAddress(WIN_COMPARES[trail], "trail results")
   local chicken = chickenHooked or patches.siteAddress(CHICKEN_SITE, "side missions")
-  if select == nil or not chicken or core.readInteger(select + 2) ~= state.selected then
+  if select == nil or compare == nil or not chicken or core.readInteger(select + 2) ~= state.selected then
     return false
   end
+  local won = patches.luaStub(function(registers)
+    local row = core.readInteger(state.selected)
+    r:pass(row)
+    recordWin(state, row)
+    return registers
+  end)
+  -- the call runs before the compare, so the branch after it reads the compare's flags
+  core.insertCode(compare, 6, { core.callTo(won) }, nil, "after")
   core.detourCode(function(registers)
-    local won = core.readInteger(state.selected)
-    r:pass(won)
-    recordWin(state, won)
     if r.graph then
       registers[selectSite.register] = r:suggest()
     end
