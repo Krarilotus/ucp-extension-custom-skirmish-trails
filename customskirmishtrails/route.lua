@@ -534,6 +534,7 @@ function route.load(parsed, count, passedPath, resultsPath)
   end
   parsed.path, parsed.passed = passedPath, {}
   parsed.resultsPath, parsed.results, parsed.lines = resultsPath, {}, {}
+  parsed.version = 0 -- counts the changes of passed nodes, results and rows
   return setmetatable(parsed, Route)
 end
 
@@ -543,6 +544,7 @@ function Route:readFiles()
   for _, line in ipairs(readLines(self.resultsPath)) do
     addResult(self, line)
   end
+  self.version = self.version + 1
 end
 
 ---False when the game's own markers and its furthest row describe the node at `row` right (a
@@ -560,6 +562,7 @@ function Route:playLinear()
     node.requires = row > 0 and { self.rows[row - 1].id } or {}
   end
   self.graph = false
+  self.version = self.version + 1
 end
 
 ---A node is passed once it is won, or, for a main node, skipped with a chicken.
@@ -596,6 +599,7 @@ function Route:pass(row)
     return
   end
   self.passed[id] = true
+  self.version = self.version + 1
   local ids = {}
   for passed in pairs(self.passed) do
     table.insert(ids, passed)
@@ -653,6 +657,7 @@ function Route:recordResult(row, facts)
   end
   local first = self.results[node.id] == nil
   if addResult(self, resultLine(node.id, facts or { lords = {}, players = {} })) then
+    self.version = self.version + 1
     local lines = {}
     for line in pairs(self.lines) do
       table.insert(lines, line)

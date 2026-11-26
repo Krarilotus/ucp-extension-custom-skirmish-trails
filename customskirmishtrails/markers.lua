@@ -73,7 +73,8 @@ local FLAG_ROW_MODRM = { 0xBD, 0xBD, 0xBE, 0xBE }
 local FLAG_TABLES = { "hideWon", "hideWon", "hideNext", "hideNext" }
 
 local native = nil -- { render, sheet, screen, draw, detoured } once found
--- trailName -> { token, gm, count, pictures, locks, hideWon, hideNext, positions, furthest, scores, day, list }
+-- trailName -> { gm, count, pictures, locks, hideWon, hideNext, positions, furthest, scores, route, reach, list,
+--   nextDay, seen, skips, version }
 local doors = {}
 
 local function siteOf(site)
@@ -121,13 +122,11 @@ local function sheetPictures(path)
   return header ~= nil and #header == 16 and string.unpack("<I4", header, 13) or nil
 end
 
----Which doors have pictures and which are open (date and map), again when the day changes.
-local function refresh(trailName, door)
-  local day = os.date("%Y-%m-%d")
-  if door.day == day then
-    return
-  end
-  door.day, door.list = day, {}
+---Which doors have pictures and which are open (date and map); again at the next midnight.
+local function refresh(trailName, door, now)
+  local midnight = os.date("*t", now)
+  midnight.hour, midnight.min, midnight.sec = 24, 0, 0
+  door.nextDay, door.list = os.time(midnight), {}
   local missions = memory.REGISTRY[trailName] or {}
   for index = 1, door.count do
     local entry = missions[index]
@@ -141,24 +140,8 @@ local function refresh(trailName, door)
   end
 end
 
-local function onRender(registers)
-  local trailName = memory.TRAIL_TYPES[registers.EDX]
-  local door = trailName and doors[trailName]
-  if door == nil then
-    return registers
-  end
-  if door.gm < 0 then
-    for slot = 0, door.count - 1 do
-      core.writeByte(door.hideWon + slot, 0)
-      core.writeByte(door.hideNext + slot, 0)
-    end
-    if door.reach ~= nil then
-      core.writeInteger(door.reach, core.readInteger(door.furthest))
-    end
-    return registers
-  end
-  refresh(trailName, door)
-  local furthest = core.readInteger(door.furthest)
+---Works out which doors are open and won, and writes the game's click and marker tables for them.
+local function update(door, furthest, skips)
   local r, reach = door.route, furthest
   for index = 1, door.count do
     local slot, item = index - 1, door.list[index]
@@ -167,32 +150,74 @@ local function onRender(registers)
     -- for the route's chain missions
     local gameDraws = r == nil or not r:needsPictures(slot)
     local open = slot <= furthest
-    local skipped = core.readInteger(door.scores + slot * 4) == SKIPPED
+    local skipped = skips & (1 << slot) ~= 0
     local won = slot < furthest and not skipped
     if not gameDraws then
       open, won = pictures[2] ~= nil and r:isOpen(slot), r:isPassed(slot) and not skipped
     end
-    open = open and item.open
-    core.writeByte(door.locks + slot, open and 0 or 1)
+    item.isOpen, item.won = open and item.open, won
+    core.writeByte(door.locks + slot, item.isOpen and 0 or 1)
     core.writeByte(door.hideWon + slot, (not gameDraws or pictures[3] ~= nil) and 1 or 0)
     core.writeByte(door.hideNext + slot, (not gameDraws or pictures[2] ~= nil) and 1 or 0)
-    if open and slot > reach then
+    if item.isOpen and slot > reach then
       reach = slot
-    end
-    -- a door is centred where the click test takes the mission
-    local x = core.readInteger(door.positions + slot * 8) + registers.ECX - HALF_PICTURE
-    local y = core.readInteger(door.positions + slot * 8 + 4) + registers.EAX - HALF_PICTURE
-    -- the game's draw counts pictures from 1
-    local picture = open and pictures[2] or not open and pictures[1]
-    if picture then
-      native.draw(native.screen, door.gm, picture + 1, x, y)
-    end
-    if won and pictures[3] ~= nil then
-      native.draw(native.screen, door.gm, pictures[3] + 1, x, y)
     end
   end
   if door.reach ~= nil then
     core.writeInteger(door.reach, reach)
+  end
+end
+
+local function onRender(registers)
+  local trailName = memory.TRAIL_TYPES[registers.EDX]
+  local door = trailName and doors[trailName]
+  if door == nil then
+    return registers
+  end
+  local furthest = core.readInteger(door.furthest)
+  if door.gm < 0 then
+    if door.seen ~= furthest then
+      door.seen = furthest
+      for slot = 0, door.count - 1 do
+        core.writeByte(door.hideWon + slot, 0)
+        core.writeByte(door.hideNext + slot, 0)
+      end
+      if door.reach ~= nil then
+        core.writeInteger(door.reach, furthest)
+      end
+    end
+    return registers
+  end
+  local now = os.time()
+  local skips = 0
+  for slot = 0, door.count - 1 do
+    if core.readInteger(door.scores + slot * 4) == SKIPPED then
+      skips = skips | (1 << slot)
+    end
+  end
+  local version = door.route and door.route.version or 0
+  local stale = door.nextDay == nil or now >= door.nextDay
+  if stale then
+    refresh(trailName, door, now)
+  end
+  if stale or door.seen ~= furthest or door.skips ~= skips or door.version ~= version then
+    door.seen, door.skips, door.version = furthest, skips, version
+    update(door, furthest, skips)
+  end
+  for index = 1, door.count do
+    local slot, item = index - 1, door.list[index]
+    local pictures = item.pictures
+    -- a door is centred where the click test takes the mission
+    local x = core.readInteger(door.positions + slot * 8) + registers.ECX - HALF_PICTURE
+    local y = core.readInteger(door.positions + slot * 8 + 4) + registers.EAX - HALF_PICTURE
+    -- the game's draw counts pictures from 1
+    local picture = item.isOpen and pictures[2] or not item.isOpen and pictures[1]
+    if picture then
+      native.draw(native.screen, door.gm, picture + 1, x, y)
+    end
+    if item.won and pictures[3] ~= nil then
+      native.draw(native.screen, door.gm, pictures[3] + 1, x, y)
+    end
   end
   return registers
 end
