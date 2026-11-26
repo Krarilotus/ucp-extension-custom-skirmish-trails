@@ -1,9 +1,12 @@
--- Start gold per player: the game's own start gold (its skirmish value for the mission's
--- advantage and start mode), or the mission's gold_player_1 .. gold_player_8 where it has one.
+-- Start gold per player: as the game sets up a game, it queues each player's start gold, which
+-- the keep pays into the treasury over the first seconds. In a skirmish mission of the trail that
+-- is the game's value (the start gold table's value for the mission's advantage and start mode,
+-- times 3 on an Extreme trail), or the mission's gold_player_1 .. gold_player_8 where it has one.
 -- The trail briefing shows the same: the human player's gold and, when the mission gives an AI
 -- player its own gold, one value per AI player, or the lowest and highest where those don't fit.
--- A scenario mission's briefing shows the gold scenario.briefingGold gives, and no gold while
--- that isn't known.
+-- A scenario mission keeps the game's queued gold (the table's value, without the trail factor);
+-- its briefing shows the gold scenario.briefingGold gives with that value, and no gold while that
+-- isn't known.
 
 local memory = require('customskirmishtrails.memory')
 local patches = require('customskirmishtrails.patches')
@@ -15,13 +18,15 @@ local startgold = {}
 
 -- The briefing's gold lines: each reads the game's gold table and applies the trail's factor
 -- ("mov eax, [edx*8 + table]", "imul eax, esi"), then draws it ("push eax", "mov ecx, text",
--- "call number"). The AI line's label just before is drawn by the game's text routine
--- ("call text").
+-- "call number"). The table entry is the one the game queues at the start: the briefing loads the
+-- mission's advantage and start mode into the values that index it. The AI line's label just
+-- before is drawn by the game's text routine ("call text").
 local LINE_BYTES = "8B 04 D5 ? ? ? ? 0F AF C6 50 B9 ? ? ? ? E8 ? ? ? ?"
 local HUMAN_SITE = { fn = "brief", offset = 0x3B2, bytes = LINE_BYTES }
 local AI_SITE = { fn = "brief", offset = 0x3FC, bytes = LINE_BYTES }
 local AI_LABEL_CALL_SITE = { fn = "brief", offset = 0x368, bytes = "E8 ? ? ? ?" }
 local GAME_VALUE_SIZE = 10
+local TABLE_OPERAND = 3
 local LINE_SIZE = 21
 local AI_TEXT_SIZE = 128
 -- The AI line's coin is drawn 0x46 px right of its number. The text routine right-aligns a text
@@ -38,30 +43,34 @@ local function gold(entry, player)
   return entry ~= nil and math.tointeger(tonumber(entry[string.format("gold_player_%d", player)])) or nil
 end
 
----The human player's gold as the briefing shows it, nil for the game's value, false for none.
-local function humanGold(entry)
-  local scenarioGold = scenario.briefingGold(entry)
-  if scenarioGold == nil then
+---The human player's gold as the briefing shows it (`grant`: the table's value the game queues),
+---nil for the game's value, false for none.
+local function humanGold(entry, grant)
+  local value = scenario.briefingGold(entry, 1, grant)
+  if value == nil then
     return gold(entry, 1)
   end
-  return scenarioGold and scenarioGold[1]
+  return value
 end
 
----The AI players' gold in player order, nil when the mission gives no AI player its own gold,
----or false when the briefing shows none.
-local function aiGold(entry, gameValue)
+---The AI players' gold in player order (`gameValue`: the game's value, `grant`: the table's value
+---the game queues), nil when the mission gives no AI player its own gold, or false when the
+---briefing shows none.
+local function aiGold(entry, gameValue, grant)
   if entry == nil then
     return nil
   end
-  local scenarioGold = scenario.briefingGold(entry)
-  if scenarioGold == false then
-    return false
-  end
   local players = math.min(math.tointeger(tonumber(entry.num_players)) or 8, 8)
-  local values, own = {}, scenarioGold ~= nil
+  local values, own = {}, scenario.isScenario(entry)
   for player = 2, players do
     if interface.hasAi(entry, player) then
-      local value = scenarioGold and scenarioGold[player] or gold(entry, player)
+      local value = scenario.briefingGold(entry, player, grant)
+      if value == false then
+        return false
+      end
+      if value == nil then
+        value = gold(entry, player)
+      end
       own = own or value ~= nil
       table.insert(values, value or gameValue)
     end
@@ -86,8 +95,8 @@ local function aiGoldText(textObject, values)
   return low == high and tostring(low) or string.format("%d - %d", low, high)
 end
 
----The code that replaces the gold line at `address`: `stub` gets the game's value in EAX and sets
----EAX to the number to draw and EDX to a text to draw instead, or 0.
+---The code that replaces the gold line at `address`: `stub` gets the game's value in EAX and the
+---table index in EDX, and sets EAX to the number to draw and EDX to a text to draw instead, or 0.
 local function lineCode(address, stub, drawText)
   local gameValue = {}
   for index, byte in ipairs(core.readBytes(address, GAME_VALUE_SIZE)) do
@@ -128,9 +137,10 @@ local function showInBriefing()
   local noText = core.allocate(1, true)
   assert(aiText ~= nil and aiText ~= 0 and noText ~= nil and noText ~= 0, "out of memory")
   local shownValues = nil
+  local humanTable, aiTable = core.readInteger(human + TABLE_OPERAND), core.readInteger(ai + TABLE_OPERAND)
 
   local humanStub = patches.luaStub(function(registers)
-    local value = humanGold(memory.currentEntry())
+    local value = humanGold(memory.currentEntry(), core.readInteger(humanTable + 8 * registers.EDX))
     if value then
       registers.EAX = value
     end
@@ -138,11 +148,11 @@ local function showInBriefing()
     return registers
   end)
   local aiStub = patches.luaStub(function(registers)
-    local values = aiGold(memory.currentEntry(), registers.EAX)
+    local values = aiGold(memory.currentEntry(), registers.EAX, core.readInteger(aiTable + 8 * registers.EDX))
     if values then
       local key = table.concat(values, " / ")
       if key ~= shownValues then
-        core.writeString(aiText, aiGoldText(textObject, values):sub(1, AI_TEXT_SIZE - 1))
+        core.writeString(aiText, aiGoldText(textObject, values):sub(1, AI_TEXT_SIZE - 1) .. "\0")
         shownValues = key
       end
     end
@@ -160,14 +170,15 @@ end
 ---Installs the start gold and the briefing's gold lines. True when the briefing's gold lines are
 ---installed.
 function startgold.enable()
-  -- every player's start gold as the game sets up a skirmish (EBX: the player's slot)
+  -- the store of each player's queued start gold as the game sets up a game (EBX: the player's
+  -- slot); a scenario mission keeps the game's value
   local detourAddress = patches.find("89 86 00 E4 FF FF", "the start gold store")
   if detourAddress == nil then
     return false
   end
   core.detourCode(function(registers)
     local entry, isTrail = memory.currentEntry()
-    local value = isTrail and gold(entry, registers.EBX) or nil
+    local value = isTrail and not scenario.isScenario(entry) and gold(entry, registers.EBX) or nil
     if value ~= nil then
       registers.EAX = value
     end

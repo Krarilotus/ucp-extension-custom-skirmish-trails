@@ -170,7 +170,7 @@ local function detourSwitchToMenu(missionTables)
         return registers
       end
       
-      if scenario.refreshMapLords(entry) then
+      if scenario.prepareBriefing(entry) then
         interface.commitEntry(missionTables[trailName], mission, entry, trailName)
       end
       interface.commitTextDescription(scenario.briefingEntry(entry, LOCKED_TEXTS[trailName]))
