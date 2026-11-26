@@ -44,8 +44,9 @@ local SCANS = {
   -- the Play a Map list's DoEveryFrame
   listFrame = "81 EC F8 03 00 00 A1 ? ? ? ? 33 C4 89 84 24 F4 03 00 00 A1 ? ? ? ? 2B 05 ? ? ? ? 53 99 55 2B C2 56",
   -- the Load Game button's read of the save: "push / mov ecx / mov [callback], / call read"; after
-  -- it (SAVE_LOADED_OFFSET) the chosen map holds the save's map name
-  saveRead = "68 ? ? ? ? B9 ? ? ? ? C7 05 ? ? ? ? ? ? ? ? E8 ? ? ? ? B9 ? ? ? ? 89 2D ? ? ? ? 89 1D ? ? ? ? 89 1D",
+  -- it (SAVE_LOADED_OFFSET) the chosen map holds the save's map name. Map Extensions replaces the
+  -- call with a jump, so its opcode is any byte.
+  saveRead = "68 ? ? ? ? B9 ? ? ? ? C7 05 ? ? ? ? ? ? ? ? ? ? ? ? ? B9 ? ? ? ? 89 2D ? ? ? ? 89 1D ? ? ? ? 89 1D",
   -- the end screens' Prepare (cdecl, no arguments): the mission finished screen's and the game
   -- lost screen's
   wonPrepare = "81 EC 04 01 00 00 A1 ? ? ? ? 33 C4 89 84 24 00 01 00 00 53 FF 15 ? ? ? ? 2B 05 ? ? ? ? 33 DB 83 3D ? ? ? ? 01 A3",
