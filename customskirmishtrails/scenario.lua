@@ -567,9 +567,10 @@ local function installListStart(b)
 end
 
 ---The trail and mission of the scenario played, or nil and the check that failed. It is the
----session's mission while the chosen map name is the session's map. Otherwise a map saved from a
----skirmish game (sync 99) is the trail mission the game's trail state names, when that mission
----plays the chosen map.
+---session's mission while the chosen map name is the session's map, or while the name is empty (the
+---game's in-game trail roster empties it) and the game's trail state names that same mission.
+---Otherwise a map saved from a skirmish game (sync 99) is the trail mission the game's trail state
+---names, when that mission plays the chosen map.
 local function playedMission()
   local syncMode = core.readInteger(bindings.syncMode)
   if syncMode ~= SYNC_MODE_SINGLE_PLAYER and syncMode ~= SYNC_MODE_SKIRMISH then
@@ -586,6 +587,10 @@ local function playedMission()
     return nil, sessionCheck
   end
   local ok, isTrail, _, trailName, mission = pcall(memory.fetchCurrentTrail)
+  if current ~= nil and chosen == "" and ok and isTrail and trailName == current.trailName
+      and mission == current.index then
+    return current.trailName, current.index
+  end
   local missions = ok and isTrail and trailOf(trailName) or nil
   local entry = missions and missions[mission] or nil
   if not scenario.isScenario(entry) or not scenario.isPlayedMission(entry) then
