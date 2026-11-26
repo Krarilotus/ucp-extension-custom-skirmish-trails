@@ -65,7 +65,6 @@
     "base_name": "template-First-Edition-Trail",
     "data_mode": "csv"
   },
-  "trail_text_files": "texts/template-First-Edition-Trail/",
   "ai_character_mapping": {
     "SK_RAT": "SK_RAT",
     "SK_SNAKE": "SK_SNAKE",

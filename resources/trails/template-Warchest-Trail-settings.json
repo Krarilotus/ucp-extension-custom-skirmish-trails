@@ -45,7 +45,6 @@
     "base_name": "template-Warchest-Trail",
     "data_mode": "csv"
   },
-  "trail_text_files": "texts/template-Warchest-Trail/",
   "ai_character_mapping": {
     "SK_RAT": "SK_RAT",
     "SK_SNAKE": "SK_SNAKE",
