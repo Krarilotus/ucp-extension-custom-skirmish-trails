@@ -127,9 +127,9 @@ that trail.
 
 ### Door pictures
 
-`trail_visuals.mission_icons` names a .gm1 file laid out like the game's
-`skirmish_trail_icons.gm1`: exactly its 130 pictures of 100 x 100 and its GM1 type, the only layout gmResourceModifier accepts for this sheet. A mission's
-`icon` names its pictures (0 to 129), one per state, each centred on the
+`trail_visuals.mission_icons` names a .gm1 file of the GM1 type of the game's
+`skirmish_trail_icons.gm1`, with as many pictures of 100 x 100 as the trail needs. A mission's
+`icon` names its pictures (counted from 0), one per state, each centred on the
 mission's position, where its click is taken. Every line of a picture spans its 100
 pixels, transparent runs included, as in the game's sheet; a picture whose lines end
 early is drawn shifted. Each picture is optional:
@@ -143,7 +143,8 @@ early is drawn shifted. Each picture is optional:
   skipped it). Leave it out to show the game's own flag of a won mission.
 
 For a state without a picture the game draws its own marker, so a mission without
-`icon` looks as it does without a sheet. The game's markers follow the trail's
+`icon` looks as it does without a sheet. A picture number outside the sheet is
+reported in the log and leaves that state to the game's marker. The game's markers follow the trail's
 order: every mission before the next one is drawn won (or skipped), the next one
 available. In a trail with a route (below) that is right only for a *chain mission*:
 a main mission without `unlock` that needs only main missions before it, and that

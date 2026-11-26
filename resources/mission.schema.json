@@ -292,12 +292,12 @@
       }
     },
     "icon": {
-      "description": "Door pictures of the mission from mission_icons, one per state and each optional; a state without a picture shows the game's own marker. Pictures 0-129: the picture count of the game's skirmish_trail_icons.gm1, the only count gmResourceModifier's ReserveGm accepts for the sheet. A mission off the trail's order (a side mission, a parallel path) needs its available picture.",
+      "description": "Door pictures of the mission from mission_icons, one per state and each optional; a state without a picture, or with a picture outside the sheet, shows the game's own marker. A mission off the trail's order (a side mission, a parallel path) needs its available picture.",
       "type": "object",
       "properties": {
-        "locked": { "description": "Picture index (0-129) while the mission can't be clicked yet. Leave it out to draw nothing until it opens.", "type": "integer", "minimum": 0, "maximum": 129 },
-        "available": { "description": "Picture index (0-129) while the mission can be clicked. Leave it out to show the game's marker of the next mission. With it, the door also stays locked until its date and its map.", "type": "integer", "minimum": 0, "maximum": 129 },
-        "won": { "description": "Picture index (0-129) drawn over the available picture after a win (not after a chicken). Leave it out to show the game's flag.", "type": "integer", "minimum": 0, "maximum": 129 }
+        "locked": { "description": "Picture index (from 0) while the mission can't be clicked yet. Leave it out to draw nothing until it opens.", "type": "integer", "minimum": 0 },
+        "available": { "description": "Picture index (from 0) while the mission can be clicked. Leave it out to show the game's marker of the next mission. With it, the door also stays locked until its date and its map.", "type": "integer", "minimum": 0 },
+        "won": { "description": "Picture index (from 0) drawn over the available picture after a win (not after a chicken). Leave it out to show the game's flag.", "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },

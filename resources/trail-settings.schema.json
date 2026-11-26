@@ -129,7 +129,7 @@
           "type": "string"
         },
         "mission_icons": {
-          "description": "Path to a .gm1 sheet of the missions' icon pictures, laid out as skirmish_trail_icons.gm1: exactly its 130 pictures of 100 x 100 and its GM1 type, the only layout gmResourceModifier's ReserveGm accepts; omission keeps the game's flags.",
+          "description": "Path to a .gm1 sheet of the missions' icon pictures: pictures of 100 x 100 of the type of skirmish_trail_icons.gm1, as many as the trail needs; omission keeps the game's flags.",
           "type": "string"
         }
       },

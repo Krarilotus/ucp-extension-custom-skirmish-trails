@@ -19,9 +19,6 @@ local winfiles = require("customskirmishtrails.winfiles")
 
 local markers = {}
 
--- skirmish_trail_icons.gm1, the sheet the trail screen draws from; ReserveGm takes only a sheet
--- with as many pictures of its type
-markers.PICTURES = 130
 local STATES = { "locked", "available", "won" }
 local SKIPPED = -1200 -- the score of a mission a chicken skipped
 
@@ -76,7 +73,7 @@ local FLAG_ROW_MODRM = { 0xBD, 0xBD, 0xBE, 0xBE }
 local FLAG_TABLES = { "hideWon", "hideWon", "hideNext", "hideNext" }
 
 local native = nil -- { render, sheet, screen, draw, detoured } once found
--- trailName -> { token, gm, count, locks, hideWon, hideNext, positions, furthest, scores, day, list }
+-- trailName -> { token, gm, count, pictures, locks, hideWon, hideNext, positions, furthest, scores, day, list }
 local doors = {}
 
 local function siteOf(site)
@@ -96,20 +93,32 @@ local function resolveNative()
   return native or nil
 end
 
----The icon sheet's pictures of `entry` ({ locked, available, won }, each nil when left out).
-local function picturesOf(trailName, index, entry)
+---The icon sheet's pictures of `entry` ({ locked, available, won }, each nil when left out or
+---outside the sheet's `count` pictures).
+local function picturesOf(trailName, index, entry, count)
   local pictures = {}
   for number, state in ipairs(STATES) do
     local value = entry["icon_" .. state]
-    pictures[number] = math.tointeger(value)
-    local empty = value == nil or value == ""
-    if not empty and (pictures[number] == nil or pictures[number] < 0 or pictures[number] >= markers.PICTURES) then
-      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: icon_locked, icon_available and "
-        .. "icon_won must be pictures 0 to %d of the icon sheet", trailName, index, markers.PICTURES - 1))
-      return {}
+    local picture = math.tointeger(value)
+    if picture ~= nil and picture >= 0 and picture < count then
+      pictures[number] = picture
+    elseif value ~= nil and value ~= "" then
+      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: icon %s %s is not a picture 0 to %d "
+        .. "of the icon sheet; the game's marker stays", trailName, index, state, tostring(value), count - 1))
     end
   end
   return pictures
+end
+
+---The picture count in the header of the .gm1 file `path`, or nil.
+local function sheetPictures(path)
+  local ok, handle = pcall(io.open, path, "rb")
+  if not ok or handle == nil then
+    return nil
+  end
+  local header = handle:read(16)
+  handle:close()
+  return header ~= nil and #header == 16 and string.unpack("<I4", header, 13) or nil
 end
 
 ---Which doors have pictures and which are open (date and map), again when the day changes.
@@ -122,7 +131,7 @@ local function refresh(trailName, door)
   local missions = memory.REGISTRY[trailName] or {}
   for index = 1, door.count do
     local entry = missions[index]
-    local pictures = entry and picturesOf(trailName, index, entry) or {}
+    local pictures = entry and picturesOf(trailName, index, entry, door.pictures) or {}
     -- the date and the map lock a door that draws its own available picture
     door.list[index] = { pictures = pictures, open = pictures[2] == nil or scenario.isOpen(entry) }
     if pictures[2] == nil and door.route ~= nil and door.route:needsPictures(index - 1) then
@@ -188,7 +197,7 @@ local function onRender(registers)
   return registers
 end
 
----Reserves `sheetPath` (a .gm1 file laid out as skirmish_trail_icons.gm1) for `trailName`, which
+---Reserves `sheetPath` (a .gm1 file of the type of skirmish_trail_icons.gm1) for `trailName`, which
 ---has `count` missions, and takes over its markers and clicks. With `r` (route.lua), the missions
 ---off the trail's order are drawn and clicked by their own state. Call while extensions are enabled.
 ---True when the doors are taken over.
@@ -223,11 +232,11 @@ function markers.install(trailName, sheetPath, count, r)
   end
   local modifier = modules.gmResourceModifier
   local resource = modifier:LoadGm1Resource(resolved)
-  local token = resource >= 0 and modifier:ReserveGm(native.sheet, resource) or -1
+  local pictures = resource >= 0 and sheetPictures(resolved)
+  local token = pictures and modifier:ReserveGm(native.sheet, resource) or -1
   if token < 0 then
     if resource >= 0 then modifier:FreeGm1Resource(resource) end
-    log(WARNING, string.format("custom-skirmish-trails: %s is not a sheet like skirmish_trail_icons.gm1 "
-      .. "(%d pictures); the game's markers stay", sheetPath, markers.PICTURES))
+    log(WARNING, string.format("custom-skirmish-trails: %s is not a .gm1 sheet; the game's markers stay", sheetPath))
     return
   end
 
@@ -273,7 +282,7 @@ function markers.install(trailName, sheetPath, count, r)
   end
   native.detoured = true
   local door = {
-    count = count, locks = locks, hideWon = tables.hideWon, hideNext = tables.hideNext,
+    count = count, pictures = pictures, locks = locks, hideWon = tables.hideWon, hideNext = tables.hideNext,
     positions = positions, route = r, reach = reach or nil,
     furthest = core.readInteger(furthest + 2), scores = core.readInteger(scores + 3),
   }
