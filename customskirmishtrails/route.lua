@@ -518,9 +518,9 @@ local function addResult(r, line)
 end
 
 ---The route `parsed` (route.read) of a trail with `count` missions; passed nodes are kept in the
----user data file `passedPath`, the results of node wins in `resultsPath` (read by readFiles).
----Returns the route when the trail needs it (a node that is not a chain node, or a reward), nil
----otherwise.
+---user data file `passedPath`, the results of node wins in `resultsPath` (read by readFiles), also
+---for a route of chain nodes alone, so a node added later can read them. nil when `parsed` is not
+---a route of `count` missions.
 function route.load(parsed, count, passedPath, resultsPath)
   if parsed == nil or parsed.count ~= count then
     return nil
@@ -528,9 +528,6 @@ function route.load(parsed, count, passedPath, resultsPath)
   parsed.graph = false
   for row = 0, count - 1 do
     parsed.graph = parsed.graph or not parsed.rows[row].chain
-  end
-  if not parsed.graph and not parsed.rewards then
-    return nil
   end
   parsed.path, parsed.passed = passedPath, {}
   parsed.resultsPath, parsed.results, parsed.lines = resultsPath, {}, {}

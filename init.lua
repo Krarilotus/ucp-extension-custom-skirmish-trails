@@ -198,8 +198,7 @@ local function stateFile(kind, settings)
   return string.format("%s-%s.txt", kind, settings.fileName)
 end
 
----The trail_route of a trail settings file; nil when the trail doesn't need it or it can't be
----played (logged).
+---The trail_route of a trail settings file; nil when it can't be played (logged).
 local function installRoute(trail, settings, count)
   if settings.route == nil then
     return nil
