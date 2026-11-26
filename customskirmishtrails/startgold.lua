@@ -2,23 +2,27 @@
 -- advantage and start mode), or the mission's gold_player_1 .. gold_player_8 where it has one.
 -- The trail briefing shows the same: the human player's gold and, when the mission gives an AI
 -- player its own gold, one value per AI player, or the lowest and highest where those don't fit.
+-- A scenario mission starts with its map's gold (docs/trail-files.md): gold_player_1 ..
+-- gold_player_8 don't apply, and its briefing shows no gold.
 
 local memory = require('customskirmishtrails.memory')
 local patches = require('customskirmishtrails.patches')
 local interface = require('customskirmishtrails.interface')
 local menutext = require('customskirmishtrails.menutext')
+local scenario = require('customskirmishtrails.scenario')
 
 local startgold = {}
 
 -- The briefing's gold lines: each reads the game's gold table and applies the trail's factor
--- ("mov eax, [edx*8 + table]", "imul eax, esi"); the AI line then draws it ("push eax",
--- "mov ecx, text", "call number"). The AI line's label just before is drawn by the game's
--- text routine ("call text").
-local HUMAN_SITE = { fn = "brief", offset = 0x3B2, bytes = "8B 04 D5 ? ? ? ? 0F AF C6" }
-local AI_SITE = { fn = "brief", offset = 0x3FC, bytes = "8B 04 D5 ? ? ? ? 0F AF C6 50 B9 ? ? ? ? E8 ? ? ? ?" }
+-- ("mov eax, [edx*8 + table]", "imul eax, esi"), then draws it ("push eax", "mov ecx, text",
+-- "call number"). The AI line's label just before is drawn by the game's text routine
+-- ("call text").
+local LINE_BYTES = "8B 04 D5 ? ? ? ? 0F AF C6 50 B9 ? ? ? ? E8 ? ? ? ?"
+local HUMAN_SITE = { fn = "brief", offset = 0x3B2, bytes = LINE_BYTES }
+local AI_SITE = { fn = "brief", offset = 0x3FC, bytes = LINE_BYTES }
 local AI_LABEL_CALL_SITE = { fn = "brief", offset = 0x368, bytes = "E8 ? ? ? ?" }
 local GAME_VALUE_SIZE = 10
-local AI_SITE_SIZE = 21
+local LINE_SIZE = 21
 local AI_TEXT_SIZE = 128
 -- The AI line's coin is drawn 0x46 px right of its number. The text routine right-aligns a text
 -- at x when its fourth argument is negative, so the AI players' gold text ends 8 px before the coin.
@@ -65,6 +69,34 @@ local function aiGoldText(textObject, values)
   return low == high and tostring(low) or string.format("%d - %d", low, high)
 end
 
+---The code that replaces the gold line at `address`: `stub` gets the game's value in EAX and sets
+---EAX to the number to draw and EDX to a text to draw instead, or 0.
+local function lineCode(address, stub, drawText)
+  local gameValue = {}
+  for index, byte in ipairs(core.readBytes(address, GAME_VALUE_SIZE)) do
+    gameValue[index] = byte & 0xFF
+  end
+  local textObject = core.readInteger(address + 12)
+  local drawNumber = address + LINE_SIZE + core.readInteger(address + 17)
+  return {
+    gameValue,
+    core.callTo(stub),
+    0x50,                                -- push eax
+    0x85, 0xD2,                          -- test edx, edx
+    0x74, core.byteRelTo("number", -1),  -- jz number
+    0x89, 0x14, 0x24,                    -- mov [esp], edx
+    0x83, 0x44, 0x24, 0x04, AI_TEXT_RIGHT, -- add dword [esp + 4], AI_TEXT_RIGHT (x)
+    0xC7, 0x44, 0x24, 0x0C, core.itob(-1), -- mov dword [esp + 12], -1 (right-aligned)
+    0xB9, core.itob(textObject),         -- mov ecx, text
+    core.callTo(drawText),
+    0xEB, core.byteRelTo("done", -1),    -- jmp done
+    "number",
+    0xB9, core.itob(textObject),         -- mov ecx, text
+    core.callTo(drawNumber),
+    "done",
+  }
+end
+
 local function showInBriefing()
   local human = patches.siteAddress(HUMAN_SITE, "the human player's gold in the briefing")
   local ai = patches.siteAddress(AI_SITE, "the AI players' gold in the briefing")
@@ -73,54 +105,40 @@ local function showInBriefing()
     return
   end
   local textObject = core.readInteger(ai + 12)
-  local drawNumber = ai + AI_SITE_SIZE + core.readInteger(ai + 17)
   local drawText = label + 5 + core.readInteger(label + 1)
-  local gameValue = {}
-  for index, byte in ipairs(core.readBytes(ai, GAME_VALUE_SIZE)) do
-    gameValue[index] = byte & 0xFF
-  end
   local aiText = core.allocate(AI_TEXT_SIZE, true)
+  local noText = core.allocate(1, true)
+  assert(aiText ~= nil and aiText ~= 0 and noText ~= nil and noText ~= 0, "out of memory")
   local shownValues = nil
 
-  -- EAX: the game's value; it becomes the mission's own value
   local humanStub = patches.luaStub(function(registers)
-    local value = gold(memory.currentEntry(), 1)
+    local entry = memory.currentEntry()
+    local value = gold(entry, 1)
     if value ~= nil then
       registers.EAX = value
     end
+    registers.EDX = scenario.isScenario(entry) and noText or 0
     return registers
   end)
-  -- EAX: the game's value; EDX becomes the text to draw instead, or 0
   local aiStub = patches.luaStub(function(registers)
-    local values = aiGold(memory.currentEntry(), registers.EAX)
+    local entry = memory.currentEntry()
+    if scenario.isScenario(entry) then
+      registers.EDX = noText
+      return registers
+    end
+    local values = aiGold(entry, registers.EAX)
     local key = values and table.concat(values, " / ")
     if key ~= nil and key ~= shownValues then
-      core.writeString(aiText, aiGoldText(textObject, values):sub(1, AI_TEXT_SIZE - 1))
+      core.writeString(aiText, aiGoldText(textObject, values):sub(1, AI_TEXT_SIZE - 1) .. "\0")
       shownValues = key
     end
     registers.EDX = values ~= nil and aiText or 0
     return registers
   end)
 
-  patches.guarded({ { address = human, size = GAME_VALUE_SIZE }, { address = ai, size = AI_SITE_SIZE } }, function()
-    core.insertCode(human, GAME_VALUE_SIZE, { core.callTo(humanStub) }, nil, "before")
-    core.insertCode(ai, AI_SITE_SIZE, {
-      gameValue,
-      core.callTo(aiStub),
-      0x50,                                -- push eax
-      0x85, 0xD2,                          -- test edx, edx
-      0x74, core.byteRelTo("number", -1),  -- jz number
-      0x89, 0x14, 0x24,                    -- mov [esp], edx
-      0x83, 0x44, 0x24, 0x04, AI_TEXT_RIGHT, -- add dword [esp + 4], AI_TEXT_RIGHT (x)
-      0xC7, 0x44, 0x24, 0x0C, core.itob(-1), -- mov dword [esp + 12], -1 (right-aligned)
-      0xB9, core.itob(textObject),         -- mov ecx, text
-      core.callTo(drawText),
-      0xEB, core.byteRelTo("done", -1),    -- jmp done
-      "number",
-      0xB9, core.itob(textObject),         -- mov ecx, text
-      core.callTo(drawNumber),
-      "done",
-    })
+  patches.guarded({ { address = human, size = LINE_SIZE }, { address = ai, size = LINE_SIZE } }, function()
+    core.insertCode(human, LINE_SIZE, lineCode(human, humanStub, drawText))
+    core.insertCode(ai, LINE_SIZE, lineCode(ai, aiStub, drawText))
   end)
 end
 
@@ -132,7 +150,7 @@ function startgold.enable()
   end
   core.detourCode(function(registers)
     local entry, isTrail = memory.currentEntry()
-    local value = isTrail and gold(entry, registers.EBX) or nil
+    local value = isTrail and not scenario.isScenario(entry) and gold(entry, registers.EBX) or nil
     if value ~= nil then
       registers.EAX = value
     end

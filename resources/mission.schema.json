@@ -177,7 +177,7 @@
               "minimum": 0
             },
             "gold": {
-              "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode.",
+              "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode. Not used in a scenario mission (see 'Start gold in scenario missions' in docs/trail-files.md).",
               "type": "integer",
               "minimum": 0
             }
@@ -218,7 +218,7 @@
             "minimum": 0
           },
           "gold": {
-            "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode.",
+            "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode. Not used in a scenario mission (see 'Start gold in scenario missions' in docs/trail-files.md).",
             "type": "integer",
             "minimum": 0
           },

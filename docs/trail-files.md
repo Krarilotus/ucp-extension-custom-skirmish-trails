@@ -11,7 +11,21 @@ Optional csv columns, best placed at the end:
 
 ## Start gold
 `gold_player_1` (the human player) to `gold_player_8` (`gold` of a player in a mission file) set a player's start gold in this mission; `0` is no gold. Empty keeps the game's start gold for the mission's advantage and start mode. The briefing shows the human player's gold and, when an AI player has its own gold, one value per AI player in player order, for example `4000 / 3000 / 4000`, or the lowest and highest (`3000 - 4000`) where those don't fit beside the label. As in every game, each player's keep pays the start gold out bit by bit at the start; the gold still to come shows as `Starting goods`.
+For scenario missions see [Start gold in scenario missions](#start-gold-in-scenario-missions).
 Below the gold, the briefing shows the skirmish menu's button picture of the mission's start mode (normal, crusader or deathmatch).
+
+## Start gold in scenario missions
+A `scenario` or `skirmish_scenario` mission starts with the gold the game gives its map in Custom Scenarios → Play a Map. It is never tripled, not even on an Extreme-type trail. Each lord gets:
+1. the treasury saved in the map, or the starting gold the map's scenario options set instead;
+2. paid into the treasury over the first seconds: for a map saved from a skirmish, the game's skirmish start gold for the start mode and advantage saved in the map (not the mission's `start_mode` and `advantage`); for a map made as a scenario in the editor, the gold among the map's own starting goods.
+
+Goods come from the map only: its stock and its starting goods. The mission's `gold_player_N` and `resource_` columns don't apply, and the trail's briefing shows no gold for these missions.
+
+To give the lords of a map saved from a skirmish exactly their saved gold (amount 1), set amount 2 to 0 in startResources: `startGold.<start mode>.<advantage>.human` for the human lord and `.computer` for every AI lord, for the map's start mode and advantage. This changes every skirmish game with that start mode and advantage.
+
+For comparison, in a plain `skirmish` mission each lord's start gold is the same skirmish table value, tripled on an Extreme-type trail, and `gold_player_N` replaces it without tripling.
+
+Example: a map saved from a skirmish on Normal with no advantage, with treasuries of 560 for the human and 241 for an AI lord. The game's table gives every lord 2000 there, so the human ends up with 2560 and the AI lord with 2241. With startResources' `startGold.normal.noAdvantage.human` and `.computer` at 0, they keep 560 and 241.
 
 ## Player colours
 A player's skirmish colour is its player slot: red (the human player's), orange, yellow, blue, black, purple, lightblue and green. The optional columns `player2_color` to `player8_color` (`color` of an AI player in a mission file) put that AI player into the slot of a colour name or slot number (2-8). The other AI players keep their slot, or take the first free one when it is taken. Empty keeps the player's own slot. A colour that is red, unknown or already given to another player is reported in the log and not used.
