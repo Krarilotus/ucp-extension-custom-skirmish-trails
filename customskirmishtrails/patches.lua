@@ -173,7 +173,7 @@ end
 function patches.find(pattern, purpose)
   local ok, address = pcall(core.AOBScan, pattern)
   if not ok or address == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s is not found; that part is disabled", purpose))
+    log(WARNING, string.format("%s is not found; that part is disabled", purpose))
     return nil
   end
   return address
@@ -199,7 +199,7 @@ local function siteAddress(site, purpose)
   end
   local address = base + site.offset
   if not matches(address, site.bytes) then
-    log(WARNING, string.format("custom-skirmish-trails: unexpected game code for %s at 0x%X; that part is disabled",
+    log(WARNING, string.format("unexpected game code for %s at 0x%X; that part is disabled",
       purpose, address))
     return nil
   end
@@ -304,7 +304,7 @@ function patches.setMissionCount(trailName, count)
       core.writeCodeInteger(clamp + 1, core.readInteger(selected + 1))
     end
   end
-  log(INFO, string.format("custom-skirmish-trails: %s has %d missions", trailName, count))
+  log(INFO, string.format("%s has %d missions", trailName, count))
   return true
 end
 
@@ -351,7 +351,7 @@ function patches.growExtremeTable(currentTable, capacity)
       return currentTable
     end
     if core.readInteger(address + 2) ~= currentTable then
-      log(WARNING, "custom-skirmish-trails: the Extreme trail's mission table is not where expected; it keeps 20 missions")
+      log(WARNING, "the Extreme trail's mission table is not where expected; it keeps 20 missions")
       return currentTable
     end
     table.insert(addresses, address)
@@ -410,7 +410,7 @@ function patches.setStartYears(years)
     core.writeCodeInteger(defaults + 16, months.warchestTrail)
     core.writeCodeInteger(defaults + 26, months.extremeTrail)
   end
-  log(INFO, string.format("custom-skirmish-trails: trails start in %d, %d and %d",
+  log(INFO, string.format("trails start in %d, %d and %d",
     months.firstEditionTrail // 12, months.warchestTrail // 12, months.extremeTrail // 12))
 end
 
@@ -471,7 +471,7 @@ local function lordAddress()
     elseif matches(getLordType + 0x3D, "8B 04 85 ? ? ? ?") then
       state.lordTypes = core.readInteger(getLordType + 0x40)
     else
-      log(WARNING, "custom-skirmish-trails: unexpected game code for the lord type; player1_lord is disabled")
+      log(WARNING, "unexpected game code for the lord type; player1_lord is disabled")
       state.lordTypes = false
     end
   end
@@ -490,7 +490,7 @@ function patches.lordType(value)
     end
   end
   if key ~= "" then
-    log(WARNING, string.format("custom-skirmish-trails: unknown player1_lord '%s', use Arab or Europ", value))
+    log(WARNING, string.format("unknown player1_lord '%s', use Arab or Europ", value))
   end
   return nil
 end
@@ -586,7 +586,7 @@ function patches.hookPlayerNaming(onNamed)
     local callerReturn = core.readInteger(registers.ESP + 12)
     local ok, err = pcall(onNamed, callerReturn == briefingReturn, callerReturn)
     if not ok then
-      log(WARNING, "custom-skirmish-trails: player names: " .. tostring(err))
+      log(WARNING, "player names: " .. tostring(err))
     end
     return registers
   end)

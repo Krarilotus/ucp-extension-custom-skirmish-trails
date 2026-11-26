@@ -17,13 +17,13 @@ local function interface()
   if folder == nil then
     local ok, result = pcall(userdata.interface)
     if not ok then
-      log(WARNING, "custom-skirmish-trails: the user data folder cannot be opened: " .. tostring(result))
+      log(WARNING, "the user data folder cannot be opened: " .. tostring(result))
       return nil, tostring(result)
     end
     folder = result
   end
   if folder == nil then
-    log(WARNING, "custom-skirmish-trails: the user data folder is used before the game has started")
+    log(WARNING, "the user data folder is used before the game has started")
     return nil, "the user data folder is not ready"
   end
   return folder
@@ -86,7 +86,7 @@ function storage.write(name, contents)
       return false, string.format("cannot replace %s: %s", name, tostring(renameError))
     end
     renames = false
-    log(WARNING, "custom-skirmish-trails: the framework cannot rename files; files are written in place")
+    log(WARNING, "the framework cannot rename files; files are written in place")
   end
   return writeFile(f, target, contents)
 end

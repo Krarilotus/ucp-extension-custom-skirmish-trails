@@ -441,12 +441,12 @@ end
 function route.read(settingsPath, value, count)
   local parsed, problem = parse(value, count)
   if parsed == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s: %s; %s", settingsPath, problem, route.hasFiles(value)
+    log(WARNING, string.format("%s: %s; %s", settingsPath, problem, route.hasFiles(value)
       and "the trail's missions are not loaded" or "the trail plays its missions in their order"))
     return nil
   end
   for _, warning in ipairs(parsed.warnings) do
-    log(WARNING, string.format("custom-skirmish-trails: %s: %s", settingsPath, warning))
+    log(WARNING, string.format("%s: %s", settingsPath, warning))
   end
   return parsed
 end
@@ -469,7 +469,7 @@ local function writeLines(path, lines, what)
   table.sort(lines)
   local ok, err = storage.write(path, table.concat(lines, "\n") .. "\n")
   if not ok then
-    log(WARNING, string.format("custom-skirmish-trails: could not save %s: %s", what, tostring(err)))
+    log(WARNING, string.format("could not save %s: %s", what, tostring(err)))
   end
 end
 

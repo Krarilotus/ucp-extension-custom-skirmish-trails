@@ -519,7 +519,7 @@ local function readCSV(path, limit, contents)
       ll = FATAL
     end
     if strictness == "warning" then
-      log(WARNING, string.format("custom-skirmish-trails: %d problems in the trail csv file %s; turn on strict mode (Miscellaneous) to see them", #fails, path))
+      log(WARNING, string.format("%d problems in the trail csv file %s; turn on strict mode (Miscellaneous) to see them", #fails, path))
     else
       log(ll, string.format("There were %d warnings related to the skirmish trail csv file %s, consult the log for details", #fails, path))
     end

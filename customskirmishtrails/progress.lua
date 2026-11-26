@@ -37,7 +37,7 @@ local function giveChickens(trail, chickens)
       return
     end
   end
-  log(WARNING, "custom-skirmish-trails: the trail screen's chicken code was not found; a reward of chickens is not given")
+  log(WARNING, "the trail screen's chicken code was not found; a reward of chickens is not given")
 end
 
 ---Keeps the win of the route's node at `row` with the players alive now and gives its reward.
@@ -78,7 +78,7 @@ local function winStore(trail, purpose)
     if state.path ~= nil and value >= 1 and value <= state.count then
       local ok, err = storage.write(state.path, tostring(value) .. "\n")
       if not ok then
-        log(WARNING, "custom-skirmish-trails: could not save trail progress: " .. tostring(err))
+        log(WARNING, "could not save trail progress: " .. tostring(err))
       end
     end
     return registers
@@ -145,7 +145,7 @@ function progress.withoutPictures(trail, r)
   if r == nil or not r.graph then
     return
   end
-  log(WARNING, string.format("custom-skirmish-trails: %s: side missions and parallel paths need door pictures "
+  log(WARNING, string.format("%s: side missions and parallel paths need door pictures "
     .. "(mission_icons); the trail plays its missions in their order", trail))
   r:playLinear()
   local state = stores[trail]

@@ -104,7 +104,7 @@ local function picturesOf(trailName, index, entry, count)
     if picture ~= nil and picture >= 0 and picture < count then
       pictures[number] = picture
     elseif value ~= nil and value ~= "" then
-      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: icon %s %s is not a picture 0 to %d "
+      log(WARNING, string.format("%s mission %d: icon %s %s is not a picture 0 to %d "
         .. "of the icon sheet; the game's marker stays", trailName, index, state, tostring(value), count - 1))
     end
   end
@@ -136,7 +136,7 @@ local function refresh(trailName, door, now)
     -- the date and the map lock a door that draws its own available picture
     door.list[index] = { pictures = pictures, open = pictures[2] == nil or scenario.isOpen(entry) }
     if pictures[2] == nil and door.route ~= nil and door.route:needsPictures(index - 1) then
-      log(WARNING, string.format("custom-skirmish-trails: %s mission %d is off the trail's order and has no "
+      log(WARNING, string.format("%s mission %d is off the trail's order and has no "
         .. "icon_available; it can't be played", trailName, index))
     end
   end
@@ -245,16 +245,16 @@ function markers.install(trailName, sheetPath, count, r)
     return
   end
   if core.readInteger(nextRow + 3) ~= positions + 4 then
-    log(WARNING, "custom-skirmish-trails: unexpected game code for the next mission's marker; door pictures are switched off")
+    log(WARNING, "unexpected game code for the next mission's marker; door pictures are switched off")
     return
   end
   if bound and core.readInteger(bound + 2) ~= core.readInteger(furthest + 2) then
-    log(WARNING, "custom-skirmish-trails: unexpected game code for side missions; door pictures are switched off")
+    log(WARNING, "unexpected game code for side missions; door pictures are switched off")
     return
   end
   local resolved, reason = winfiles.scopedPath(sheetPath)
   if resolved == nil then
-    log(WARNING, "custom-skirmish-trails: " .. tostring(reason))
+    log(WARNING, tostring(reason))
     return
   end
   local modifier = modules.gmResourceModifier
@@ -263,7 +263,7 @@ function markers.install(trailName, sheetPath, count, r)
   local token = pictures and modifier:ReserveGm(native.sheet, resource) or -1
   if token < 0 then
     if resource >= 0 then modifier:FreeGm1Resource(resource) end
-    log(WARNING, string.format("custom-skirmish-trails: %s is not a .gm1 sheet; the game's markers stay", sheetPath))
+    log(WARNING, string.format("%s is not a .gm1 sheet; the game's markers stay", sheetPath))
     return
   end
 
@@ -304,7 +304,7 @@ function markers.install(trailName, sheetPath, count, r)
     end
   end)
   if not ok then
-    log(WARNING, "custom-skirmish-trails: door pictures are switched off: " .. tostring(err))
+    log(WARNING, "door pictures are switched off: " .. tostring(err))
     return
   end
   native.detoured = true
@@ -318,11 +318,11 @@ function markers.install(trailName, sheetPath, count, r)
   hooks.registerHookCallback("afterInit", function()
     door.gm = modifier:GetReservedGm(token)
     if door.gm < 0 then
-      log(WARNING, "custom-skirmish-trails: gmResourceModifier did not load the icon sheet; the game's markers stay")
+      log(WARNING, "gmResourceModifier did not load the icon sheet; the game's markers stay")
       progress.withoutPictures(trailName, r)
     end
   end)
-  log(INFO, string.format("custom-skirmish-trails: %s door pictures from %s", trailName, sheetPath))
+  log(INFO, string.format("%s door pictures from %s", trailName, sheetPath))
   return true
 end
 

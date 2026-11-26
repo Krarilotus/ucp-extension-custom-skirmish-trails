@@ -347,7 +347,7 @@ local function readColumns(cells, values, prefix, where, warnOnConflict)
     local text = cellOf(value, where .. "." .. key)
     local structured = cells[column] or ""
     if warnOnConflict and structured ~= "" and structured ~= text then
-      log(WARNING, string.format("custom-skirmish-trails: %s.%s overrides a conflicting structured value", where, key))
+      log(WARNING, string.format("%s.%s overrides a conflicting structured value", where, key))
     end
     cells[column] = text
   end

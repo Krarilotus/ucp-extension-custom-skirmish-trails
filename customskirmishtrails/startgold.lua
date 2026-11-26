@@ -141,7 +141,7 @@ function startgold.enable()
 
   local ok, err = pcall(showInBriefing)
   if not ok then
-    log(WARNING, "custom-skirmish-trails: the briefing shows the game's gold: " .. tostring(err))
+    log(WARNING, "the briefing shows the game's gold: " .. tostring(err))
   end
 end
 

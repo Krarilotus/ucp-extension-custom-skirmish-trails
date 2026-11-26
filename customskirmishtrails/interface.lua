@@ -124,7 +124,7 @@ local function applyColors(entry, where)
     if hasAi(entry, player) and value ~= nil and value ~= "" then
       local slot = common.COLORS[tostring(value):lower()] or math.tointeger(tonumber(value))
       if slot == nil or slot < 2 or slot > 8 or taken[slot] then
-        log(WARNING, string.format("custom-skirmish-trails: %s: player%d_color %s is not a free AI colour",
+        log(WARNING, string.format("%s: player%d_color %s is not a free AI colour",
           where, player, tostring(value)))
       else
         slots[player], taken[slot], any = slot, true, true

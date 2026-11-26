@@ -53,7 +53,7 @@ local function skipStartUnits(entry)
   for unitType = 0, START_UNIT_TYPES - 1 do
     core.writeInteger(memory.STARTING_TROOPS + unitType * 4, 0)
   end
-  log(INFO, "custom-skirmish-trails: player 1 starts without starting troops")
+  log(INFO, "player 1 starts without starting troops")
 end
 
 return {

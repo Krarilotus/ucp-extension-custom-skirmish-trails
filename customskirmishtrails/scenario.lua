@@ -215,7 +215,7 @@ function scenario.availability(entry)
   local game = data.version.isExtreme() and "extreme" or "crusader"
   local ok, result = pcall(function() return files:getMapAvailability(entry.map_name, game) end)
   if not ok or type(result) ~= "table" or type(result.available) ~= "boolean" then
-    log(WARNING, string.format("custom-skirmish-trails: map availability of %s: %s", tostring(entry.map_name),
+    log(WARNING, string.format("map availability of %s: %s", tostring(entry.map_name),
       tostring(ok and "no answer" or result)))
     return false, nil
   end
@@ -227,7 +227,7 @@ local function resolve()
   for name, aob in pairs(SCANS) do
     local ok, address = pcall(core.AOBScan, aob)
     if not ok or address == nil then
-      log(WARNING, string.format("custom-skirmish-trails: could not bind %s; scenario missions are switched off", name))
+      log(WARNING, string.format("could not bind %s; scenario missions are switched off", name))
       return nil
     end
     found[name] = { address = address }
@@ -235,7 +235,7 @@ local function resolve()
   for name, aob in pairs(EXTRACTS) do
     local ok, address, a, b = pcall(utils.AOBExtract, aob)
     if not ok or address == nil then
-      log(WARNING, string.format("custom-skirmish-trails: could not bind %s; scenario missions are switched off", name))
+      log(WARNING, string.format("could not bind %s; scenario missions are switched off", name))
       return nil
     end
     found[name] = { address = address, a, b }
@@ -248,7 +248,7 @@ local function resolve()
   local lostMode = found.lostPrepare.address + LOST_PREPARE_MODE.offset
   if branch == nil or syncModeSite == nil or winnersSite == nil or not patches.matches(jeSite, "0F 84 ? ? ? ?")
       or not patches.matches(wonMode, WON_PREPARE_MODE.bytes) or not patches.matches(lostMode, LOST_PREPARE_MODE.bytes) then
-    log(WARNING, "custom-skirmish-trails: unexpected game code; scenario missions are switched off")
+    log(WARNING, "unexpected game code; scenario missions are switched off")
     return nil
   end
   local list = found.listPrepare
@@ -256,7 +256,7 @@ local function resolve()
   -- the list and the end screens must name the same sync mode, human slot and game mode
   if core.readInteger(syncModeSite + 1) ~= list[1] or core.readInteger(winnersSite + 1) ~= list[2]
       or core.readInteger(wonMode + 2) ~= gameMode or core.readInteger(lostMode + 2) ~= gameMode then
-    log(WARNING, "custom-skirmish-trails: the game's mode and player slot don't match; scenario missions are switched off")
+    log(WARNING, "the game's mode and player slot don't match; scenario missions are switched off")
     return nil
   end
   return {
@@ -444,7 +444,7 @@ function scenario.applyMapLords(entry, fileName)
     return path ~= nil and readMapSection(path, LORDS_SECTION, LORDS_SIZE)
   end)
   if not ok or not read then
-    log(VERBOSE, string.format("custom-skirmish-trails: no lords from map %s: %s", fileName, tostring(read)))
+    log(VERBOSE, string.format("no lords from map %s: %s", fileName, tostring(read)))
     return
   end
   local buffer, last = mapReader.buffer, 0
@@ -524,7 +524,7 @@ local function launch(b, mission, how)
   local missionType = scenario.missionType(mission.entry)
   local syncMode = core.readInteger(b.syncMode)
   if syncMode ~= TYPE_SYNC_MODE[missionType] then
-    log(WARNING, string.format("custom-skirmish-trails: %s mission %d is a %s, and its map %s loads with sync mode %d",
+    log(WARNING, string.format("%s mission %d is a %s, and its map %s loads with sync mode %d",
       mission.trailName, mission.index, missionType, mission.fileName, syncMode))
   elseif missionType == "skirmish_scenario" then
     selectTrailMission(mission.trailName, mission.index)
@@ -539,7 +539,7 @@ local function hasMap(fileName)
   if mapLookup ~= nil and mapLookup(fileName) then
     return true
   end
-  log(WARNING, string.format("custom-skirmish-trails: cannot find map '%s'; the mission doesn't start", fileName))
+  log(WARNING, string.format("cannot find map '%s'; the mission doesn't start", fileName))
   return false
 end
 
@@ -575,7 +575,7 @@ local function installListStart(b)
       core.writeInteger(b.listReparse, 0)
     end)
     if not ok then
-      log(WARNING, "custom-skirmish-trails: starting a scenario mission failed: " .. tostring(err))
+      log(WARNING, "starting a scenario mission failed: " .. tostring(err))
       setSession()
     end
     return registers
@@ -612,7 +612,7 @@ local function playedMission()
 end
 
 local function declined(check)
-  log(INFO, "custom-skirmish-trails: end screen without trail hand-over: " .. check)
+  log(INFO, "end screen without trail hand-over: " .. check)
 end
 
 ---Before an end screen of a trail scenario prepares (`won`: the mission finished screen, else the
@@ -638,7 +638,7 @@ local function handOver(b, won)
     declined(mission)
     return
   end
-  log(INFO, string.format("custom-skirmish-trails: %s mission %d %s", trailName, mission, won and "won" or "lost"))
+  log(INFO, string.format("%s mission %d %s", trailName, mission, won and "won" or "lost"))
   selectTrailMission(trailName, mission)
   core.writeInteger(b.syncMode, SYNC_MODE_SKIRMISH)
   if won then
@@ -703,43 +703,43 @@ function scenario.startIfScenario(trailName, index, entry)
     if entry ~= nil and entry.map_name ~= nil then
       local fileName, reason = scenario.mapFileName(entry.map_name, true)
       if fileName == nil then
-        log(WARNING, string.format("custom-skirmish-trails: skirmish map '%s': %s",
+        log(WARNING, string.format("skirmish map '%s': %s",
           tostring(entry.map_name), reason))
         return true
       end
       if not hasMap(fileName) then return true end
     end
     if not unitlimits.available(entry, false) then
-      log(WARNING, string.format("custom-skirmish-trails: %s has a unit_limit, and the troop limit is switched off; "
+      log(WARNING, string.format("%s has a unit_limit, and the troop limit is switched off; "
         .. "the mission doesn't start", tostring(entry.map_name)))
       return true
     end
     return false
   end
   if missionType == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s: unknown mission_type '%s'; the mission doesn't start",
+    log(WARNING, string.format("%s: unknown mission_type '%s'; the mission doesn't start",
       tostring(entry.map_name), tostring(entry.mission_type)))
     return true
   end
   if bindings == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s is a scenario mission, and scenario missions are switched off",
+    log(WARNING, string.format("%s is a scenario mission, and scenario missions are switched off",
       tostring(entry.map_name)))
     return true
   end
   local fileName, reason = scenario.mapFileName(entry.map_name)
   if fileName == nil then
-    log(WARNING, string.format("custom-skirmish-trails: scenario map '%s': %s; the mission doesn't start",
+    log(WARNING, string.format("scenario map '%s': %s; the mission doesn't start",
       tostring(entry.map_name), reason))
     return true
   end
   local available, from = scenario.availability(entry)
   if not available then
-    log(INFO, string.format("custom-skirmish-trails: %s opens on %s", fileName, tostring(from)))
+    log(INFO, string.format("%s opens on %s", fileName, tostring(from)))
     return true
   end
   if not hasMap(fileName) then return true end
   if not unitlimits.available(entry, true) then
-    log(WARNING, string.format("custom-skirmish-trails: %s has a unit_limit, and the troop limit of scenario missions "
+    log(WARNING, string.format("%s has a unit_limit, and the troop limit of scenario missions "
       .. "is switched off; the mission doesn't start", fileName))
     return true
   end
@@ -806,7 +806,7 @@ local function installStartHook()
     end
     local ok, handled = pcall(scenario.startIfScenario, trailName, index + 1, entry)
     if not ok then
-      log(WARNING, "custom-skirmish-trails: starting a scenario mission failed: " .. tostring(handled))
+      log(WARNING, "starting a scenario mission failed: " .. tostring(handled))
       if bindings ~= nil then setSession() end
       return 0
     end
@@ -829,19 +829,19 @@ function scenario.enable(missionsOf)
   -- without the Start hook a scenario mission would run the skirmish setup on its map
   local checked, installed = pcall(installStartHook)
   if not checked or not installed then
-    log(WARNING, "custom-skirmish-trails: unexpected game code at the trail's Start; scenario rows are withheld")
+    log(WARNING, "unexpected game code at the trail's Start; scenario rows are withheld")
     return false, false
   end
   local lookupOk, lookup = pcall(bindMapLookup)
   if lookupOk then
     mapLookup = lookup
   else
-    log(WARNING, "custom-skirmish-trails: custom map lookup is unavailable: " .. tostring(lookup))
+    log(WARNING, "custom map lookup is unavailable: " .. tostring(lookup))
   end
   local ok, result = pcall(resolve)
   if not ok or result == nil then
     if not ok then
-      log(WARNING, "custom-skirmish-trails: scenario missions are switched off: " .. tostring(result))
+      log(WARNING, "scenario missions are switched off: " .. tostring(result))
     end
     return false, true
   end
@@ -864,13 +864,13 @@ function scenario.enable(missionsOf)
     installListStart(result)
   end)
   if not installed then
-    log(WARNING, "custom-skirmish-trails: scenario missions are switched off: " .. tostring(err))
+    log(WARNING, "scenario missions are switched off: " .. tostring(err))
     return false, true
   end
   bindings = result
   local kept, keepErr = pcall(installHeaderKeep, result)
   if not kept then
-    log(WARNING, "custom-skirmish-trails: map and save previews change the chosen map: " .. tostring(keepErr))
+    log(WARNING, "map and save previews change the chosen map: " .. tostring(keepErr))
   end
   return true, true
 end

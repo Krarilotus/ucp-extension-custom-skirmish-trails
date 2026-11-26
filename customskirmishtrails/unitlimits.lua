@@ -124,11 +124,11 @@ local function resolve()
     pcall(utils.AOBExtract, ENTRY_AOB)
   local okStore, store, base, storeField = pcall(utils.AOBExtract, STORE_AOB)
   if not okEntry or not okStore or entry == nil or store == nil then
-    log(WARNING, "custom-skirmish-trails: could not find the troop limit; unit_limit is switched off")
+    log(WARNING, "could not find the troop limit; unit_limit is switched off")
     return nil
   end
   if limitField ~= storeField or store <= entry or store - entry > 0x100 then
-    log(WARNING, "custom-skirmish-trails: unexpected troop limit code; unit_limit is switched off")
+    log(WARNING, "unexpected troop limit code; unit_limit is switched off")
     return nil
   end
   return {
@@ -286,11 +286,11 @@ function unitlimits.enable()
       local found, problem = resolvePlayers(bindings)
       if not found then
         bindings.playersProblem = problem
-        log(WARNING, "custom-skirmish-trails: " .. problem .. "; trail results keep no players")
+        log(WARNING, problem .. "; trail results keep no players")
       end
     end
   else
-    log(WARNING, "custom-skirmish-trails: unit_limit is switched off: " .. tostring(result))
+    log(WARNING, "unit_limit is switched off: " .. tostring(result))
   end
 end
 
@@ -306,7 +306,7 @@ function unitlimits.apply(trails, scenarioSession, playedMission)
     for index, entry in ipairs(missions) do
       local policy, reason = unitlimits.parse(entry.unit_limit)
       if policy == nil then
-        log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unit_limit %s", trailName, index, reason))
+        log(WARNING, string.format("%s mission %d: unit_limit %s", trailName, index, reason))
       end
       entry.unit_limit_policy = (policy ~= nil and policy.kind ~= "native") and policy or nil
       any = any or entry.unit_limit_policy ~= nil
@@ -316,23 +316,23 @@ function unitlimits.apply(trails, scenarioSession, playedMission)
     return
   end
   if not unchanged(bindings) then
-    log(WARNING, "custom-skirmish-trails: the troop limit code was changed by another patch; unit_limit is switched off")
+    log(WARNING, "the troop limit code was changed by another patch; unit_limit is switched off")
     return
   end
   local ok, err = pcall(installStore, bindings)
   if not ok then
-    log(WARNING, "custom-skirmish-trails: unit_limit is switched off: " .. tostring(err))
+    log(WARNING, "unit_limit is switched off: " .. tostring(err))
     return
   end
   installed.skirmish = true
   if scenarioSession == nil then
-    log(WARNING, "custom-skirmish-trails: scenario missions are switched off, so are their troop limits")
+    log(WARNING, "scenario missions are switched off, so are their troop limits")
     return
   end
   session = scenarioSession
   ok, err = pcall(installEntry, bindings, scenarioSession)
   if not ok then
-    log(WARNING, "custom-skirmish-trails: the troop limits of scenario missions are switched off: " .. tostring(err))
+    log(WARNING, "the troop limits of scenario missions are switched off: " .. tostring(err))
     return
   end
   installed.scenario = true

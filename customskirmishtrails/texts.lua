@@ -73,12 +73,12 @@ end
 function texts.load(path)
   local ok, text = pcall(settingsModule.readText, path)
   if not ok or text == nil then
-    log(WARNING, string.format("custom-skirmish-trails: cannot read the language file %s; the default texts are shown", path))
+    log(WARNING, string.format("cannot read the language file %s; the default texts are shown", path))
     return nil
   end
   local decoded, data = pcall(function() return json:decode(text) end)
   if not decoded or type(data) ~= "table" then
-    log(WARNING, string.format("custom-skirmish-trails: the language file %s is not valid JSON (%s); the default texts are shown",
+    log(WARNING, string.format("the language file %s is not valid JSON (%s); the default texts are shown",
       path, tostring(data)))
     return nil
   end
@@ -102,7 +102,7 @@ function texts.load(path)
             columns[column] = value
           else
             problems = problems + 1
-            log(strict and WARNING or VERBOSE, string.format("custom-skirmish-trails: %s: mission %s: '%s' is not a text column",
+            log(strict and WARNING or VERBOSE, string.format("%s: mission %s: '%s' is not a text column",
               path, tostring(key), tostring(column)))
           end
         end
@@ -113,7 +113,7 @@ function texts.load(path)
     problems = problems + 1
   end
   if problems > 0 and not strict then
-    log(WARNING, string.format("custom-skirmish-trails: %d problems in the language file %s; turn on strict mode "
+    log(WARNING, string.format("%d problems in the language file %s; turn on strict mode "
       .. "(Miscellaneous) to see them", problems, path))
   end
   return result
@@ -139,7 +139,7 @@ function texts.apply(languageTexts, entries, keys)
       for _, column in ipairs(texts.COLUMNS) do
         local default = entry[column]
         if type(default) == "string" and default ~= "" and (mission == nil or mission[column] == nil) then
-          log(INFO, string.format("custom-skirmish-trails: %s has no %s for mission %s; the default text is shown",
+          log(INFO, string.format("%s has no %s for mission %s; the default text is shown",
             languageTexts.path, column, key))
         end
       end
@@ -147,7 +147,7 @@ function texts.apply(languageTexts, entries, keys)
   end
   for key in pairs(languageTexts.missions) do
     if not used[key] then
-      log(strict and WARNING or VERBOSE, string.format("custom-skirmish-trails: %s: there is no mission %s in the trail",
+      log(strict and WARNING or VERBOSE, string.format("%s: there is no mission %s in the trail",
         languageTexts.path, key))
     end
   end

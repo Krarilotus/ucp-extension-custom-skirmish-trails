@@ -220,9 +220,9 @@ function tgx.cached(path, cacheName)
   end
   local stamped, stampError = storage.write(cacheName .. ".source", key)
   if not stamped then
-    log(WARNING, "custom-skirmish-trails: " .. tostring(stampError))
+    log(WARNING, tostring(stampError))
   end
-  log(INFO, string.format("custom-skirmish-trails: made %s (%d x %d) from %s", cachePath, picture.width,
+  log(INFO, string.format("made %s (%d x %d) from %s", cachePath, picture.width,
     picture.height, path))
   return cachePath, picture.width, picture.height
 end

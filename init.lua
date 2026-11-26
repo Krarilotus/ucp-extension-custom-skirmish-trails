@@ -114,7 +114,7 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
     if result[index] ~= nil then
       result[index].map_name = mapName
     else
-      log(WARNING, string.format("custom-skirmish-trails: setMissionMap: the trail has no mission %s; %s is not used",
+      log(WARNING, string.format("setMissionMap: the trail has no mission %s; %s is not used",
         tostring(mission), mapName))
     end
   end
@@ -122,18 +122,18 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
   for index, entry in ipairs(result) do
     interface.applyColors(entry, string.format("%s mission %d", trailName, index))
     if scenario.difficultyScaling(entry) == nil then
-      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unknown difficulty_scaling '%s'; vanilla is used",
+      log(WARNING, string.format("%s mission %d: unknown difficulty_scaling '%s'; vanilla is used",
         trailName, index, tostring(entry.difficulty_scaling)))
     end
     if scenario.missionType(entry) == nil then
-      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unknown mission_type '%s'",
+      log(WARNING, string.format("%s mission %d: unknown mission_type '%s'",
         trailName, index, tostring(entry.mission_type)))
     elseif scenario.isScenario(entry) and not startInstalled then
       result[index] = nil
     elseif scenario.isScenario(entry) then
       local fileName, reason = scenario.mapFileName(entry.map_name)
       if fileName == nil then
-        log(WARNING, string.format("custom-skirmish-trails: %s mission %d: scenario map '%s': %s",
+        log(WARNING, string.format("%s mission %d: scenario map '%s': %s",
           trailName, index, tostring(entry.map_name), reason))
       else
         entry.map_name = fileName
@@ -210,7 +210,7 @@ local function installRoute(trail, settings, count)
     return nil
   end
   if not progress.installRoute(trail.name, r) then
-    log(WARNING, string.format("custom-skirmish-trails: %s: the trail route is switched off; the trail plays its "
+    log(WARNING, string.format("%s: the trail route is switched off; the trail plays its "
       .. "missions in their order", settings.path))
     return nil
   end
@@ -228,14 +228,14 @@ local function readRouteFiles(trail, settings)
         patches.CAPACITY[trail.name])
   if problem then
     if problem ~= "" then
-      log(WARNING, string.format("custom-skirmish-trails: %s: %s; the trail's missions are not loaded",
+      log(WARNING, string.format("%s: %s; the trail's missions are not loaded",
         settings.path, problem))
     end
     settings.route, settings.missions = nil, nil
     return
   end
   if settings.positions ~= nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s: a route of mission files has the positions; "
+    log(WARNING, string.format("%s: a route of mission files has the positions; "
       .. "trail_mission_positions is not used", settings.path))
   end
   local directory = settingsModule.directoryOf(settings.path)
@@ -275,11 +275,11 @@ local function loadTrailSettings(config, trail)
   end
   local ok, result = pcall(settingsModule.load, path, trail.name)
   if not ok then
-    log(WARNING, string.format("custom-skirmish-trails: %s: %s", path, tostring(result)))
+    log(WARNING, string.format("%s: %s", path, tostring(result)))
     return nil
   end
   if result ~= nil then
-    log(INFO, string.format("custom-skirmish-trails: %s trail settings from %s", trail.type, path))
+    log(INFO, string.format("%s trail settings from %s", trail.type, path))
   end
   return result
 end
@@ -298,7 +298,7 @@ end
 local function writeRequests(requests)
   local ok, err = storage.write(REQUESTS_FILE, json:encode(requests))
   if not ok then
-    log(WARNING, "custom-skirmish-trails: cannot write " .. REQUESTS_FILE .. ": " .. tostring(err))
+    log(WARNING, "cannot write " .. REQUESTS_FILE .. ": " .. tostring(err))
   end
 end
 
@@ -338,7 +338,7 @@ local function runConversions(config, trailSettings)
           if not ok then
             message = string.format("%s: %s", file, tostring(done))
           end
-          log((ok and done) and INFO or WARNING, "custom-skirmish-trails: " .. tostring(message))
+          log((ok and done) and INFO or WARNING, tostring(message))
           table.insert(results, tostring(message))
         end
         requests[trail.key] = {
@@ -414,14 +414,14 @@ return {
         startYears[trail.name] = settings.startingYear
         local okVisuals, visualsError = pcall(visuals.applyVisuals, trail.name, settings.visuals)
         if not okVisuals then
-          log(WARNING, string.format("custom-skirmish-trails: %s trail visuals: %s", trail.type, tostring(visualsError)))
+          log(WARNING, string.format("%s trail visuals: %s", trail.type, tostring(visualsError)))
         end
         if settings.id ~= nil then
           progress.install(trail.name, stateFile("progress", settings), missionCounts[trail.name])
         end
         local okRoute, sides = pcall(installRoute, trail, settings, missionCounts[trail.name])
         if not okRoute then
-          log(WARNING, string.format("custom-skirmish-trails: %s trail route: %s", trail.type, tostring(sides)))
+          log(WARNING, string.format("%s trail route: %s", trail.type, tostring(sides)))
           sides = nil
         end
         routes[trail.name] = sides
@@ -430,7 +430,7 @@ return {
           local okMarkers, installed = pcall(markers.install, trail.name, settings.visuals.iconSheet,
             missionCounts[trail.name], sides)
           if not okMarkers then
-            log(WARNING, string.format("custom-skirmish-trails: %s door pictures: %s", trail.type, tostring(installed)))
+            log(WARNING, string.format("%s door pictures: %s", trail.type, tostring(installed)))
           end
           pictures = okMarkers and installed
         end
@@ -470,14 +470,14 @@ return {
           local okSync, text, messages = pcall(sync.run, trail.name, settings.missions,
             settings.hasAiMapping and settings.aiMapping or nil, knownHeaders(), textFolder, settings)
           if not okSync then
-            log(WARNING, string.format("custom-skirmish-trails: %s trail missions: %s", trail.type, tostring(text)))
+            log(WARNING, string.format("%s trail missions: %s", trail.type, tostring(text)))
             if settings.missions.mode == "json_folder" then
               csvTexts[trail.name] = false
             end
           else
             csvTexts[trail.name] = text
             for _, message in ipairs(messages) do
-              log(INFO, "custom-skirmish-trails: " .. message)
+              log(INFO, message)
             end
           end
         end
@@ -486,7 +486,7 @@ return {
       -- Export / Import CSV Data requested in the GUI
       local ok, err = pcall(runConversions, config, trailSettings)
       if not ok then
-        log(WARNING, "custom-skirmish-trails: Export / Import CSV Data: " .. tostring(err))
+        log(WARNING, "Export / Import CSV Data: " .. tostring(err))
       end
 
       local language = data.version.getGameLanguage() or ""
@@ -500,10 +500,10 @@ return {
           if textFile ~= nil then
             languageTexts = textsModule.load(textFile)
             if languageTexts ~= nil then
-              log(INFO, string.format("custom-skirmish-trails: %s trail texts (%s): %s", trail.type, language, textFile))
+              log(INFO, string.format("%s trail texts (%s): %s", trail.type, language, textFile))
             end
           elseif trailSettingsForTexts.textFiles ~= nil then
-            log(INFO, string.format("custom-skirmish-trails: no %s text file for the %s trail; the default texts are shown",
+            log(INFO, string.format("no %s text file for the %s trail; the default texts are shown",
               language, trail.type))
           end
           LOCKED_TEXTS[trail.name] = (languageTexts and languageTexts.lockedText) or trailSettingsForTexts.lockedText
@@ -511,20 +511,20 @@ return {
             (languageTexts and languageTexts.title) or trailSettingsForTexts.title,
             (languageTexts and languageTexts.summary) or trailSettingsForTexts.summary)
           if not okTexts then
-            log(WARNING, "custom-skirmish-trails: trail title and summary: " .. tostring(textError))
+            log(WARNING, "trail title and summary: " .. tostring(textError))
           end
         end
         local path = trailCsv(config, trail, trailSettings[trail.name])
         if csvTexts[trail.name] == false then
-          log(WARNING, string.format("custom-skirmish-trails: the %s trail keeps the game's own missions, "
+          log(WARNING, string.format("the %s trail keeps the game's own missions, "
             .. "because its mission files cannot be loaded", trail.type))
         elseif nonEmpty(path) then
-          log(INFO, string.format("custom-skirmish-trails: %s trail (%s): %s", trail.type, language, path))
+          log(INFO, string.format("%s trail (%s): %s", trail.type, language, path))
           local okTrail, trailError = pcall(applyTrail, trail.name, path, missionTables[trail.name],
             missionCounts[trail.name], languageTexts, startInstalled,
             trailSettings[trail.name] and trailSettings[trail.name].missionKeys, csvTexts[trail.name])
           if not okTrail then
-            log(WARNING, string.format("custom-skirmish-trails: the trail csv file %s cannot be used, so the %s "
+            log(WARNING, string.format("the trail csv file %s cannot be used, so the %s "
               .. "trail keeps the game's own missions: %s", path, trail.type, tostring(trailError)))
           end
         end
@@ -532,7 +532,7 @@ return {
 
       for trailName, overrides in pairs(MAP_OVERRIDES) do
         if next(overrides) ~= nil then
-          log(WARNING, string.format("custom-skirmish-trails: setMissionMap: %s has no mission data of its own; "
+          log(WARNING, string.format("setMissionMap: %s has no mission data of its own; "
             .. "its maps are not changed", trailName))
         end
       end
@@ -567,11 +567,11 @@ return {
     startgold.enable()
     local okIcons, iconsError = pcall(patches.showStartModeIcons)
     if not okIcons then
-      log(WARNING, "custom-skirmish-trails: start mode pictures: " .. tostring(iconsError))
+      log(WARNING, "start mode pictures: " .. tostring(iconsError))
     end
     local okTeams, teamsError = pcall(patches.separateBriefingTeams)
     if not okTeams then
-      log(WARNING, "custom-skirmish-trails: the briefing's team separator: " .. tostring(teamsError))
+      log(WARNING, "the briefing's team separator: " .. tostring(teamsError))
     end
 
     detourSwitchToMenu()

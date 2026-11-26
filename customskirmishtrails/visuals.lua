@@ -83,12 +83,12 @@ end
 local function readImage(path)
   local gm = modules.gmResourceModifier
   if gm == nil or gm.LoadResourceFromImage == nil then
-    log(WARNING, "custom-skirmish-trails: gmResourceModifier is not active; trail button pictures stay")
+    log(WARNING, "gmResourceModifier is not active; trail button pictures stay")
     return nil
   end
   local resolved, reason = winfiles.scopedPath(path)
   if resolved == nil then
-    log(WARNING, "custom-skirmish-trails: " .. reason)
+    log(WARNING, reason)
     return nil
   end
   local function load()
@@ -100,7 +100,7 @@ local function readImage(path)
     resource = load()
   end
   if resource == nil then
-    log(WARNING, string.format("custom-skirmish-trails: cannot load the picture %s", path))
+    log(WARNING, string.format("cannot load the picture %s", path))
   end
   return resource
 end
@@ -120,7 +120,7 @@ local function setFrame(gmId, frame, path)
   end
   local ok, done = pcall(function() return modules.gmResourceModifier:SetGm(gmId, frame, resource, 0) end)
   if not ok or done == false then
-    log(WARNING, string.format("custom-skirmish-trails: the picture %s does not fit gm %d frame %d", path, gmId, frame))
+    log(WARNING, string.format("the picture %s does not fit gm %d frame %d", path, gmId, frame))
     return false
   end
   return true
@@ -168,7 +168,7 @@ local function registerBackgroundOverride()
   end
   local files = modules.files
   if files == nil or files.registerOverrideFunction == nil then
-    log(WARNING, "custom-skirmish-trails: the files module is not active; trail backgrounds stay")
+    log(WARNING, "the files module is not active; trail backgrounds stay")
     return
   end
   files:registerOverrideFunction(function(file)
@@ -184,7 +184,7 @@ function backgroundTgx(trailName, path)
   local original = "gfx/" .. BACKGROUND_FILES[trailName]
   local resolved, reason = winfiles.scopedPath(path)
   if resolved == nil then
-    log(WARNING, string.format("custom-skirmish-trails: the trail background stays: %s: %s", tostring(path), tostring(reason)))
+    log(WARNING, string.format("the trail background stays: %s: %s", tostring(path), tostring(reason)))
     return nil
   end
   local result, width, height = resolved, nil, nil
@@ -192,21 +192,21 @@ function backgroundTgx(trailName, path)
     local ok, made, madeWidth, madeHeight = pcall(tgx.cached, path,
       string.format("background-%s.tgx", trailName))
     if not ok or made == nil then
-      log(WARNING, string.format("custom-skirmish-trails: the trail background stays: %s", tostring(made)))
+      log(WARNING, string.format("the trail background stays: %s", tostring(made)))
       return nil
     end
     result, width, height = made, madeWidth, madeHeight
   else
     width, height = tgx.size(resolved)
     if width == nil then
-      log(WARNING, string.format("custom-skirmish-trails: the trail background stays: %s cannot be read as a .tgx file",
+      log(WARNING, string.format("the trail background stays: %s cannot be read as a .tgx file",
         tostring(path)))
       return nil
     end
   end
   local originalWidth, originalHeight = tgx.size(original)
   if width ~= nil and originalWidth ~= nil and (width ~= originalWidth or height ~= originalHeight) then
-    log(WARNING, string.format("custom-skirmish-trails: %s is %d x %d, the game's %s is %d x %d",
+    log(WARNING, string.format("%s is %d x %d, the game's %s is %d x %d",
       path, width, height, original, originalWidth, originalHeight))
   end
   return result
@@ -220,7 +220,7 @@ function visuals.applyVisuals(trailName, trailVisuals)
   if trailVisuals.buttonIdle ~= nil or trailVisuals.buttonHighlighted ~= nil then
     local frames = BUTTON_FRAMES[isExtreme() and "extreme" or "crusader"][trailName]
     if frames == nil then
-      log(INFO, string.format("custom-skirmish-trails: this game version has no menu button for the %s", trailName))
+      log(INFO, string.format("this game version has no menu button for the %s", trailName))
     else
       -- loaded once the game has started (COM is ready then, as for aiSwapper's portraits)
       hooks.registerHookCallback("afterInit", function()

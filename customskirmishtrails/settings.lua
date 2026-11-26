@@ -32,17 +32,17 @@ end
 ---A problem with one entry; the entry falls back to the game's own value.
 local function warn(path, message, ...)
   problems[path] = (problems[path] or 0) + 1
-  log(strict and WARNING or VERBOSE, string.format("custom-skirmish-trails: %s: " .. message, path, ...))
+  log(strict and WARNING or VERBOSE, string.format("%s: " .. message, path, ...))
 end
 
 ---A problem that makes the whole file unusable: always logged.
 local function fail(path, message, ...)
-  log(WARNING, string.format("custom-skirmish-trails: %s: " .. message, path, ...))
+  log(WARNING, string.format("%s: " .. message, path, ...))
 end
 
 local function info(path, message, ...)
   if strict then
-    log(INFO, string.format("custom-skirmish-trails: %s: " .. message, path, ...))
+    log(INFO, string.format("%s: " .. message, path, ...))
   end
 end
 
@@ -350,7 +350,7 @@ function settings.load(path, trailName)
   end
 
   if not strict and (problems[path] or 0) > 0 then
-    log(WARNING, string.format("custom-skirmish-trails: %d problems in the trail settings file %s; those entries use "
+    log(WARNING, string.format("%d problems in the trail settings file %s; those entries use "
       .. "the game's own values. Turn on strict mode (Miscellaneous) to see them.", problems[path], path))
   end
   return result

@@ -117,7 +117,7 @@ local function split(textManager, text)
   end
   local rest = table.concat(words, " ", used + 1)
   if rest ~= "" and menutext.measure(textManager, rest, SUMMARY_FONT) > SUMMARY_MAX_WIDTH then
-    log(WARNING, "custom-skirmish-trails: a trail summary needs more than two lines of 540 pixels; the second line is cut")
+    log(WARNING, "a trail summary needs more than two lines of 540 pixels; the second line is cut")
   end
   return first, rest
 end
@@ -169,7 +169,7 @@ function menutext.apply(trailName, title, summary)
   end
   writeCString(lines.first, first:sub(1, LINE_BUFFER_SIZE - 1))
   writeCString(lines.second, second:sub(1, LINE_BUFFER_SIZE - 1))
-  log(INFO, string.format("custom-skirmish-trails: the %s summary is shown in two lines", trailName))
+  log(INFO, string.format("the %s summary is shown in two lines", trailName))
 end
 
 return menutext
