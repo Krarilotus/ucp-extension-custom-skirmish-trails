@@ -7,8 +7,6 @@
 -- functions in both. Each site's bytes are checked before anything is written, so a game
 -- version or another module that changed them only switches that one feature off.
 
-local winfiles = require("customskirmishtrails.winfiles")
-
 local patches = {}
 
 -- The game keeps 50 progress slots per trail in memory, but saves only 30 for the Warchest and
@@ -166,10 +164,32 @@ local state = {
   originalLord = nil,
 }
 
-local function scan(pattern, purpose)
+---`aob` (as for utils.AOBExtract) without its capture marks, as core.scanForAOB and core.matchesAOB take it.
+function patches.plain(aob)
+  return (aob:gsub("I%(", ""):gsub("%)", ""))
+end
+
+---True when `aob` (as for utils.AOBExtract), found at `found`, matches there and nowhere else in
+---the game executable; otherwise false and the reason.
+function patches.isUnique(aob, found)
+  local plain = patches.plain(aob)
+  local again = core.scanForAOB(plain, found + 1)
+  if core.scanForAOB(plain) ~= found or (again ~= nil and again ~= 0) then
+    return false, "is found twice"
+  end
+  return true
+end
+
+---The address of the one match of `pattern`, or nil with a warning (naming `purpose`) when it is
+---missing or found twice.
+function patches.find(pattern, purpose)
   local ok, address = pcall(core.AOBScan, pattern)
-  if not ok or address == nil then
-    log(WARNING, string.format("custom-skirmish-trails: could not find %s; that part is disabled", purpose))
+  local unique, reason = ok and address ~= nil, "is not found"
+  if unique then
+    unique, reason = patches.isUnique(pattern, address)
+  end
+  if not unique then
+    log(WARNING, string.format("custom-skirmish-trails: %s %s; that part is disabled", purpose, reason))
     return nil
   end
   return address
@@ -177,24 +197,14 @@ end
 
 local function locate(name)
   if functions[name] == nil then
-    functions[name] = scan(FUNCTION_AOBS[name], name) or false
+    functions[name] = patches.find(FUNCTION_AOBS[name], name) or false
   end
   return functions[name] or nil
 end
 
 ---True when the bytes at `address` match `pattern` ("8B 04 D5 ? ? ? ?").
 local function matches(address, pattern)
-  local tokens = {}
-  for token in pattern:gmatch("%S+") do
-    table.insert(tokens, token)
-  end
-  local bytes = core.readBytes(address, #tokens)
-  for index, token in ipairs(tokens) do
-    if token ~= "?" and (bytes[index] & 0xFF) ~= tonumber(token, 16) then
-      return false
-    end
-  end
-  return true
+  return core.matchesAOB(pattern, address)
 end
 
 ---The address of a patch site, or nil (with a warning) when its bytes are not what we expect.
@@ -215,74 +225,6 @@ end
 patches.matches = matches
 patches.siteAddress = siteAddress
 patches.functionAddress = locate
-
-local IMAGE_SCN_MEM_EXECUTE = 0x20000000
-local gameImage = nil
-
----The base of the game's executable image (GetModuleHandleA(NULL)), or nil.
-local function gameImageBase()
-  if gameImage == nil then
-    local ok, base = pcall(function()
-      return winfiles.dllFunction("kernel32.dll", "GetModuleHandleA", 1)(0) & 0xFFFFFFFF
-    end)
-    gameImage = ok and base ~= 0 and base or false
-  end
-  return gameImage or nil
-end
-
----The bounds of the game executable's code section that `address` lies in, read from the
----executable's PE headers, or nil when it lies in no executable section of the game itself.
-local function codeSectionOf(address)
-  local base = gameImageBase()
-  if base == nil or core.readSmallInteger(base) & 0xFFFF ~= 0x5A4D then
-    return nil
-  end
-  local nt = base + core.readInteger(base + 0x3C)
-  if core.readInteger(nt) ~= 0x4550 then
-    return nil
-  end
-  local count = core.readSmallInteger(nt + 6) & 0xFFFF
-  local first = nt + 24 + (core.readSmallInteger(nt + 20) & 0xFFFF)
-  for index = 0, count - 1 do
-    local header = first + 40 * index
-    local start = base + core.readInteger(header + 12)
-    local finish = start + core.readInteger(header + 8)
-    if address >= start and address < finish then
-      if core.readInteger(header + 36) & IMAGE_SCN_MEM_EXECUTE == 0 then
-        return nil
-      end
-      return start, finish
-    end
-  end
-  return nil
-end
-
----`aob` (as for utils.AOBExtract) without its capture marks, as core.scanForAOB and matches take it.
-function patches.plain(aob)
-  return (aob:gsub("I%(", ""):gsub("%)", ""))
-end
-
----True when `aob` (as for utils.AOBExtract), found at `found`, matches there and nowhere else in
----the game executable's code section; otherwise false and the reason. The framework's scanner may
----look beyond `max`, so only hits that lie wholly in the section count.
-function patches.isUnique(aob, found)
-  local start, finish = codeSectionOf(found)
-  local plain = patches.plain(aob)
-  local _, length = plain:gsub("%S+", "")
-  local last = finish and finish - length -- the last address a whole match can start at
-  if start == nil or found > last then
-    return false, "is not in the game's code"
-  end
-  local function inSection(hit)
-    return hit ~= nil and hit >= start and hit <= last
-  end
-  local first = core.scanForAOB(plain, start, finish)
-  local again = found < last and core.scanForAOB(plain, found + 1, finish) or nil
-  if first ~= found or inSection(again) then
-    return false, "is found twice"
-  end
-  return true
-end
 
 ---Runs `install`, which patches the game code at `sites` ({ address, size } each). When it fails,
 ---every site gets its original bytes back and the error is raised again.

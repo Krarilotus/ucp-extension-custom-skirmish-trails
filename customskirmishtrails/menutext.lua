@@ -5,6 +5,7 @@
 -- 540 pixels is split at a space into two centred lines: the game's draw call for that summary
 -- goes through a small stub that draws the two lines instead of the one.
 
+local patches = require("customskirmishtrails.patches")
 local visuals = require("customskirmishtrails.visuals")
 local winfiles = require("customskirmishtrails.winfiles")
 
@@ -70,15 +71,6 @@ split:
   ret 32
 ]]
 
-local function scan(pattern, purpose)
-  local ok, address = pcall(core.AOBScan, pattern)
-  if not ok or address == nil then
-    log(WARNING, "custom-skirmish-trails: could not find " .. purpose .. "; it stays as the game draws it")
-    return nil
-  end
-  return address
-end
-
 local function writeCString(address, text)
   winfiles.writeMemory(address, text)
   core.writeByte(address + #text, 0)
@@ -90,7 +82,7 @@ local textWidth = nil
 ---width function is not found.
 function menutext.measure(textManager, text, font)
   if textWidth == nil then
-    local computeTextWidth = scan("56 8B 74 24 08 85 F6 75 06 33 C0 5E C2 08 00 8B C6", "the text width function")
+    local computeTextWidth = patches.find("56 8B 74 24 08 85 F6 75 06 33 C0 5E C2 08 00 8B C6", "the text width function")
     if computeTextWidth == nil then
       return nil
     end
@@ -140,8 +132,8 @@ function menutext.apply(trailName, title, summary)
   visuals.applyTexts(trailName, title, summary)
 
   local blocks = BLOCKS[trailName]
-  local titleBlock = scan(blocks.title, trailName .. " title")
-  local summaryBlock = scan(blocks.summary, trailName .. " summary")
+  local titleBlock = patches.find(blocks.title, trailName .. " title")
+  local summaryBlock = patches.find(blocks.summary, trailName .. " summary")
   if titleBlock == nil or summaryBlock == nil then
     return
   end
