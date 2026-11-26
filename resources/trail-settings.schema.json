@@ -10,63 +10,6 @@
         { "type": "integer", "minimum": 0, "maximum": 2147483647 },
         { "const": "unlimited" }
       ]
-    },
-    "colours": {
-      "description": "Players by colour: red is you (slot 1); orange, yellow, blue, black, purple, lightblue and green are slots 2-8.",
-      "type": "array",
-      "minItems": 1,
-      "uniqueItems": true,
-      "items": { "enum": ["red", "orange", "yellow", "blue", "black", "purple", "lightblue", "green"] }
-    },
-    "conditions": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/definitions/condition" }
-    },
-    "condition": {
-      "description": "An object with one key, the condition's type. A type or value this version doesn't know is reported in the log and never holds.",
-      "oneOf": [
-        {
-          "type": "object",
-          "properties": {
-            "won": {
-              "description": "Holds once one win of the mission met every other key.",
-              "type": "object",
-              "properties": {
-                "mission": { "description": "The node id that was won.", "type": "string" },
-                "lords_alive": {
-                  "description": "These players' lords were alive at that win.",
-                  "$ref": "#/definitions/colours"
-                },
-                "players_alive": {
-                  "description": "These players were still in the game at that win: lord alive and keep standing.",
-                  "$ref": "#/definitions/colours"
-                }
-              },
-              "required": ["mission"],
-              "additionalProperties": false
-            }
-          },
-          "required": ["won"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "all": { "description": "Holds when every condition holds.", "$ref": "#/definitions/conditions" }
-          },
-          "required": ["all"],
-          "additionalProperties": false
-        },
-        {
-          "type": "object",
-          "properties": {
-            "any": { "description": "Holds when one of the conditions holds.", "$ref": "#/definitions/conditions" }
-          },
-          "required": ["any"],
-          "additionalProperties": false
-        }
-      ]
     }
   },
   "properties": {
@@ -213,7 +156,7 @@
           },
           "unlock": {
             "description": "The node opens only once this condition holds.",
-            "$ref": "#/definitions/condition"
+            "$ref": "condition.schema.json"
           },
           "reward": {
             "description": "Given once, at the node's first win (not at a skip with a chicken).",

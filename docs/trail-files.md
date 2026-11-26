@@ -257,7 +257,7 @@ counts as passed, so progress from before the trail had its route is kept.
             { "won": { "mission": "door16", "players_alive": ["red", "orange"] } } ] } }
 ```
 
-- `unlock` (any node): one condition. A condition is an object with one key, its type:
+- `unlock` (any node): one condition (`resources/condition.schema.json`). A condition is an object with one key, its type:
   - `won`: `mission` (needed) is a node, and the condition holds once one win of it met every
     other key: `lords_alive`, these players' lords were alive at the win; `players_alive`, these
     players were still in the game (lord alive and keep standing).
