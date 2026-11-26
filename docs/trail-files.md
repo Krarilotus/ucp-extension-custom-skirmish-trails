@@ -63,7 +63,7 @@ Each trail can have a trail settings file (a .json file, set in the GUI) with ev
 - `trail_title`, `trail_summary`: the texts under the trail's button in the skirmish menu. A summary wider than 540 pixels wraps into a second line; both texts then sit 10 pixels higher.
 - `mission_locked_text`: the briefing of a scenario mission whose map isn't open yet (see Scenario missions); `{date}` becomes the date.
 - `starting_year`: the year the first mission starts in.
-- `trail_visuals`: `trail_button_idle` and `trail_button_highlighted` (pictures, for example .png, for the trail's button in the skirmish menu), and `trail_background` (the trail screen's background: a .tgx file, or a .png/.jpg/.bmp that the game turns into a .tgx once and keeps in the user data folder; use the size of the game's own file), and `trail_icon_sheet` (door pictures, see below).
+- `trail_visuals`: `trail_button_idle` and `trail_button_highlighted` (pictures, for example .png, for the trail's button in the skirmish menu), and `trail_background` (the trail screen's background: a .tgx file, or a .png/.jpg/.bmp that the game turns into a .tgx once and keeps in the user data folder; use the size of the game's own file), and `mission_icons` (door pictures, see below).
 - `trail_mission_positions`: a list of `{ "x": .., "y": .. }` points on the 800 x 600 trail screen, one per mission. Their number is the trail's number of missions (at most 50 for the first trail, 30 for the Warchest and the Extreme trail). A route of mission files (see Trail route) gives the positions and the number of missions instead.
 - `trail_route`: the trail's missions as a graph of nodes, see Trail route.
 - `ai_character_mapping`: your own names for the AI keys (`"SK_RICHARD": "Robert"`). Mission files use them, and the csv file may use them in player1 to player8.
@@ -127,7 +127,7 @@ that trail.
 
 ### Door pictures
 
-`trail_visuals.trail_icon_sheet` names a .gm1 file laid out like the game's
+`trail_visuals.mission_icons` names a .gm1 file laid out like the game's
 `skirmish_trail_icons.gm1`: exactly its 130 pictures of 100 x 100 and its GM1 type, the only layout gmResourceModifier accepts for this sheet. A mission's
 `icon` names its pictures (0 to 129), one per state, each centred on the
 mission's position, where its click is taken. Every line of a picture spans its 100
@@ -155,7 +155,7 @@ Pictures are drawn over the trail background: transparent parts of a picture sho
 The game's chicken stays on the selected mission.
 
 ```json
-"trail_visuals": { "trail_icon_sheet": "doors.gm1" }
+"trail_visuals": { "mission_icons": "doors.gm1" }
 "icon": { "locked": 0, "available": 1, "won": 2 }
 "icon": { "available": 7 }
 ```
@@ -213,7 +213,7 @@ mission before it is passed or a side mission, so the game's own displays, the c
 the progress file of `trail_id` keep working. A chicken skips that mission (also when its `requires` or
 `unlock` don't hold yet); it can't skip the end.
 
-**Door pictures** (`trail_icon_sheet`, see above) are needed for a route with side missions or
+**Door pictures** (`mission_icons`, see above) are needed for a route with side missions or
 parallel paths, and every mission that isn't a chain mission needs its `available` picture. Without
 the sheet, or when the game can't use it, such a route plays its missions in their order as the game
 plays a trail, from the game's furthest mission on, one mission per win or chicken (reported in the

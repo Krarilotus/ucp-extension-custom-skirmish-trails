@@ -1,4 +1,4 @@
--- Door pictures on the trail screen: trail_visuals.trail_icon_sheet and the missions'
+-- Door pictures on the trail screen: trail_visuals.mission_icons and the missions'
 -- icon_locked / icon_available / icon_won, each optional. A mission shows its picture of a
 -- state in place of the game's marker of that state: locked (its click is not taken) until the
 -- trail reaches it, and, with an available picture, its date has come and its map is installed;

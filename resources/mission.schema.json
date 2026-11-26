@@ -292,7 +292,7 @@
       }
     },
     "icon": {
-      "description": "Door pictures of the mission from trail_icon_sheet, one per state and each optional; a state without a picture shows the game's own marker. Pictures 0-129: the picture count of the game's skirmish_trail_icons.gm1, the only count gmResourceModifier's ReserveGm accepts for the sheet. A mission off the trail's order (a side mission, a parallel path) needs its available picture.",
+      "description": "Door pictures of the mission from mission_icons, one per state and each optional; a state without a picture shows the game's own marker. Pictures 0-129: the picture count of the game's skirmish_trail_icons.gm1, the only count gmResourceModifier's ReserveGm accepts for the sheet. A mission off the trail's order (a side mission, a parallel path) needs its available picture.",
       "type": "object",
       "properties": {
         "locked": { "description": "Picture index (0-129) while the mission can't be clicked yet. Leave it out to draw nothing until it opens.", "type": "integer", "minimum": 0, "maximum": 129 },
