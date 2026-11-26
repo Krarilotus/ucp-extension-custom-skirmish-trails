@@ -74,7 +74,7 @@ local FLAG_TABLES = { "hideWon", "hideWon", "hideNext", "hideNext" }
 
 local native = nil -- { render, sheet, screen, draw, detoured } once found
 -- trailName -> { gm, count, pictures, locks, hideWon, hideNext, positions, furthest, scores, route, reach, list,
---   nextDay, seen, skips, version }
+--   day, nextDay, seen, skips, version }
 local doors = {}
 
 local function siteOf(site)
@@ -125,7 +125,9 @@ end
 ---Which doors have pictures and which are open (date and map); again at the next midnight.
 local function refresh(trailName, door, now)
   local midnight = os.date("*t", now)
-  midnight.hour, midnight.min, midnight.sec = 24, 0, 0
+  midnight.hour, midnight.min, midnight.sec = 0, 0, 0
+  door.day = os.time(midnight)
+  midnight.hour = 24
   door.nextDay, door.list = os.time(midnight), {}
   local missions = memory.REGISTRY[trailName] or {}
   for index = 1, door.count do
@@ -196,7 +198,7 @@ local function onRender(registers)
     end
   end
   local version = door.route and door.route.version or 0
-  local stale = door.nextDay == nil or now >= door.nextDay
+  local stale = door.nextDay == nil or now < door.day or now >= door.nextDay
   if stale then
     refresh(trailName, door, now)
   end
