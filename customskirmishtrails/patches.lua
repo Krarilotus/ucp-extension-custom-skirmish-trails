@@ -35,6 +35,8 @@ local FUNCTION_AOBS = {
   -- stops before +0x1A, where aiSwapper detours the AI part of this function
   lordtype = "8B 44 24 04 83 3C 85 ? ? ? ? FF 75 2F 69 C0",
   configdefaults = "C7 05 ? ? ? ? 90 33 00 00 C7 05 ? ? ? ? F8 34 00 00 C7 05 ? ? ? ? 60 36 00 00",
+  -- RenderCurrentMenuView, which calls the prepare function of a menu view that opens
+  menuview = "56 8B 35 ? ? ? ? 57 33 FF 3B F7 74 ? 8B FF 8B 46 04 39 05",
 }
 
 -- Every hardcoded mission count in the trail screens. "N-1" sites hold the last mission's

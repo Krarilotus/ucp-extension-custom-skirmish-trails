@@ -74,6 +74,38 @@
         "mission_icons": {
           "description": "Path to a .gm1 sheet of the missions' icon pictures: pictures of 100 x 100 of the type of skirmish_trail_icons.gm1, as many as the trail needs; omission keeps the game's flags.",
           "type": "string"
+        },
+        "chicken_idle": {
+          "description": "Picture path for the trail screen's chicken at rest (185 x 185); omission keeps the game's.",
+          "type": "string"
+        },
+        "chicken_highlighted": {
+          "description": "Picture path for the trail screen's chicken under the mouse (185 x 185); omission keeps the game's.",
+          "type": "string"
+        },
+        "skirmish_masters_idle": {
+          "description": "Picture path for the trail screen's Skirmish Masters button at rest (96 x 88); omission keeps the game's.",
+          "type": "string"
+        },
+        "skirmish_masters_highlighted": {
+          "description": "Picture path for the trail screen's Skirmish Masters button under the mouse (96 x 88); omission keeps the game's.",
+          "type": "string"
+        },
+        "back_idle": {
+          "description": "Picture path for the trail screen's back hand at rest (180 x 180); omission keeps the game's.",
+          "type": "string"
+        },
+        "back_highlighted": {
+          "description": "Picture path for the trail screen's back hand under the mouse (180 x 180); omission keeps the game's.",
+          "type": "string"
+        },
+        "next_idle": {
+          "description": "Picture path for the trail screen's hand to the briefing at rest (180 x 180); omission keeps the game's.",
+          "type": "string"
+        },
+        "next_highlighted": {
+          "description": "Picture path for the trail screen's hand to the briefing under the mouse (180 x 180); omission keeps the game's.",
+          "type": "string"
         }
       },
       "additionalProperties": false

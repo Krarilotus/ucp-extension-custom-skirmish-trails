@@ -1,7 +1,9 @@
 -- Trail visuals and texts from the trail settings file: the trail's button in the skirmish
--- menu (idle and highlighted picture), the trail screen's background, and the trail's title
--- and summary under the button.
+-- menu (idle and highlighted picture), the trail screen's background and buttons, and the
+-- trail's title and summary under the button.
 
+local memory = require("customskirmishtrails.memory")
+local patches = require("customskirmishtrails.patches")
 local tgx = require("customskirmishtrails.tgx")
 local winfiles = require("customskirmishtrails.winfiles")
 
@@ -21,6 +23,19 @@ local BUTTON_FRAMES = {
   },
 }
 
+-- The trail screen's buttons, the same for all trails and in both game versions: gm and idle
+-- frame (0-based) of each; the highlighted picture, shown under the mouse, is the next frame.
+local SCREEN_BUTTONS = {
+  chicken = { gm = 206, frame = 0 },          -- super chicken
+  skirmishMasters = { gm = 46, frame = 756 }, -- interface_icons2
+  back = { gm = 150, frame = 68 },            -- icons_front_end_combat
+  next = { gm = 150, frame = 70 },            -- icons_front_end_combat
+}
+-- RenderCurrentMenuView calls the prepare function of the menu view that opens:
+-- "mov eax, [esi + 0xC] / call eax", the view in ESI. The trail screen's prepare is "open".
+local VIEW_PREPARE_SITE = { fn = "menuview", offset = 0x36, bytes = "8B 46 0C FF D0" }
+local VIEW_PREPARE_OFFSET = 0xC
+
 local BACKGROUND_FILES = {
   firstEditionTrail = "skirmish_trail.tgx",
   warchestTrail = "skirmish_trail2.tgx",
@@ -36,6 +51,11 @@ local TEXTS = {
 
 local backgrounds = {}
 local overrideRegistered = false
+local screenPictures = {} -- trailName -> { { gm, frame, path }, ... }
+local shownPictures = {}  -- the pictures set for the trail screen shown
+local shownTrail = nil
+local viewHooked = false
+local loaded = {} -- path -> resource, or false when the picture cannot be loaded
 
 local function isExtreme()
   local ok, extreme = pcall(function() return data.version.isExtreme() end)
@@ -61,7 +81,7 @@ local function initializeCom()
   return result == 0 or result == 1 -- S_OK, S_FALSE (already set up)
 end
 
-local function loadImage(path)
+local function readImage(path)
   local gm = modules.gmResourceModifier
   if gm == nil or gm.LoadResourceFromImage == nil then
     log(WARNING, "custom-skirmish-trails: gmResourceModifier is not active; trail button pictures stay")
@@ -86,15 +106,61 @@ local function loadImage(path)
   return resource
 end
 
+local function loadImage(path)
+  if loaded[path] == nil then
+    loaded[path] = readImage(path) or false
+  end
+  return loaded[path] or nil
+end
+
+---True when the picture at `path` replaces frame `frame` of gm `gmId`.
 local function setFrame(gmId, frame, path)
   local resource = loadImage(path)
   if resource == nil then
-    return
+    return false
   end
   local ok, done = pcall(function() return modules.gmResourceModifier:SetGm(gmId, frame, resource, 0) end)
   if not ok or done == false then
     log(WARNING, string.format("custom-skirmish-trails: the picture %s does not fit gm %d frame %d", path, gmId, frame))
+    return false
   end
+  return true
+end
+
+---Gives the trail screen's buttons the pictures of `trailName` (nil: no trail screen) and the
+---game's pictures back where it has none.
+local function showScreenPictures(trailName)
+  if trailName == shownTrail then
+    return
+  end
+  for _, picture in ipairs(shownPictures) do
+    pcall(function() modules.gmResourceModifier:SetGm(picture.gm, picture.frame, -1, -1) end)
+  end
+  shownPictures, shownTrail = {}, trailName
+  for _, picture in ipairs(trailName and screenPictures[trailName] or {}) do
+    if not picture.failed and setFrame(picture.gm, picture.frame, picture.path) then
+      table.insert(shownPictures, picture)
+    else
+      picture.failed = true
+    end
+  end
+end
+
+local function hookTrailScreen()
+  if viewHooked then
+    return
+  end
+  local site = patches.siteAddress(VIEW_PREPARE_SITE, "the trail screen's button pictures")
+  local open = patches.functionAddress("open")
+  if site == nil or open == nil then
+    return
+  end
+  core.detourCode(function(registers)
+    local opening = core.readInteger(registers.ESI + VIEW_PREPARE_OFFSET) == open
+    showScreenPictures(opening and memory.TRAIL_TYPES[core.readInteger(memory.CURRENT_TRAIL_TYPE)] or nil)
+    return registers
+  end, site, 5)
+  viewHooked = true
 end
 
 local function registerBackgroundOverride()
@@ -167,6 +233,19 @@ function visuals.applyVisuals(trailName, trailVisuals)
         end
       end)
     end
+  end
+  local pictures = {}
+  for name, button in pairs(SCREEN_BUTTONS) do
+    for offset, state in ipairs({ "Idle", "Highlighted" }) do
+      local path = trailVisuals[name .. state]
+      if path ~= nil then
+        table.insert(pictures, { gm = button.gm, frame = button.frame + offset - 1, path = path })
+      end
+    end
+  end
+  if #pictures > 0 then
+    screenPictures[trailName] = pictures
+    hookTrailScreen()
   end
   if trailVisuals.background ~= nil then
     -- the user data folder is ready once the game has started

@@ -290,7 +290,12 @@ function settings.load(path, trailName)
   end
   result.visuals = {}
   for jsonKey, key in pairs({ trail_button_idle = "buttonIdle", trail_button_highlighted = "buttonHighlighted",
-                              trail_background = "background", mission_icons = "iconSheet" }) do
+                              trail_background = "background", mission_icons = "iconSheet",
+                              chicken_idle = "chickenIdle", chicken_highlighted = "chickenHighlighted",
+                              skirmish_masters_idle = "skirmishMastersIdle",
+                              skirmish_masters_highlighted = "skirmishMastersHighlighted",
+                              back_idle = "backIdle", back_highlighted = "backHighlighted",
+                              next_idle = "nextIdle", next_highlighted = "nextHighlighted" }) do
     local value = visuals and visuals[jsonKey]
     if nonEmptyString(value) then
       result.visuals[key] = settings.resolveRelative(directory, value)
