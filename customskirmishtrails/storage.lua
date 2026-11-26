@@ -8,15 +8,17 @@ local EXTENSION = "custom-skirmish-trails"
 
 local folder = nil
 
----`name` as the user data folder takes it: letters, digits, '.', '~' and '-' in each part.
+---`name` as the user data folder takes it: letters, digits, '.', '~' and '-' in each part. '_' becomes
+---'~', which a trail_id cannot contain, so distinct trail_ids keep distinct files.
 local function safeName(name)
-  return (name:gsub("[^%w.~/-]", "-"))
+  return (name:gsub("_", "~"):gsub("[^%w.~/-]", "-"))
 end
 
 local function interface()
   if folder == nil then
     local ok, result = pcall(userdata.interface)
     if not ok then
+      log(WARNING, "custom-skirmish-trails: the user data folder cannot be opened: " .. tostring(result))
       return nil, tostring(result)
     end
     folder = result

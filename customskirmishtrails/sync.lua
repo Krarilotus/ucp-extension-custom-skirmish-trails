@@ -47,7 +47,7 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, trai
     end
     if highest == 0 then
       if missions.mode == "json_folder" then
-        table.insert(messages, string.format("there are no mission files in %s", missions.folder))
+        error(string.format("there are no mission files in %s", missions.folder))
       end
     else
       local csvTime = (missions.mode == "automatic" and csv ~= nil) and (winfiles.fileTime(missions.csv) or 0) or nil

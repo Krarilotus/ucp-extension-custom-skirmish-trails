@@ -142,7 +142,10 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
     end
   end
   
-  storage.write(string.format("config-%s.yml", trailName), yaml.dump(result))
+  local dumped, dumpError = storage.write(string.format("config-%s.yml", trailName), yaml.dump(result))
+  if not dumped then
+    log(WARNING, "custom-skirmish-trails: " .. tostring(dumpError))
+  end
 
   REGISTRY[trailName] = result
   
@@ -505,6 +508,9 @@ return {
             settings.hasAiMapping and settings.aiMapping or nil, knownHeaders(), textFolder, settings)
           if not okSync then
             log(WARNING, string.format("custom-skirmish-trails: %s trail missions: %s", trail.type, tostring(text)))
+            if settings.missions.mode == "json_folder" then
+              csvTexts[trail.name] = false
+            end
           else
             csvTexts[trail.name] = text
             for _, message in ipairs(messages) do
@@ -546,7 +552,10 @@ return {
           end
         end
         local path = trailCsv(config, trail, trailSettings[trail.name])
-        if nonEmpty(path) then
+        if csvTexts[trail.name] == false then
+          log(WARNING, string.format("custom-skirmish-trails: the %s trail keeps the game's own missions, "
+            .. "because its mission files cannot be loaded", trail.type))
+        elseif nonEmpty(path) then
           log(INFO, string.format("custom-skirmish-trails: %s trail (%s): %s", trail.type, language, path))
           local okTrail, trailError = pcall(applyTrail, trail.name, path, missionTables[trail.name],
             missionCounts[trail.name], languageTexts, startInstalled,
