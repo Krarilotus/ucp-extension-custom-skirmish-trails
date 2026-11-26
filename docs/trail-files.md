@@ -52,7 +52,7 @@ Export writes a csv `by_alive` in the order of its counts, and keeps a text that
 The limit is never higher than the game's skirmish formula for the living lords (also in scenario missions, where the game has none), for example at most 2360 with one living lord in Crusader. In a scenario mission the living lords are the lords of the map's players that are still alive. Placed and AI units share the game's unit pool, so a limit doesn't guarantee room for the player's troops. The limit is worked out each tick from the mission being played (a skirmish mission: the game's trail state; a scenario mission: the scenario the trail started, see above); outside trail missions the game's own limit is used. A mission with a limit doesn't start when the game code for it is not found. The AI's troops are not limited by it.
 
 ## Files the game writes
-The game writes only into the module's user data folder, `ucp/userdata/custom-skirmish-trails/` in the game's user folder (UCP framework 3.0.8 or later), never into a trail's folder. A `_` in a file name is written as `-`.
+The game writes only into the module's user data folder, `ucp/userdata/custom-skirmish-trails/` in the game's user folder (UCP framework 3.0.8 or later), never into a trail's folder. Each file is written to a temporary file first, which then replaces it, so a failed write keeps the previous file. A character other than letters, digits, `.`, `_`, `~` and `-` in a file name is written as `-`.
 
 ## Trail settings file
 Each trail can have a trail settings file (a .json file, set in the GUI) with everything about the trail. `resources/trail-settings.schema.json` describes it, and `resources/trails/template-*-settings.json` hold the game's own values. Every entry is optional:

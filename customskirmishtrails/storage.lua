@@ -8,10 +8,9 @@ local EXTENSION = "custom-skirmish-trails"
 
 local folder = nil
 
----`name` as the user data folder takes it: letters, digits, '.', '~' and '-' in each part. '_' becomes
----'~', which a trail_id cannot contain, so distinct trail_ids keep distinct files.
+---`name` as the user data folder takes it: letters, digits, '.', '_', '~' and '-' in each part.
 local function safeName(name)
-  return (name:gsub("_", "~"):gsub("[^%w.~/-]", "-"))
+  return (name:gsub("[^%w._~/-]", "-"))
 end
 
 local function interface()
@@ -39,27 +38,57 @@ function storage.open(name, mode)
   return f:open(safeName(name), mode)
 end
 
----Writes `contents` to the file `name` of the user data folder, replacing it. True, or false and
----the reason.
+---Writes `contents` to the file `name` of the user data interface `f`. True, or false and the reason.
+local function writeFile(f, name, contents)
+  local file, openError = f:open(name, "wb")
+  if file == nil then
+    return false, string.format("cannot write %s: %s", name, tostring(openError))
+  end
+  local written, writeError = file:write(contents)
+  local closed, closeError = file:close()
+  if written == nil or not closed then
+    return false, string.format("cannot write %s: %s", name, tostring(writeError or closeError))
+  end
+  return true
+end
+
+local renames = true
+
+---Writes `contents` to the file `name` of the user data folder, replacing it. The contents go to
+---a temporary file first that then replaces `name`; without the framework's rename (its native
+---part before 3.0.8) `name` is written directly. True, or false and the reason.
 function storage.write(name, contents)
   local f, err = interface()
   if f == nil then
     return false, err
   end
-  local directory = name:match("^(.+)/[^/]+$")
+  local target = safeName(name)
+  local directory = target:match("^(.+)/[^/]+$")
   if directory ~= nil then
-    f:mkdir(safeName(directory), true)
+    local made, mkdirError = f:mkdir(directory, true)
+    if not made then
+      return false, string.format("cannot make the folder %s: %s", directory, tostring(mkdirError))
+    end
   end
-  local file, openError = f:open(safeName(name), "wb")
-  if file == nil then
-    return false, string.format("cannot write %s: %s", name, tostring(openError))
+  if renames and f.rename ~= nil then
+    local temporary = target .. ".tmp"
+    local written, writeError = writeFile(f, temporary, contents)
+    if not written then
+      f:remove(temporary)
+      return false, writeError
+    end
+    local called, renamed, renameError = pcall(f.rename, f, temporary, target)
+    if called and renamed then
+      return true
+    end
+    f:remove(temporary)
+    if called then
+      return false, string.format("cannot replace %s: %s", name, tostring(renameError))
+    end
+    renames = false
+    log(WARNING, "custom-skirmish-trails: the framework cannot rename files; files are written in place")
   end
-  local written, writeError = file:write(contents)
-  file:close()
-  if written == nil then
-    return false, string.format("cannot write %s: %s", name, tostring(writeError))
-  end
-  return true
+  return writeFile(f, target, contents)
 end
 
 ---The contents of the file `name` of the user data folder, or nil.
