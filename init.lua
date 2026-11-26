@@ -1,6 +1,3 @@
----@diagnostic disable-next-line: undefined-global
-local yaml = yaml or {dump = function(...) error("missing function") end}
-
 local memory = require("customskirmishtrails.memory")
 local interface = require("customskirmishtrails.interface")
 local cst_io = require("customskirmishtrails.io")
@@ -143,11 +140,6 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
         scenario.applyMapLords(entry, fileName)
       end
     end
-  end
-  
-  local dumped, dumpError = storage.write(string.format("config-%s.yml", trailName), yaml.dump(result))
-  if not dumped then
-    log(WARNING, "custom-skirmish-trails: " .. tostring(dumpError))
   end
 
   REGISTRY[trailName] = result
@@ -303,39 +295,8 @@ local function readRequests()
   return (ok and type(data) == "table") and data or {}
 end
 
----The status file as JSON. Written by hand: UCP's json:encode_pretty crashed the game here.
-local function formatRequests(requests)
-  local q = conversion.jsonString
-  local keys = {}
-  for key in pairs(requests) do
-    table.insert(keys, key)
-  end
-  table.sort(keys)
-  local trails = {}
-  for _, key in ipairs(keys) do
-    local entry = requests[key]
-    if type(entry) == "table" then
-      local results = {}
-      for _, line in ipairs(type(entry.results) == "table" and entry.results or {}) do
-        table.insert(results, "      " .. q(tostring(line)))
-      end
-      table.insert(trails, table.concat({
-        "  " .. q(key) .. ": {",
-        '    "action": ' .. q(tostring(entry.action or "")) .. ",",
-        '    "request": ' .. q(tostring(entry.request or "")) .. ",",
-        '    "time": ' .. q(tostring(entry.time or "")) .. ",",
-        '    "results": [',
-        table.concat(results, ",\n"),
-        "    ]",
-        "  }",
-      }, "\n"))
-    end
-  end
-  return "{\n" .. table.concat(trails, ",\n") .. "\n}\n"
-end
-
 local function writeRequests(requests)
-  local ok, err = storage.write(REQUESTS_FILE, formatRequests(requests))
+  local ok, err = storage.write(REQUESTS_FILE, json:encode(requests))
   if not ok then
     log(WARNING, "custom-skirmish-trails: cannot write " .. REQUESTS_FILE .. ": " .. tostring(err))
   end

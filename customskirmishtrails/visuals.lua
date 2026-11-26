@@ -77,7 +77,6 @@ local function initializeCom()
     return false
   end
   local result = coInitialize(0) & 0xFFFFFFFF
-  log(INFO, string.format("custom-skirmish-trails: CoInitialize for the trail button pictures: 0x%X", result))
   return result == 0 or result == 1 -- S_OK, S_FALSE (already set up)
 end
 
