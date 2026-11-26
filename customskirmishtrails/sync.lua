@@ -5,8 +5,7 @@
 --   data_mode "json_folder": the mission files.
 --   data_mode "automatic":   per mission, whichever was edited last.
 --
--- With a language folder, a template for translators with the default texts is kept in the user
--- data folder.
+-- Export writes a template for translators with the default texts into the user data folder.
 
 local winfiles = require("customskirmishtrails.winfiles")
 local storage = require("customskirmishtrails.storage")
@@ -32,9 +31,8 @@ end
 
 ---The missions of one trail. `missions` = { csv, folder, name, mode, files } from the trail
 ---settings file (files: the mission files of a route, read in json_folder mode). Returns the csv
----text to load in place of the csv file (nil: load the csv file) and a list of messages.
-function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, trailSettings)
-  local messages = {}
+---text to load in place of the csv file (nil: load the csv file) and the mission rows.
+function sync.run(missions, aiMapping, knownHeaders)
   local csv = conversion.readTable(missions.csv)
   local rows, text = csv ~= nil and csv.missions or nil, nil
 
@@ -65,18 +63,20 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, trai
     end
   end
 
-  if textFolder ~= nil and rows ~= nil then
-    local name = string.format("texts-template-%s.json", trailSettings.fileName)
-    local template = texts.format(rows, trailSettings.title, trailSettings.summary, trailSettings.lockedText,
-      trailSettings.missionKeys)
-    if storage.read(name) ~= template then
-      local written, writeError = storage.write(name, template)
-      if not written then
-        table.insert(messages, "the translation template is not written: " .. tostring(writeError))
-      end
-    end
+  return text, rows
+end
+
+---Writes `texts-template-<trail_id>.json` with the default texts of `rows` into the user data
+---folder. Returns true or false and a message.
+function sync.writeTemplate(rows, trailSettings)
+  local name = string.format("texts-template-%s.json", trailSettings.fileName)
+  local template = texts.format(rows, trailSettings.title, trailSettings.summary, trailSettings.lockedText,
+    trailSettings.missionKeys)
+  local written, writeError = storage.write(name, template)
+  if not written then
+    return false, "the translation template is not written: " .. tostring(writeError)
   end
-  return text, messages
+  return true, "the translation template is written: " .. tostring(storage.path(name))
 end
 
 return sync

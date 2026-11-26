@@ -1,6 +1,7 @@
 -- Turns a picture file (.png, .jpg, .bmp, .gif) into the game's .tgx format, so a trail's
--- background can be given as a png. Windows' GDI+ decodes the picture; the tgx is written to the
--- user data folder and made again only when the picture file changes.
+-- background can be given as a png. Windows' GDI+ decodes the picture. The game opens the
+-- background by file name, so the tgx is a file in the user data folder; the picture's path and
+-- file time are kept beside it, and the picture is decoded again only when they change.
 --
 -- TGX: width and height (4 bytes each), then per line run tokens and one end-of-line token.
 -- A token byte holds the run length - 1 in its low 5 bits and the run type in its high 3:

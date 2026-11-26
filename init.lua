@@ -309,7 +309,7 @@ local function knownHeaders()
 end
 
 ---Runs an Export or Import CSV Data request the GUI saved, once per request.
-local function runConversions(config, trailSettings)
+local function runConversions(config, trailSettings, missionRows)
   local requests = nil
   for _, trail in ipairs(TRAILS) do
     local request = trailConfig(config, trail).conversion
@@ -339,6 +339,13 @@ local function runConversions(config, trailSettings)
           end
           log((ok and done) and INFO or WARNING, tostring(message))
           table.insert(results, tostring(message))
+        end
+        if request.action == "export" and settings ~= nil and settings.textFiles ~= nil
+          and missionRows[trail.name] ~= nil then
+          local ok, written, message = pcall(sync.writeTemplate, missionRows[trail.name], settings)
+          message = ok and message or ("the translation template is not written: " .. tostring(written))
+          log((ok and written) and INFO or WARNING, message)
+          table.insert(results, message)
         end
         requests[trail.key] = {
           action = request.action,
@@ -462,12 +469,12 @@ return {
 
       -- trail_missions: the missions data_mode loads
       local csvTexts = {}
+      local missionRows = {}
       for _, trail in ipairs(TRAILS) do
         local settings = trailSettings[trail.name]
         if settings ~= nil and settings.missions ~= nil then
-          local textFolder = settings.textFiles ~= nil and settings.textFiles.folder or nil
-          local okSync, text, messages = pcall(sync.run, trail.name, settings.missions,
-            settings.hasAiMapping and settings.aiMapping or nil, knownHeaders(), textFolder, settings)
+          local okSync, text, rows = pcall(sync.run, settings.missions,
+            settings.hasAiMapping and settings.aiMapping or nil, knownHeaders())
           if not okSync then
             log(WARNING, string.format("%s trail missions: %s", trail.type, tostring(text)))
             if settings.missions.mode == "json_folder" then
@@ -475,15 +482,13 @@ return {
             end
           else
             csvTexts[trail.name] = text
-            for _, message in ipairs(messages) do
-              log(INFO, message)
-            end
+            missionRows[trail.name] = rows
           end
         end
       end
 
       -- Export / Import CSV Data requested in the GUI
-      local ok, err = pcall(runConversions, config, trailSettings)
+      local ok, err = pcall(runConversions, config, trailSettings, missionRows)
       if not ok then
         log(WARNING, "Export / Import CSV Data: " .. tostring(err))
       end
