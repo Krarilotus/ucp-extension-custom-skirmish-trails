@@ -62,24 +62,6 @@ local function isExtreme()
   return ok and extreme == true
 end
 
-local comInitialized = false
-
----gmResourceModifier decodes pictures with Windows' WIC, which needs COM on the game's
----thread. The game sets COM up itself (CoInitialize) during its start; this does the same
----when a picture has to be loaded before that.
-local function initializeCom()
-  if comInitialized then
-    return false
-  end
-  comInitialized = true
-  local coInitialize = winfiles.dllFunction("ole32.dll", "CoInitialize", 1)
-  if coInitialize == nil then
-    return false
-  end
-  local result = coInitialize(0) & 0xFFFFFFFF
-  return result == 0 or result == 1 -- S_OK, S_FALSE (already set up)
-end
-
 local function readImage(path)
   local gm = modules.gmResourceModifier
   if gm == nil or gm.LoadResourceFromImage == nil then
@@ -91,14 +73,8 @@ local function readImage(path)
     log(WARNING, reason)
     return nil
   end
-  local function load()
-    local ok, resource = pcall(function() return gm:LoadResourceFromImage(resolved) end)
-    return ok and resource ~= nil and resource >= 0 and resource or nil
-  end
-  local resource = load()
-  if resource == nil and initializeCom() then
-    resource = load()
-  end
+  local ok, resource = pcall(function() return gm:LoadResourceFromImage(resolved) end)
+  resource = ok and resource ~= nil and resource >= 0 and resource or nil
   if resource == nil then
     log(WARNING, string.format("cannot load the picture %s", path))
   end
