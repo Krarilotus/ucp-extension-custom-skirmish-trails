@@ -1,7 +1,7 @@
 # Trail files
 
 Trail settings files, mission files and language files were added in 1.4 by Monsterfish. The
-JSON schemas are in `resources/`; the design note is `data-structure-and-localization.md`.
+JSON schemas are in `resources/`.
 
 ## Player names and the human player's lord
 Optional csv columns, best placed at the end:
@@ -71,6 +71,8 @@ Each trail can have a trail settings file (a .json file, set in the GUI) with ev
 Relative paths in the file are taken from the file's own folder.
 
 ## Mission data: csv file and mission files
+The csv templates in `resources/trails/` have every csv column, one line per mission of the game's trails. `text_description_line_01` to `_08` are the briefing's lines; a `trade_` column with a good's name (for example `trade_spear`) turns trading that good off or on.
+
 **Write mission files; no csv is needed.** With `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "json_folder" }`, a trail needs only its trail settings file and the mission files `missions/my_trail/my_trail_mission_01.json`, `..._02.json`, ... (numbered without gaps; a route's `mission` is that number). A route of mission files names each file itself instead (see Trail route). The game loads the mission files at every start.
 
 `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` names both the csv file (`missions/my_trail.csv`) and a folder of mission files (`missions/my_trail/my_trail_mission_01.json`, ...). A mission file (format 1, `resources/mission.schema.json`) holds the same data as one csv line, laid out for reading and editing:
