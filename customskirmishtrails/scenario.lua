@@ -15,7 +15,9 @@
 --
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and
 -- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing, found
--- twice or has unexpected bytes, scenario missions are switched off and start nothing.
+-- twice or has unexpected bytes, scenario missions are switched off and start nothing. Only the
+-- trail briefing's map preview is optional: without it, the in-game trail roster changes the chosen
+-- map.
 
 local patches = require("customskirmishtrails.patches")
 local memory = require("customskirmishtrails.memory")
@@ -69,6 +71,12 @@ local EXTRACTS = {
   description = "6A 04 68 I(? ? ? ?) 57 E8 ? ? ? ? 6A 04 68 ? ? ? ? 57 E8 ? ? ? ? 8B 44 24 28 8B 4C 24 2C"
     .. " 83 C0 F8 50 51 57 E8 ? ? ? ? 8B 54 24 38 83 C4 24 68 I(? ? ? ?) 52 B9",
 }
+
+-- the trail briefing's map preview (cdecl, the map name): it reads the map file's header, which
+-- copies the map name stored in the file into the chosen map
+local PREVIEW = "81 EC F4 03 00 00 A1 ? ? ? ? 33 C4 89 84 24 F0 03 00 00 8B 84 24 F8 03 00 00 8D 14 24 2B D0"
+  .. " 8A 08 88 0C 02 83 C0 01 84 C9 75 F4"
+local PREVIEW_SIZE = 6 -- sub esp, 0x3F4
 
 local ARMY_CUT_JE_OFFSET = 0x0F
 local RESTART_CALL_END = 15 -- the end of the restart AOB's call, from which its operand counts
@@ -567,10 +575,9 @@ local function installListStart(b)
 end
 
 ---The trail and mission of the scenario played, or nil and the check that failed. It is the
----session's mission while the chosen map name is the session's map, or while the name is empty (the
----game's in-game trail roster empties it) and the game's trail state names that same mission.
----Otherwise a map saved from a skirmish game (sync 99) is the trail mission the game's trail state
----names, when that mission plays the chosen map.
+---session's mission while the chosen map name is the session's map. Otherwise a map saved from a
+---skirmish game (sync 99) is the trail mission the game's trail state names, when that mission
+---plays the chosen map.
 local function playedMission()
   local syncMode = core.readInteger(bindings.syncMode)
   if syncMode ~= SYNC_MODE_SINGLE_PLAYER and syncMode ~= SYNC_MODE_SKIRMISH then
@@ -587,10 +594,6 @@ local function playedMission()
     return nil, sessionCheck
   end
   local ok, isTrail, _, trailName, mission = pcall(memory.fetchCurrentTrail)
-  if current ~= nil and chosen == "" and ok and isTrail and trailName == current.trailName
-      and mission == current.index then
-    return current.trailName, current.index
-  end
   local missions = ok and isTrail and trailOf(trailName) or nil
   local entry = missions and missions[mission] or nil
   if not scenario.isScenario(entry) or not scenario.isPlayedMission(entry) then
@@ -662,6 +665,26 @@ local function installSessionEnd(b)
     clear,
     "keep",
   }, nil, "after")
+end
+
+---The trail briefing that the game's info button opens during the session (the trail roster)
+---previews the session's map, which puts the map name stored in the map file (often empty) into the
+---chosen map that Restart, saves and the end screen need. While a session holds, the preview leaves
+---the chosen map as it was.
+local function installPreviewKeep(b)
+  local address = core.AOBScan(PREVIEW)
+  assert(address ~= nil and patches.isUnique(PREVIEW, address), "the briefing's map preview is not found once")
+  local original
+  patches.guarded({ { address = address, size = PREVIEW_SIZE } }, function()
+    original = core.hookCode(function(name)
+      local kept = session() ~= nil and core.readString(b.chosenMap) or nil
+      original(name)
+      if kept ~= nil then
+        writeName(b.chosenMap, kept)
+      end
+      return 0
+    end, address, 1, 0, PREVIEW_SIZE)
+  end)
 end
 
 ---Starts `entry` (`trailName` mission `index`) when it is a scenario mission. Returns true when
@@ -837,6 +860,10 @@ function scenario.enable(missionsOf)
     return false, true
   end
   bindings = result
+  local kept, keepErr = pcall(installPreviewKeep, result)
+  if not kept then
+    log(WARNING, "custom-skirmish-trails: the trail roster changes the chosen map: " .. tostring(keepErr))
+  end
   return true, true
 end
 
