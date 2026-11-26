@@ -11,28 +11,62 @@
         { "const": "unlimited" }
       ]
     },
-    "players": {
-      "oneOf": [
-        { "type": "integer", "minimum": 1, "maximum": 8 },
-        { "type": "array", "minItems": 1, "items": { "type": "integer", "minimum": 1, "maximum": 8 } }
-      ]
+    "colours": {
+      "description": "Players by colour: red is you (slot 1); orange, yellow, blue, black, purple, lightblue and green are slots 2-8.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["red", "orange", "yellow", "blue", "black", "purple", "lightblue", "green"] }
+    },
+    "conditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/condition" }
     },
     "condition": {
-      "description": "A condition on one win: every key is one test, and all must hold at the same win of the node won. Later versions can add tests (for example the months a win took, the troops left or a date); a key this version doesn't know, or a value it can't read, is reported in the log and makes the condition false.",
-      "type": "object",
-      "properties": {
-        "won": { "description": "Needed: the node id whose win is judged.", "type": "string" },
-        "lord_alive": {
-          "description": "The lords of these players (one player slot or a list) were all alive at that win. Slots 1-8 are the game's player slots (colour slots); slot 1 is you.",
-          "$ref": "#/definitions/players"
+      "description": "An object with one key, the condition's type. A type or value this version doesn't know is reported in the log and never holds.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "won": {
+              "description": "Holds once one win of the mission met every other key.",
+              "type": "object",
+              "properties": {
+                "mission": { "description": "The node id that was won.", "type": "string" },
+                "lords_alive": {
+                  "description": "These players' lords were alive at that win.",
+                  "$ref": "#/definitions/colours"
+                },
+                "players_alive": {
+                  "description": "These players were still in the game at that win: lord alive and keep standing.",
+                  "$ref": "#/definitions/colours"
+                }
+              },
+              "required": ["mission"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["won"],
+          "additionalProperties": false
         },
-        "player_alive": {
-          "description": "These players (one player slot or a list) were all still in the game at that win: lord alive and keep standing.",
-          "$ref": "#/definitions/players"
+        {
+          "type": "object",
+          "properties": {
+            "all": { "description": "Holds when every condition holds.", "$ref": "#/definitions/conditions" }
+          },
+          "required": ["all"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": { "description": "Holds when one of the conditions holds.", "$ref": "#/definitions/conditions" }
+          },
+          "required": ["any"],
+          "additionalProperties": false
         }
-      },
-      "required": ["won"],
-      "additionalProperties": false
+      ]
     }
   },
   "properties": {
@@ -177,11 +211,8 @@
             "items": { "type": "string" }
           },
           "unlock": {
-            "description": "The node opens only once a win met a condition: one condition, or a list of conditions of which one must hold.",
-            "oneOf": [
-              { "$ref": "#/definitions/condition" },
-              { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/condition" } }
-            ]
+            "description": "The node opens only once this condition holds.",
+            "$ref": "#/definitions/condition"
           },
           "reward": {
             "description": "Given once, at the node's first win (not at a skip with a chicken).",

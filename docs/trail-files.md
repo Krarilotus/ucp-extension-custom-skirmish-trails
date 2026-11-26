@@ -176,7 +176,8 @@ missions in their order as before.
   "castle": { "file": "missions/castle.json", "position": { "x": 200, "y": 170 },
               "requires": ["forest", "river"], "end": true },
   "pigs":   { "file": "missions/pigs.json",   "position": { "x": 90, "y": 260 }, "kind": "side",
-              "unlock": { "won": "door02", "lord_alive": [3, 4, 5] }, "reward": { "chickens": 1 } }
+              "unlock": { "won": { "mission": "door02", "lords_alive": ["yellow", "blue", "black"] } },
+              "reward": { "chickens": 1 } }
 }
 ```
 
@@ -189,7 +190,7 @@ A node has:
   move the trail on, chickens don't skip them, and they can't be the end.
 - `requires`: the nodes that must all be passed first; `requires_any`: the nodes of which one must
   be passed. A node is passed once it is won; a main node also when a chicken skipped it.
-- `unlock`: conditions on the result of a win, see below.
+- `unlock`: a condition on the results of wins, see below.
 - `reward`: `{ "chickens": n }`, see below.
 - `end`: `true` for the node whose win finishes the trail. Without it, the end is the one main node
   that no other node requires (a route by number: its last mission). Nothing can require the end.
@@ -248,27 +249,28 @@ counts as passed, so progress from before the trail had its route is kept.
 
 ```json
 "pigs": { "file": "missions/pigs.json", "position": { "x": 90, "y": 260 }, "kind": "side",
-          "unlock": { "won": "door05", "lord_alive": [3, 4, 5] }, "reward": { "chickens": 1 } },
+          "unlock": { "won": { "mission": "door05", "lords_alive": ["yellow", "blue", "black"] } },
+          "reward": { "chickens": 1 } },
 "keep": { "file": "missions/keep.json", "position": { "x": 300, "y": 400 }, "kind": "side",
-          "unlock": [ { "won": "door15", "lord_alive": 2 },
-                      { "won": "door16", "player_alive": 2 } ] }
+          "unlock": { "any": [
+            { "won": { "mission": "door15", "lords_alive": ["orange"] } },
+            { "won": { "mission": "door16", "players_alive": ["red", "orange"] } } ] } }
 ```
 
-- `unlock` (any node): one condition, or a list of conditions of which one must hold. A condition is
-  an object in which every key is one test, and all of them must hold at the same win of the node
-  `won`:
-  - `won` (needed): the node whose win is judged;
-  - `lord_alive`: the lords of these players were all alive at the win;
-  - `player_alive`: these players were all still in the game (lord alive and keep standing).
+- `unlock` (any node): one condition. A condition is an object with one key, its type:
+  - `won`: `mission` (needed) is a node, and the condition holds once one win of it met every
+    other key: `lords_alive`, these players' lords were alive at the win; `players_alive`, these
+    players were still in the game (lord alive and keep standing).
+  - `all`: a list of conditions that must all hold; `any`: a list of conditions of which one must
+    hold. They can be nested.
 
-  Players are a player slot or a list of them, 1-8 as in the game (the colour slots, see Player
-  colours; in a scenario mission the map's slots); slot 1 is you. Each win counts on its own: two
-  wins with a different lord alive each don't make "both alive". A later win doesn't take an
-  unlock back.
+  Players are a list of colours: `red` is you, and `orange`, `yellow`, `blue`, `black`, `purple`,
+  `lightblue` and `green` are the AI slots 2-8 (see Player colours; in a scenario mission the
+  map's slots). Each win counts on its own: two wins with a different lord alive each don't make
+  "both alive". A later win doesn't take an unlock back.
 
-  Later versions can add tests as new keys, for example the months a win took, the troops left or
-  a date. A key this version doesn't know, or a value it can't read, is reported in the log and
-  makes its condition false, so an older version never opens a door it can't judge.
+  A condition type or key this version doesn't know, or a value it can't read, is reported in the
+  log and makes that condition false, so an older version never opens a door it can't judge.
 - `reward`: `chickens` (1-1000) more chickens on this trail, given at the node's first win and
   shown when the trail map opens. They count on top of the trail's `chickens` (or the game's 3);
   with `"unlimited"` nothing changes.

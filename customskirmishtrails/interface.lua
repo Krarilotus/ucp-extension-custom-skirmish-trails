@@ -1,4 +1,5 @@
 
+local common = require("customskirmishtrails.common")
 local memory = require("customskirmishtrails.memory")
 local tradeability = require("customskirmishtrails.tradeability")
 local producibility = require("customskirmishtrails.producibility")
@@ -104,8 +105,6 @@ local ENTRY_OFFSETS = {
   ["aiv_type8"] = 35*4,
 }
 
--- A player's skirmish colour is its player slot; the human player has slot 1.
-local COLORS = { red = 1, orange = 2, yellow = 3, blue = 4, black = 5, purple = 6, lightblue = 7, green = 8 }
 local SLOT_COLUMNS = { "player%d", "start_position%d", "team%d", "aiv_type%d", "gold_player_%d", "player%d_name",
   "player%d_color" }
 local EMPTY_SLOT = { "player%d", "start_position%d", "team%d", "aiv_type%d" }
@@ -123,7 +122,7 @@ local function applyColors(entry, where)
   for player = 2, players do
     local value = entry[string.format("player%d_color", player)]
     if hasAi(entry, player) and value ~= nil and value ~= "" then
-      local slot = COLORS[tostring(value):lower()] or math.tointeger(tonumber(value))
+      local slot = common.COLORS[tostring(value):lower()] or math.tointeger(tonumber(value))
       if slot == nil or slot < 2 or slot > 8 or taken[slot] then
         log(WARNING, string.format("custom-skirmish-trails: %s: player%d_color %s is not a free AI colour",
           where, player, tostring(value)))
