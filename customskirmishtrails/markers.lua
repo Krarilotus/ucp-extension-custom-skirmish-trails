@@ -124,11 +124,11 @@ end
 
 ---Which doors have pictures and which are open (date and map); again at the next midnight.
 local function refresh(trailName, door, now)
-  local midnight = os.date("*t", now)
-  midnight.hour, midnight.min, midnight.sec = 0, 0, 0
-  door.day = os.time(midnight)
-  midnight.hour = 24
-  door.nextDay, door.list = os.time(midnight), {}
+  -- without isdst, os.time works out daylight saving time for each midnight on its own
+  local date = os.date("*t", now)
+  door.day = os.time({ year = date.year, month = date.month, day = date.day, hour = 0 })
+  door.nextDay = os.time({ year = date.year, month = date.month, day = date.day + 1, hour = 0 })
+  door.list = {}
   local missions = memory.REGISTRY[trailName] or {}
   for index = 1, door.count do
     local entry = missions[index]

@@ -17,8 +17,8 @@
 -- sync mode the map loads with is checked against the mission_type.
 --
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and
--- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing, found
--- twice or has unexpected bytes, scenario missions are switched off and start nothing. Only the
+-- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing or
+-- has unexpected bytes, scenario missions are switched off and start nothing. Only the
 -- map header reader is optional: without it, the screens that preview a map or a save (the in-game
 -- trail roster, the Load screen) change the chosen map during the session.
 
