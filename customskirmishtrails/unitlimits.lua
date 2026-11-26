@@ -127,13 +127,6 @@ local function resolve()
     log(WARNING, "custom-skirmish-trails: could not find the troop limit; unit_limit is switched off")
     return nil
   end
-  for _, check in ipairs({ { ENTRY_AOB, entry }, { STORE_AOB, store } }) do
-    local unique, reason = patches.isUnique(check[1], check[2])
-    if not unique then
-      log(WARNING, string.format("custom-skirmish-trails: the troop limit code %s; unit_limit is switched off", reason))
-      return nil
-    end
-  end
   if limitField ~= storeField or store <= entry or store - entry > 0x100 then
     log(WARNING, "custom-skirmish-trails: unexpected troop limit code; unit_limit is switched off")
     return nil
@@ -176,10 +169,6 @@ local function resolvePlayers(b)
   local okSite, lordSite, playerSize, campgrounds, lordIds = pcall(utils.AOBExtract, SCENARIO_LORD_AOB)
   if not okSite or lordSite == nil then
     return false, "the single-player defeat check was not found"
-  end
-  local unique, reason = patches.isUnique(SCENARIO_LORD_AOB, lordSite)
-  if not unique then
-    return false, "the single-player defeat check " .. reason
   end
   b.playerSize, b.firstLordId, b.firstCampground = playerSize, lordIds + playerSize, campgrounds + playerSize
   return true

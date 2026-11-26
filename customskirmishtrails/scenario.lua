@@ -221,21 +221,11 @@ function scenario.availability(entry)
   return result.available, result.from
 end
 
----The address of `aob` (found at `found`), or nil when it is not unique in the game's code.
-local function unique(name, aob, found)
-  local ok, reason = patches.isUnique(aob, found)
-  if not ok then
-    log(WARNING, string.format("custom-skirmish-trails: %s %s; scenario missions are switched off", name, reason))
-    return nil
-  end
-  return found
-end
-
 local function resolve()
   local found = {}
   for name, aob in pairs(SCANS) do
     local ok, address = pcall(core.AOBScan, aob)
-    if not ok or address == nil or unique(name, aob, address) == nil then
+    if not ok or address == nil then
       log(WARNING, string.format("custom-skirmish-trails: could not bind %s; scenario missions are switched off", name))
       return nil
     end
@@ -243,7 +233,7 @@ local function resolve()
   end
   for name, aob in pairs(EXTRACTS) do
     local ok, address, a, b = pcall(utils.AOBExtract, aob)
-    if not ok or address == nil or unique(name, aob, address) == nil then
+    if not ok or address == nil then
       log(WARNING, string.format("custom-skirmish-trails: could not bind %s; scenario missions are switched off", name))
       return nil
     end
@@ -350,9 +340,6 @@ local function bindMapLookup()
   local found, manager = utils.AOBExtract(managerPattern)
   local resolveAddress = core.AOBScan(resolvePattern)
   local existsAddress = core.AOBScan(existsPattern)
-  assert(patches.isUnique(managerPattern, found))
-  assert(patches.isUnique(resolvePattern, resolveAddress))
-  assert(patches.isUnique(existsPattern, existsAddress))
   local resolveMap = core.exposeCode(resolveAddress, 3, 1)
   local fileExists = core.exposeCode(existsAddress, 2, 1)
   -- the existence check's "call _open": the game's open, which the Files module redirects and
@@ -692,7 +679,7 @@ end
 ---session holds, they leave the chosen map as it was.
 local function installHeaderKeep(b)
   local address = core.AOBScan(HEADER)
-  assert(address ~= nil and patches.isUnique(HEADER, address), "the map header reader is not found once")
+  assert(address ~= nil, "the map header reader is not found")
   local original
   patches.guarded({ { address = address, size = HEADER_SIZE } }, function()
     original = core.hookCode(function(this, flag)

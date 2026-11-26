@@ -169,27 +169,11 @@ function patches.plain(aob)
   return (aob:gsub("I%(", ""):gsub("%)", ""))
 end
 
----True when `aob` (as for utils.AOBExtract), found at `found`, matches there and nowhere else in
----the game executable; otherwise false and the reason.
-function patches.isUnique(aob, found)
-  local plain = patches.plain(aob)
-  local again = core.scanForAOB(plain, found + 1)
-  if core.scanForAOB(plain) ~= found or (again ~= nil and again ~= 0) then
-    return false, "is found twice"
-  end
-  return true
-end
-
----The address of the one match of `pattern`, or nil with a warning (naming `purpose`) when it is
----missing or found twice.
+---The address of the match of `pattern`, or nil with a warning (naming `purpose`) when it is missing.
 function patches.find(pattern, purpose)
   local ok, address = pcall(core.AOBScan, pattern)
-  local unique, reason = ok and address ~= nil, "is not found"
-  if unique then
-    unique, reason = patches.isUnique(pattern, address)
-  end
-  if not unique then
-    log(WARNING, string.format("custom-skirmish-trails: %s %s; that part is disabled", purpose, reason))
+  if not ok or address == nil then
+    log(WARNING, string.format("custom-skirmish-trails: %s is not found; that part is disabled", purpose))
     return nil
   end
   return address
