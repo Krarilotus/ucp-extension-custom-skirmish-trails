@@ -127,16 +127,17 @@ end
 function startgold.enable()
   -- every player's start gold as the game sets up a skirmish (EBX: the player's slot)
   local detourAddress = patches.find("89 86 00 E4 FF FF", "the start gold store")
-  if detourAddress ~= nil then
-    core.detourCode(function(registers)
-      local entry, isTrail = memory.currentEntry()
-      local value = isTrail and gold(entry, registers.EBX) or nil
-      if value ~= nil then
-        registers.EAX = value
-      end
-      return registers
-    end, detourAddress, 6)
+  if detourAddress == nil then
+    return
   end
+  core.detourCode(function(registers)
+    local entry, isTrail = memory.currentEntry()
+    local value = isTrail and gold(entry, registers.EBX) or nil
+    if value ~= nil then
+      registers.EAX = value
+    end
+    return registers
+  end, detourAddress, 6)
 
   local ok, err = pcall(showInBriefing)
   if not ok then
