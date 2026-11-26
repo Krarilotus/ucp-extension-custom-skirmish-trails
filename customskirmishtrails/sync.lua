@@ -66,7 +66,7 @@ function sync.run(trailName, missions, aiMapping, knownHeaders, textFolder, trai
   end
 
   if textFolder ~= nil and rows ~= nil then
-    local name = string.format("texts-template-%s.json", trailSettings.id or trailName)
+    local name = string.format("texts-template-%s.json", trailSettings.fileName)
     local template = texts.format(rows, trailSettings.title, trailSettings.summary, trailSettings.lockedText,
       trailSettings.missionKeys)
     if storage.read(name) ~= template then

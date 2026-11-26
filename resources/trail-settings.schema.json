@@ -96,10 +96,11 @@
       "type": "string"
     },
     "trail_id": {
-      "description": "Names the files that keep this trail's progress, passed missions and results (progress-<trail_id>.txt and so on, in the module's user data folder), apart from the game's own progress and every other trail_id. Omission names them by the trail and keeps the game's own progress.",
+      "description": "Names the files in the module's user data folder that keep this trail's progress (progress-<trail_id>.txt), passed missions (sides-<trail_id>.txt) and results (results-<trail_id>.txt), apart from the game's own progress and every other trail_id. Lowercase letters, digits, '-' and '_'. Omitted: the progress is the game's own, and the other files take the trail's trail_type in lowercase in place of <trail_id> (sides-extreme.txt for the Extreme trail), so first, warchest and extreme can't be a trail_id.",
       "type": "string",
-      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]*$",
-      "maxLength": 64
+      "pattern": "^[a-z0-9][a-z0-9_-]*$",
+      "maxLength": 64,
+      "not": { "enum": ["first", "warchest", "extreme"] }
     },
     "chickens": {
       "description": "Total skip tokens of the trail, from 0 to 2147483647 or unlimited; omission keeps the game's budget.",

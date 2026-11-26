@@ -57,7 +57,7 @@ The game writes only into the module's user data folder, `ucp/userdata/custom-sk
 ## Trail settings file
 Each trail can have a trail settings file (a .json file, set in the GUI) with everything about the trail. `resources/trail-settings.schema.json` describes it, and `resources/trails/template-*-settings.json` hold the game's own values. Every entry is optional:
 - `trail_type`: `First`, `Warchest` or `Extreme`.
-- `trail_id`: names the files that keep the trail's progress (`progress-<trail_id>.txt` in the user data folder), passed missions and results (see Trail route), so its progress stays apart from the game's own and from every other `trail_id`. 1 to 64 letters, digits, `-` or `_`. Without it the progress is the game's own, and the other files are named by the trail.
+- `trail_id`: names the files that keep the trail's progress (`progress-<trail_id>.txt` in the user data folder), passed missions and results (see Trail route), so its progress stays apart from the game's own and from every other `trail_id`. 1 to 64 lowercase letters, digits, `-` or `_`. Without it the progress is the game's own, and the other files take the trail's `trail_type` in lowercase in place of `<trail_id>`: `first`, `warchest` or `extreme` (`sides-extreme.txt` for the Extreme trail). These three can't be a `trail_id`.
 - `trail_missions`: the trail's mission data, see below.
 - `trail_text_files`: the trail's language files, see below.
 - `trail_title`, `trail_summary`: the texts under the trail's button in the skirmish menu. A summary wider than 540 pixels wraps into a second line; both texts then sit 10 pixels higher.
@@ -103,7 +103,7 @@ The mission data holds one set of texts, the default language. Each further lang
 }
 ```
 
-Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number, or by their node id when the trail's route names its missions by file (`"door05": { ... }`). A text a language file does not have shows the mission data's text; strict mode lists those. With `trail_missions`, `texts-template-<trail_id>.json` in the user data folder holds all texts of the mission data, as a starting point for translators.
+Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number, or by their node id when the trail's route names its missions by file (`"door05": { ... }`). A text a language file does not have shows the mission data's text; strict mode lists those. With `trail_missions`, `texts-template-<trail_id>.json` in the user data folder (named as the passed nodes' file) holds all texts of the mission data, as a starting point for translators.
 
 ## File paths
 Each trail's "File paths" panel lists the files set for it and clears them (the GUI's own reset only works right after a path was set).
@@ -240,9 +240,8 @@ end, files and numbers mixed, a node of files without file or position, more nod
 can have) is reported in the log. A route by number then plays its missions in their order; a route
 of files loads no missions.
 
-Passed nodes are kept in `sides-<trail>.txt` in the user data folder (`<trail_id>` in place of
-`<trail>` when it is set), one node id
-per line. While that file names no main node, every main mission before the game's furthest mission
+Passed nodes are kept in `sides-<trail_id>.txt` in the user data folder (see `trail_id` for the
+name without one), one node id per line. While that file names no main node, every main mission before the game's furthest mission
 counts as passed, so progress from before the trail had its route is kept.
 
 #### Unlocks and rewards
@@ -274,7 +273,7 @@ counts as passed, so progress from before the trail had its route is kept.
 - `reward`: `chickens` (1-1000) more chickens on this trail, given at the node's first win and
   shown when the trail map opens. They count on top of the trail's `chickens` (or the game's 3);
   with `"unlimited"` nothing changes.
-- Every win of a route node is kept in `results-<trail>.txt` in the user data folder (named as
+- Every win of a route node is kept in `results-<trail_id>.txt` in the user data folder (named as
   the passed nodes' file), one line per different win:
   `door05 lords=1,3,4,5 players=1,3,4,5`, the node and the players whose lord, and who
   themselves, were alive at the win. Other words after the node, such as a difficulty, are

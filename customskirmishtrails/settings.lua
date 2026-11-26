@@ -240,11 +240,22 @@ function settings.load(path, trailName)
 
   local directory = settings.directoryOf(path)
   local result = { path = path, trail = trailName }
-  if type(data.trail_id) == "string" and #data.trail_id <= 64 and data.trail_id:match("^[%w][%w_-]*$") then
+  -- Without a trail_id the trail's files are named by its trail_type in lowercase, which no trail_id can be.
+  local ownName, reserved = nil, false
+  for trailType, name in pairs(settings.TRAIL_TYPES) do
+    if name == trailName then
+      ownName = trailType:lower()
+    end
+    reserved = reserved or trailType:lower() == data.trail_id
+  end
+  if type(data.trail_id) == "string" and #data.trail_id <= 64 and data.trail_id:match("^[%l%d][%l%d_-]*$")
+      and not reserved then
     result.id = data.trail_id
   elseif data.trail_id ~= nil then
-    warn(path, "trail_id must be 1 to 64 letters, digits, '-' or '_', starting with a letter or digit")
+    warn(path, "trail_id must be 1 to 64 lowercase letters, digits, '-' or '_', starting with a letter or digit, "
+      .. "and not first, warchest or extreme")
   end
+  result.fileName = result.id or ownName
 
   for key, field in pairs({ trail_title = "title", trail_summary = "summary", mission_locked_text = "lockedText" }) do
     local value = data[key]
