@@ -177,7 +177,7 @@
               "minimum": 0
             },
             "gold": {
-              "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode. In a scenario mission: extra gold on top of the treasury the map saved for this player and the game's start gold; 0 or left out adds none.",
+              "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode. In a scenario mission: extra gold, see 'Start gold in scenario missions' in docs/trail-files.md; 0 or left out adds none.",
               "type": "integer",
               "minimum": 0,
               "maximum": 2147483647
@@ -219,7 +219,7 @@
             "minimum": 0
           },
           "gold": {
-            "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode. In a scenario mission: extra gold on top of the treasury the map saved for this player and the game's start gold; 0 or left out adds none.",
+            "description": "This player's start gold; 0 is no gold. Left out: the game's start gold for the advantage and start mode. In a scenario mission: extra gold, see 'Start gold in scenario missions' in docs/trail-files.md; 0 or left out adds none.",
             "type": "integer",
             "minimum": 0,
             "maximum": 2147483647
