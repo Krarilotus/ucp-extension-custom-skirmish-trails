@@ -83,10 +83,10 @@ local textWidth = nil
 function menutext.measure(textManager, text, font)
   if textWidth == nil then
     local computeTextWidth = patches.find("56 8B 74 24 08 85 F6 75 06 33 C0 5E C2 08 00 8B C6", "the text width function")
-    if computeTextWidth == nil then
-      return nil
-    end
-    textWidth = core.exposeCode(computeTextWidth, 3, 1)
+    textWidth = computeTextWidth ~= nil and core.exposeCode(computeTextWidth, 3, 1) or false
+  end
+  if not textWidth then
+    return nil
   end
   local buffer = core.allocate(#text + 1, true)
   writeCString(buffer, text)
