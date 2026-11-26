@@ -576,17 +576,21 @@ local function playedMission()
     return nil, "sync " .. syncMode
   end
   local current = session()
-  if current ~= nil and core.readString(bindings.chosenMap) == current.fileName then
+  local chosen = core.readString(bindings.chosenMap) or ""
+  if current ~= nil and chosen == current.fileName then
     return current.trailName, current.index
   end
+  local sessionCheck = current == nil and "session" or string.format("name '%s' (session '%s')", chosen,
+    current.fileName)
   if syncMode ~= SYNC_MODE_SKIRMISH then
-    return nil, current == nil and "session" or "name"
+    return nil, sessionCheck
   end
   local ok, isTrail, _, trailName, mission = pcall(memory.fetchCurrentTrail)
   local missions = ok and isTrail and trailOf(trailName) or nil
   local entry = missions and missions[mission] or nil
   if not scenario.isScenario(entry) or not scenario.isPlayedMission(entry) then
-    return nil, "trail"
+    return nil, string.format("%s, trail %s %s mission %s map '%s'", sessionCheck, tostring(isTrail),
+      tostring(trailName), tostring(mission), tostring(entry and entry.map_name))
   end
   return trailName, mission
 end
