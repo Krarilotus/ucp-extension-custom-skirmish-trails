@@ -16,8 +16,8 @@
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and
 -- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing, found
 -- twice or has unexpected bytes, scenario missions are switched off and start nothing. Only the
--- trail briefing's map preview is optional: without it, the in-game trail roster changes the chosen
--- map.
+-- map header reader is optional: without it, the screens that preview a map or a save (the in-game
+-- trail roster, the Load screen) change the chosen map during the session.
 
 local patches = require("customskirmishtrails.patches")
 local memory = require("customskirmishtrails.memory")
@@ -72,11 +72,11 @@ local EXTRACTS = {
     .. " 83 C0 F8 50 51 57 E8 ? ? ? ? 8B 54 24 38 83 C4 24 68 I(? ? ? ?) 52 B9",
 }
 
--- the trail briefing's map preview (cdecl, the map name): it reads the map file's header, which
--- copies the map name stored in the file into the chosen map
-local PREVIEW = "81 EC F4 03 00 00 A1 ? ? ? ? 33 C4 89 84 24 F0 03 00 00 8B 84 24 F8 03 00 00 8D 14 24 2B D0"
-  .. " 8A 08 88 0C 02 83 C0 01 84 C9 75 F4"
-local PREVIEW_SIZE = 6 -- sub esp, 0x3F4
+-- the map header reader (thiscall, one int) of the screens that preview a map or a save: it copies
+-- the map name stored in the file into the chosen map. Loading a save reads the file elsewhere.
+local HEADER = "81 EC 58 04 00 00 A1 ? ? ? ? 33 C4 89 84 24 54 04 00 00 53 33 DB 39 9C 24 60 04 00 00 55"
+  .. " 8B E9 89 5C 24 0C 74 2C 68 A0 86 01 00 E8"
+local HEADER_SIZE = 6 -- sub esp, 0x458
 
 local ARMY_CUT_JE_OFFSET = 0x0F
 local RESTART_CALL_END = 15 -- the end of the restart AOB's call, from which its operand counts
@@ -667,23 +667,22 @@ local function installSessionEnd(b)
   }, nil, "after")
 end
 
----The trail briefing that the game's info button opens during the session (the trail roster)
----previews the session's map, which puts the map name stored in the map file (often empty) into the
----chosen map that Restart, saves and the end screen need. While a session holds, the preview leaves
----the chosen map as it was.
-local function installPreviewKeep(b)
-  local address = core.AOBScan(PREVIEW)
-  assert(address ~= nil and patches.isUnique(PREVIEW, address), "the briefing's map preview is not found once")
+---Previews of a map or a save (the trail roster, the Load screen) put the map name stored in that
+---file into the chosen map that Restart, saves, the troop limit and the end screen need. While a
+---session holds, they leave the chosen map as it was.
+local function installHeaderKeep(b)
+  local address = core.AOBScan(HEADER)
+  assert(address ~= nil and patches.isUnique(HEADER, address), "the map header reader is not found once")
   local original
-  patches.guarded({ { address = address, size = PREVIEW_SIZE } }, function()
-    original = core.hookCode(function(name)
+  patches.guarded({ { address = address, size = HEADER_SIZE } }, function()
+    original = core.hookCode(function(this, flag)
       local kept = session() ~= nil and core.readString(b.chosenMap) or nil
-      original(name)
+      local result = original(this, flag)
       if kept ~= nil then
         writeName(b.chosenMap, kept)
       end
-      return 0
-    end, address, 1, 0, PREVIEW_SIZE)
+      return result
+    end, address, 2, 1, HEADER_SIZE)
   end)
 end
 
@@ -860,9 +859,9 @@ function scenario.enable(missionsOf)
     return false, true
   end
   bindings = result
-  local kept, keepErr = pcall(installPreviewKeep, result)
+  local kept, keepErr = pcall(installHeaderKeep, result)
   if not kept then
-    log(WARNING, "custom-skirmish-trails: the trail roster changes the chosen map: " .. tostring(keepErr))
+    log(WARNING, "custom-skirmish-trails: map and save previews change the chosen map: " .. tostring(keepErr))
   end
   return true, true
 end
