@@ -97,7 +97,8 @@ local function lineCode(address, stub, drawText)
   }
 end
 
-local function showInBriefing()
+---`ownGold`: whether the mission's gold_player_N reach the game, so the briefing shows them.
+local function showInBriefing(ownGold)
   local human = patches.siteAddress(HUMAN_SITE, "the human player's gold in the briefing")
   local ai = patches.siteAddress(AI_SITE, "the AI players' gold in the briefing")
   local label = patches.siteAddress(AI_LABEL_CALL_SITE, "the AI players' gold in the briefing")
@@ -113,7 +114,7 @@ local function showInBriefing()
 
   local humanStub = patches.luaStub(function(registers)
     local entry = memory.currentEntry()
-    local value = gold(entry, 1)
+    local value = ownGold and gold(entry, 1) or nil
     if value ~= nil then
       registers.EAX = value
     end
@@ -126,7 +127,7 @@ local function showInBriefing()
       registers.EDX = noText
       return registers
     end
-    local values = aiGold(entry, registers.EAX)
+    local values = ownGold and aiGold(entry, registers.EAX) or nil
     local key = values and table.concat(values, " / ")
     if key ~= nil and key ~= shownValues then
       core.writeString(aiText, aiGoldText(textObject, values):sub(1, AI_TEXT_SIZE - 1) .. "\0")
@@ -145,19 +146,18 @@ end
 function startgold.enable()
   -- every player's start gold as the game sets up a skirmish (EBX: the player's slot)
   local detourAddress = patches.find("89 86 00 E4 FF FF", "the start gold store")
-  if detourAddress == nil then
-    return
+  if detourAddress ~= nil then
+    core.detourCode(function(registers)
+      local entry, isTrail = memory.currentEntry()
+      local value = isTrail and not scenario.isScenario(entry) and gold(entry, registers.EBX) or nil
+      if value ~= nil then
+        registers.EAX = value
+      end
+      return registers
+    end, detourAddress, 6)
   end
-  core.detourCode(function(registers)
-    local entry, isTrail = memory.currentEntry()
-    local value = isTrail and not scenario.isScenario(entry) and gold(entry, registers.EBX) or nil
-    if value ~= nil then
-      registers.EAX = value
-    end
-    return registers
-  end, detourAddress, 6)
 
-  local ok, err = pcall(showInBriefing)
+  local ok, err = pcall(showInBriefing, detourAddress ~= nil)
   if not ok then
     log(WARNING, "the briefing shows the game's gold: " .. tostring(err))
   end

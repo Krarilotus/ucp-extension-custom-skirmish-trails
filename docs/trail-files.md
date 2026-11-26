@@ -19,9 +19,9 @@ A `scenario` or `skirmish_scenario` mission starts with the gold the game gives 
 1. the treasury saved in the map, or the starting gold the map's scenario options set instead;
 2. paid into the treasury over the first seconds: for a map saved from a skirmish, the game's skirmish start gold for the start mode and advantage saved in the map (not the mission's `start_mode` and `advantage`); for a map made as a scenario in the editor, the gold among the map's own starting goods.
 
-Goods come from the map only: its stock and its starting goods. The mission's `gold_player_N` and `resource_` columns don't apply, and the trail's briefing shows no gold for these missions.
+Goods come from the map only: its stock and its starting goods. The mission's `gold_player_N` and `resource_` columns don't apply, and the trail's briefing leaves the gold amounts blank for these missions (the labels and coins still show).
 
-To give the lords of a map saved from a skirmish exactly their saved gold (amount 1), set amount 2 to 0 in startResources: `startGold.<start mode>.<advantage>.human` for the human lord and `.computer` for every AI lord, for the map's start mode and advantage. This changes every skirmish game with that start mode and advantage.
+To give the lords of a map saved from a skirmish exactly their saved gold (amount 1), set amount 2 to 0 in startResources: `startGold.<start mode>.<advantage>.human` for the human lord and `.computer` for every AI lord, for the map's start mode and advantage. Human and AI each read their own entry, which differ with an advantage. This changes every game that uses that table entry: every skirmish, and every Play a Map launch of a map saved from a skirmish, with that start mode and advantage. Starting gold set by the map's scenario options still applies.
 
 For comparison, in a plain `skirmish` mission each lord's start gold is the same skirmish table value, tripled on an Extreme-type trail, and `gold_player_N` replaces it without tripling.
 
