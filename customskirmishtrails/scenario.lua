@@ -44,8 +44,9 @@ local SCANS = {
   -- the Play a Map list's DoEveryFrame
   listFrame = "81 EC F8 03 00 00 A1 ? ? ? ? 33 C4 89 84 24 F4 03 00 00 A1 ? ? ? ? 2B 05 ? ? ? ? 53 99 55 2B C2 56",
   -- the Load Game button's read of the save: "push / mov ecx / mov [callback], / call read"; after
-  -- it (SAVE_LOADED_OFFSET) the chosen map holds the save's map name. Map Extensions replaces the
-  -- call with a jump, so its opcode is any byte.
+  -- it the chosen map holds the save's map name. Map Extensions replaces the call with a jump, so
+  -- its opcode is any byte, and its own pattern reaches up to SAVE_LOADED_OFFSET, the "mov [x],
+  -- ebx" this module hooks.
   saveRead = "68 ? ? ? ? B9 ? ? ? ? C7 05 ? ? ? ? ? ? ? ? ? ? ? ? ? B9 ? ? ? ? 89 2D ? ? ? ? 89 1D ? ? ? ? 89 1D",
   -- the end screens' Prepare (cdecl, no arguments): the mission finished screen's and the game
   -- lost screen's
@@ -86,7 +87,8 @@ local ARMY_CUT_JE_OFFSET = 0x0F
 local RESTART_CALL_END = 15 -- the end of the restart AOB's call, from which its operand counts
 local TRAIL_BRIEFING_VIEW = 0x38 -- the trail's mission briefing (CrusadeMissionIntro)
 local RESTART_VIEW = 0x31
-local SAVE_LOADED_OFFSET = 0x19
+local SAVE_LOADED_OFFSET = 0x2A
+local SAVE_LOADED_SIZE = 6
 local DESCRIPTION_SIZE = 1000 -- the text buffer, with its final 0
 
 -- The end screens' Prepare reads the game mode: the mission finished screen's skips Play a Map's
@@ -667,7 +669,7 @@ local function installSessionEnd(b)
     0xC6, 0x05, core.itob(b.cap), 0x00,      -- mov byte [cap], 0
   }
   core.insertCode(b.listPrepare, 6, { clear }, nil, "after")
-  core.insertCode(b.saveLoaded, 5, {
+  core.insertCode(b.saveLoaded, SAVE_LOADED_SIZE, {
     core.callTo(b.sameMap),
     0x0F, 0x84, core.relTo("keep", -4),      -- je keep
     clear,
@@ -851,7 +853,7 @@ function scenario.enable(missionsOf)
   local sites = {
     { address = result.armyCutJe, size = 6 },
     { address = result.listPrepare, size = 6 },
-    { address = result.saveLoaded, size = 5 },
+    { address = result.saveLoaded, size = SAVE_LOADED_SIZE },
     { address = result.listFrame, size = 6 },
     { address = result.wonPrepare, size = WON_PREPARE_SIZE },
     { address = result.lostPrepare, size = LOST_PREPARE_SIZE },
