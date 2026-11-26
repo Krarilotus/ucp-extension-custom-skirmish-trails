@@ -158,7 +158,7 @@
               ]
             },
             "name": {
-              "description": "Name shown in the briefing and game, with the usual player or AI name used if omitted or empty.",
+              "description": "Name shown in the briefing and game; empty or omitted keeps the usual name. Language files translate it as player<N>_name (N = this entry's place in players, from 1).",
               "type": "string"
             },
             "start_position": {
@@ -199,7 +199,7 @@
             "type": "string"
           },
           "name": {
-            "description": "Name shown in the briefing and game, with the usual player or AI name used if omitted or empty.",
+            "description": "Name shown in the briefing and game; empty or omitted keeps the usual name. Language files translate it as player<N>_name (N = this entry's place in players, from 1).",
             "type": "string"
           },
           "start_position": {
@@ -223,7 +223,7 @@
             "minimum": 0
           },
           "color": {
-            "description": "AI player slot as orange, yellow, blue, black, purple, lightblue or green (2-8 in that order); slot 1 (red) is always the human player. Omission uses its own slot or the first free one.",
+            "description": "The colour this AI plays in: orange, yellow, blue, black, purple, lightblue or green (or 2-8 in that order); red is always you. The AI takes that colour's player slot. An AI without a colour keeps its slot when it is free, else takes the first free one.",
             "oneOf": [
               {
                 "type": "string",
