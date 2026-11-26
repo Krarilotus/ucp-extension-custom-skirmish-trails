@@ -164,7 +164,7 @@
       }
     },
     "trail_route": {
-      "description": "The trail's missions as nodes keyed by an id of your own (letters, digits, _ and -). Nodes require other nodes, so the trail can branch into parallel paths and join again, and can have side missions. A node names its mission by file and position (a route of files: Trails orders the rows itself, the end last) or by mission number (a route by number); one route uses one of the two. Side missions and parallel paths need door pictures. Omit to play the missions in their order.",
+      "description": "The trail's missions as nodes, keyed by a node id (letters, digits, _ and -). A node is one mission, given by file and position or by mission number; all nodes of a route use the same form. requires and requires_any set which nodes come first, so paths can branch and join; kind side makes a side mission. Branches and side missions need mission_icons. Omitted: the missions are played in their order.",
       "type": "object",
       "propertyNames": { "pattern": "^[A-Za-z0-9_-]+$" },
       "additionalProperties": {
