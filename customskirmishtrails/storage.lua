@@ -55,8 +55,8 @@ end
 local renames = true
 
 ---Writes `contents` to the file `name` of the user data folder, replacing it. The contents go to
----a temporary file first that then replaces `name`; without the framework's rename (its native
----part before 3.0.8) `name` is written directly. True, or false and the reason.
+---a temporary file of this writer's own first that then replaces `name`; without the framework's
+---rename (its native part before 3.0.8) `name` is written directly. True, or false and the reason.
 function storage.write(name, contents)
   local f, err = interface()
   if f == nil then
@@ -71,7 +71,7 @@ function storage.write(name, contents)
     end
   end
   if renames and f.rename ~= nil then
-    local temporary = target .. ".tmp"
+    local temporary = string.format("%s.%d-%x.tmp", target, os.time(), math.random(0, 0x7FFFFFFF))
     local written, writeError = writeFile(f, temporary, contents)
     if not written then
       f:remove(temporary)
