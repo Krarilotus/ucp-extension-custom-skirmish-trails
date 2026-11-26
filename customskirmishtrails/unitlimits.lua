@@ -260,20 +260,29 @@ local function installEntry(b, s)
     error(b.playersProblem)
   end
   patches.guarded({ { address = b.entry, size = ENTRY_PATCH_SIZE } }, function()
-    core.insertCode(b.entry, ENTRY_PATCH_SIZE, {
-      0x83, 0x3D, core.itob(b.syncMode), 0x00,               -- cmp dword [syncMode], 0
-      0x0F, 0x85, core.relTo(b.entry + COUNT_OFFSET, -4),    -- jne count
-      0x80, 0x3D, core.itob(s.cap), 0x00,                    -- cmp byte [cap], 0
-      0x0F, 0x84, core.relTo("native", -4),                  -- je native
-      0x83, 0x3D, core.itob(s.gameMode), GAME_MODE_SCENARIO, -- cmp dword [gameMode], 2
-      0x0F, 0x85, core.relTo("native", -4),                  -- jne native
-      core.callTo(s.sameMap),
-      0x0F, 0x85, core.relTo("native", -4),                  -- jne native
-      0xB8, core.itob(b.singlePlayerValue),                  -- mov eax, 10000 (the detour sets it)
-      core.jmpTo(b.storeSite),
-      "native",
-      0x83, 0x3D, core.itob(b.syncMode), 0x00,               -- cmp dword [syncMode], 0
-    })
+    core.insertCode(b.entry, ENTRY_PATCH_SIZE, { core.AssemblyLambda([[
+      cmp dword [syncMode], 0
+      jne near countPart
+      cmp byte [cap], 0
+      je notTrail
+      cmp dword [gameMode], scenarioMode
+      jne notTrail
+      call near sameMap
+      jne notTrail
+      mov eax, singlePlayerValue ; the store's detour replaces it
+      jmp near storeSite
+    notTrail:
+      cmp dword [syncMode], 0
+    ]], {
+      syncMode = b.syncMode,
+      countPart = b.entry + COUNT_OFFSET,
+      cap = s.cap,
+      gameMode = s.gameMode,
+      scenarioMode = GAME_MODE_SCENARIO,
+      sameMap = s.sameMap,
+      singlePlayerValue = b.singlePlayerValue,
+      storeSite = b.storeSite,
+    }) })
   end)
 end
 
