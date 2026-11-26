@@ -14,15 +14,17 @@
 -- (or one that names no map) ends it. A save of another game on the same map, loaded while the session holds, counts as the
 -- session's mission. A skirmish_scenario is also the game's trail mission once its map is loaded,
 -- so Restart, its saves, its troop limit and its win go by the game's trail state as well. The
--- sync mode the map loads with is checked against the mission_type.
+-- sync mode the map loads with is checked against the mission_type. The mission's gold is added
+-- only when the trail launches the map: its Start, the Restart of a game it started, and the
+-- Restart of a loaded skirmish_scenario save, which the game hands to the trail's Start.
 --
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and
 -- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing or
 -- has unexpected bytes, scenario missions are switched off and start nothing. Only the
 -- map header reader is optional: without it, the screens that preview a map or a save (the in-game
 -- trail roster, the Load screen) change the chosen map during the session. So are the section
--- decoder and the treasuries: without them, the briefing shows the mission's gold and the start
--- adds none.
+-- decoder and the treasuries: without them, the briefing shows no gold for a scenario mission and
+-- the start adds none.
 
 local patches = require("customskirmishtrails.patches")
 local memory = require("customskirmishtrails.memory")
@@ -135,6 +137,7 @@ local LORDS_TEAM_OFFSET = 0x62
 local LORDS_SIZE = LORDS_AI_OFFSET + 4 * (MAX_PLAYERS + 1)
 local MAP_HEADER_BLOCKS = 5 -- description and U1 .. U4, each a size and its data
 local MAP_DIRECTORY_SLOTS = { old = 100, new = 150, newFrom = 161 }
+local READ_BUFFER_SIZE = 12 * MAP_DIRECTORY_SLOTS.new
 local OPEN_READ_BINARY = 0x8000
 
 -- Map body section 1022 (compressed): the player record of each slot 0 .. 8, PLAYER_SIZE bytes
@@ -143,12 +146,20 @@ local TREASURY_SECTION = 1022
 local PLAYER_SIZE = 0x39F4
 local GOLD_OFFSET = 0x4D0 + 4 * common.resources.gold
 local TREASURY_SIZE = PLAYER_SIZE * (MAX_PLAYERS + 1)
-local PACKED_HEADER = 12 -- size, packed size, CRC-32
--- DecoderState::decodeData (thiscall: source, destination) decodes a compressed section into
--- destination and returns its size, or 0 when the CRC differs. Of its object it uses only the
--- three header values from +8.
-local DECODE = "51 53 55 56 57 8B 7C 24 18 8B F1 8D 5E 0C 53 57 6A 04 B9"
-local DECODER_SIZE = 0x14
+local MAX_GOLD = 0x7FFFFFFF -- a treasury is a signed 32-bit int
+local PACKED_HEADER = 12 -- size, packed size, CRC-32; the packed data follows
+-- The game's section decoder calls the PKWARE explode (cdecl: read, write, work, param) with its
+-- own read and write callbacks: "push write / push read / mov [param + 0x24], 2 / mov [param +
+-- 0x28], -1 / mov [param + 0x18], output / mov [param + 0x20], size / call explode". It ignores
+-- explode's result and the length written, so the module calls explode itself.
+local EXPLODE = "68 I(? ? ? ?) 68 I(? ? ? ?) C7 44 24 4C 02 00 00 00 C7 44 24 50 FF FF FF FF 89 44 24 40"
+  .. " 89 4C 24 48 E8 I(? ? ? ?)"
+local EXPLODE_CALL_END = 0x27
+local EXPLODE_WORK_SIZE = 0x8DD8 -- as the game allocates it
+-- explode's param as the callbacks use it: the input and the output, each { address, position,
+-- size }; the mode (2: decode, with a CRC-32 of the output); the CRC; the flag "output overflow"
+local PARAM = { input = 0x0C, output = 0x18, mode = 0x24, crc = 0x28, overflow = 0x30, size = 0x34 }
+local PARAM_MODE_DECODE = 2
 -- a read of a player's gold: "imul esi, PLAYER_SIZE / cmp dword [esi + x], 0 / mov eax, [esi +
 -- gold]", with the gold of slot 0
 local LIVE_GOLD = "69 F6 F4 39 00 00 83 BE ? ? ? ? 00 8B 86 I(? ? ? ?)"
@@ -156,10 +167,13 @@ local LIVE_GOLD = "69 F6 F4 39 00 00 83 BE ? ? ? ? 00 8B 86 I(? ? ? ?)"
 local bindings = nil
 local mapLookup = nil
 local mapReader = nil -- { open, read, seek, close, path, buffer } once the map lookup is bound
-local treasury = nil  -- { decode, liveGold } once bound; its buffers come with the first read
--- each scenario mission's own gold_player_1 .. gold_player_8, by entry: what its start adds to the
--- treasuries saved in its map
-local addedGold = setmetatable({}, { __mode = "k" })
+-- { explode, read, write, liveGold, work, param, packed, data } once the decoder and the treasuries
+-- are bound
+local treasury = nil
+-- per scenario mission entry: `added`, its own gold_player_1 .. gold_player_8 (what its start adds
+-- to the treasuries saved in its map); `read`, true once its map was read; `gold`, each slot's
+-- saved treasury plus `added`, when the map's treasuries could be read
+local mapData = setmetatable({}, { __mode = "k" })
 local trailOf = nil -- function(trailName) -> missions of that trail, set by enable
 local active = nil  -- the session: { trailName, index, entry, fileName }
 
@@ -356,6 +370,13 @@ local function writeName(address, name)
   core.writeByte(address + #name, 0)
 end
 
+---`size` bytes of zeroed native memory.
+local function allocated(size)
+  local address = core.allocate(size, true)
+  assert(address ~= nil and address ~= 0, "out of memory")
+  return address
+end
+
 local function bindMapLookup()
   -- ResourceManager: resolve a map through the game folder and Documents. The native
   -- existence check opens through the Files module's existing redirect.
@@ -376,10 +397,10 @@ local function bindMapLookup()
     read = core.exposeCode(io.ucrt._read, 3, 0),
     seek = core.exposeCode(io.ucrt._lseek, 3, 0),
     close = core.exposeCode(io.ucrt._close, 1, 0),
-    path = core.allocate(RESOURCE_PATH_SIZE, true),
-    buffer = core.allocate(12 * MAP_DIRECTORY_SLOTS.new, true),
+    path = allocated(RESOURCE_PATH_SIZE),
+    buffer = allocated(READ_BUFFER_SIZE),
   }
-  local nameBuffer = core.allocate(NAME_BUFFER + #".map", true)
+  local nameBuffer = allocated(NAME_BUFFER + #".map")
   local resourceType = manager + RESOURCE_TYPE_OFFSET
   local mapPath = manager + MAP_PATH_OFFSET
   return function(name)
@@ -397,40 +418,62 @@ local function bindMapLookup()
   end
 end
 
----The game's section decoder and the live treasuries.
+---The game's section decoding (PKWARE explode and its callbacks), the live treasuries and the
+---buffers of a treasury read.
 local function bindTreasury()
-  local decodeAddress = core.AOBScan(DECODE)
+  local site, write, read, call = utils.AOBExtract(EXPLODE)
   local _, liveGold = utils.AOBExtract(LIVE_GOLD)
-  assert(decodeAddress ~= nil and liveGold ~= nil, "the section decoder or the treasury is not found")
-  return { decode = core.exposeCode(decodeAddress, 3, 1), liveGold = liveGold }
+  assert(site ~= nil and liveGold ~= nil, "the section decoder or the treasury is not found")
+  return {
+    explode = core.exposeCode(site + EXPLODE_CALL_END + call, 4, 0),
+    read = read,
+    write = write,
+    liveGold = liveGold,
+    work = allocated(EXPLODE_WORK_SIZE),
+    param = allocated(PARAM.size),
+    packed = allocated(TREASURY_SIZE),
+    data = allocated(TREASURY_SIZE),
+  }
 end
 
----Decodes the compressed section of `length` bytes at `offset` with the game's decoder (`at`
----reads the file) and returns the address of its data, or nil when it is shorter than `size`,
----larger than the treasury section or doesn't decode.
+---Decodes the compressed section of `length` bytes at `offset` (`at` reads the file) into
+---treasury.data and returns that address, or nil unless its header gives `size` ..
+---TREASURY_SIZE bytes and the rest of the section as packed data, and explode succeeds, writes
+---exactly that size and its CRC-32 matches.
 local function decoded(at, offset, length, size)
   local t = treasury
-  if t == nil or length < PACKED_HEADER or length > PACKED_HEADER + TREASURY_SIZE then
+  if t == nil or length <= PACKED_HEADER then
     return nil
   end
   at(offset, PACKED_HEADER)
-  local unpacked = core.readInteger(mapReader.buffer)
-  if unpacked < size or unpacked > TREASURY_SIZE
-      or core.readInteger(mapReader.buffer + 4) > length - PACKED_HEADER then
+  local header = mapReader.buffer
+  local unpacked, packed, crc = core.readInteger(header), core.readInteger(header + 4), core.readInteger(header + 8)
+  if unpacked < size or unpacked > TREASURY_SIZE or packed ~= length - PACKED_HEADER or packed > TREASURY_SIZE then
     return nil
   end
-  if t.packed == nil then
-    t.decoder = core.allocate(DECODER_SIZE, true)
-    t.packed = core.allocate(PACKED_HEADER + TREASURY_SIZE, true)
-    t.unpacked = core.allocate(TREASURY_SIZE, true)
+  at(offset + PACKED_HEADER, packed, t.packed)
+  local p = t.param
+  for field = 0, PARAM.size - 4, 4 do
+    core.writeInteger(p + field, 0)
   end
-  at(offset, length, t.packed)
-  return t.decode(t.decoder, t.packed, t.unpacked) == unpacked and t.unpacked or nil
+  core.writeInteger(p + PARAM.input, t.packed)
+  core.writeInteger(p + PARAM.input + 8, packed)
+  core.writeInteger(p + PARAM.output, t.data)
+  core.writeInteger(p + PARAM.output + 8, unpacked)
+  core.writeInteger(p + PARAM.mode, PARAM_MODE_DECODE)
+  core.writeInteger(p + PARAM.crc, -1)
+  if t.explode(t.read, t.write, t.work, p) ~= 0 or core.readInteger(p + PARAM.overflow) ~= 0
+      or core.readInteger(p + PARAM.output + 4) ~= unpacked
+      or (~core.readInteger(p + PARAM.crc) & 0xFFFFFFFF) ~= (crc & 0xFFFFFFFF) then
+    return nil
+  end
+  return t.data
 end
 
 ---The address of `size` bytes of section `wanted` of the map file at `path`, or nil when the file
----can't be opened, has no such section or it is shorter. A compressed section is decoded; an
----uncompressed one is read into mapReader.buffer.
+---can't be opened, has no such section or it is shorter. A compressed section is decoded into
+---treasury.data; an uncompressed one is read into mapReader.buffer, or into treasury.data when
+---it is larger.
 local function readMapSection(path, wanted, size)
   local r = mapReader
   writeName(r.path, path)
@@ -468,11 +511,13 @@ local function readMapSection(path, wanted, size)
         if core.readInteger(r.buffer + 4 * (2 * slots + i)) == 1 then
           return decoded(at, section, length, size)
         end
-        if length < size then
+        local into = size <= READ_BUFFER_SIZE and r.buffer or treasury ~= nil and size <= TREASURY_SIZE
+          and treasury.data or nil
+        if length < size or into == nil then
           return nil
         end
-        at(section, size)
-        return r.buffer
+        at(section, size, into)
+        return into
       end
       section = section + length
     end
@@ -494,69 +539,102 @@ end
 ---A scenario mission's briefing shows the AI lords, teams and gold of its map: player2 .. player8
 ---and team1 .. team8 come from the map where the mission leaves them empty or the slot lies past
 ---num_players (the game ignores those columns), and num_players then counts up to the map's last
----AI lord. gold_player_1 .. gold_player_8 become the treasury each slot has saved in the map plus
----the mission's own gold, which the start adds. The scenario start doesn't use the other columns.
+---AI lord. The gold is the treasury each slot has saved in the map plus the mission's own
+---gold_player_1 .. gold_player_8, which the start adds (scenario.briefingGold). The scenario start
+---doesn't use the other columns. The map is read once, when its date has come. True when it was
+---read now.
 function scenario.applyMapLords(entry, fileName)
-  if addedGold[entry] == nil then
-    local added = {}
+  local known = mapData[entry]
+  if known == nil then
+    known = { added = {} }
     for slot = 1, MAX_PLAYERS do
-      added[slot] = math.tointeger(tonumber(entry["gold_player_" .. slot]))
+      local value = math.tointeger(tonumber(entry["gold_player_" .. slot]))
+      if value ~= nil and (value < 0 or value > MAX_GOLD) then
+        log(WARNING, string.format("map %s: gold_player_%d %d is not 0 .. %d; no gold is added",
+          fileName, slot, value, MAX_GOLD))
+        value = nil
+      end
+      known.added[slot] = value
     end
-    addedGold[entry] = added
+    mapData[entry] = known
   end
-  if mapLookup == nil or not scenario.availability(entry) then
-    return
+  if known.read or mapLookup == nil or not scenario.availability(entry) then
+    return false
   end
-  local path
-  local ok, buffer = pcall(function()
-    path = mapLookup(fileName)
-    return path ~= nil and readMapSection(path, LORDS_SECTION, LORDS_SIZE) or nil
-  end)
-  if not ok or buffer == nil then
-    log(VERBOSE, string.format("no lords from map %s: %s", fileName, tostring(buffer)))
-    return
+  local found, path = pcall(mapLookup, fileName)
+  if not found or path == nil then
+    log(VERBOSE, string.format("map %s is not found: %s", fileName, tostring(path)))
+    return false
   end
-  local last = 0
-  local players = math.tointeger(tonumber(entry.num_players)) or 0
-  for slot = 1, MAX_PLAYERS do
-    local ai = slot > 1 and core.readInteger(buffer + LORDS_AI_OFFSET + 4 * slot) or 0
-    local playerColumn, teamColumn = "player" .. slot, "team" .. slot
-    if slot > 1 and (slot > players or isEmpty(entry[playerColumn])) then
-      entry[playerColumn] = ai
-      if ai ~= 0 then
-        last = slot
+  known.read = true
+  local ok, buffer = pcall(readMapSection, path, LORDS_SECTION, LORDS_SIZE)
+  if ok and buffer ~= nil then
+    local last = 0
+    local players = math.tointeger(tonumber(entry.num_players)) or 0
+    for slot = 1, MAX_PLAYERS do
+      local ai = slot > 1 and core.readInteger(buffer + LORDS_AI_OFFSET + 4 * slot) or 0
+      local playerColumn, teamColumn = "player" .. slot, "team" .. slot
+      if slot > 1 and (slot > players or isEmpty(entry[playerColumn])) then
+        entry[playerColumn] = ai
+        if ai ~= 0 then
+          last = slot
+        end
+      end
+      if slot > players or isEmpty(entry[teamColumn]) then
+        entry[teamColumn] = math.max(signedByte(buffer + LORDS_TEAM_OFFSET + slot - 1), 0)
       end
     end
-    if slot > players or isEmpty(entry[teamColumn]) then
-      entry[teamColumn] = math.max(signedByte(buffer + LORDS_TEAM_OFFSET + slot - 1), 0)
+    if last > players then
+      entry.num_players = last
     end
-  end
-  if last > players then
-    entry.num_players = last
+  else
+    log(VERBOSE, string.format("no lords from map %s: %s", fileName, tostring(buffer)))
   end
   if treasury == nil then
-    return
+    return true
   end
   local read, treasuries = pcall(readMapSection, path, TREASURY_SECTION, TREASURY_SIZE)
   if not read or treasuries == nil then
     log(WARNING, string.format("no treasuries from map %s: %s", fileName, tostring(treasuries)))
-    return
+    return true
   end
+  known.gold = {}
   for slot = 1, MAX_PLAYERS do
-    entry["gold_player_" .. slot] = core.readInteger(treasuries + slot * PLAYER_SIZE + GOLD_OFFSET)
-      + (addedGold[entry][slot] or 0)
+    known.gold[slot] = math.min(core.readInteger(treasuries + slot * PLAYER_SIZE + GOLD_OFFSET)
+      + (known.added[slot] or 0), MAX_GOLD)
   end
+  return true
 end
 
----Adds the mission's own gold of each player to the treasury the map loaded with.
+---Reads the map of a scenario mission whose date has come since the trail's missions were
+---loaded. True when it was read now, so its lords and teams may have changed.
+function scenario.refreshMapLords(entry)
+  local known = mapData[entry]
+  return known ~= nil and not known.read and scenario.applyMapLords(entry, entry.map_name)
+end
+
+---The gold a scenario mission's briefing shows for each player slot 1 .. 8 (the treasury saved in
+---its map plus the mission's own gold), false while that isn't known, or nil for any other mission.
+function scenario.briefingGold(entry)
+  local known = mapData[entry]
+  if known ~= nil then
+    return known.gold or false
+  end
+  if scenario.isScenario(entry) then
+    return false
+  end
+  return nil
+end
+
+---Adds the mission's own gold of each player to the treasury the map loaded with, up to MAX_GOLD.
 local function addMissionGold(entry)
-  local added = addedGold[entry]
-  if added == nil then
+  local known = mapData[entry]
+  if known == nil then
     return
   end
-  for slot, value in pairs(added) do
+  for slot, value in pairs(known.added) do
     local address = treasury.liveGold + slot * PLAYER_SIZE
-    core.writeInteger(address, core.readInteger(address) + value)
+    core.writeInteger(address, math.min(core.readInteger(address) + value, MAX_GOLD))
   end
 end
 
@@ -579,6 +657,7 @@ local function setSession(trailName, index, entry, fileName)
   local b = bindings
   active = trailName and { trailName = trailName, index = index, entry = entry, fileName = fileName } or nil
   writeName(b.trailMap, active and fileName or "")
+  core.writeByte(b.trailGame, active and 1 or 0)
   core.writeByte(b.keepArmy, active and keepsStartArmy(entry) and 1 or 0)
   core.writeByte(b.cap, active and unitlimits.policy(entry) ~= nil and 1 or 0)
 end
@@ -753,6 +832,7 @@ local function installEndScreens(b)
 end
 
 ---Opening the Play a Map list ends the session, and so does loading a save of another map.
+---Loading any save ends the trail's game (trailGame).
 local function installSessionEnd(b)
   local clear = {
     0xC6, 0x05, core.itob(b.trailMap), 0x00, -- mov byte [trailMap], 0
@@ -761,6 +841,7 @@ local function installSessionEnd(b)
   }
   core.insertCode(b.listPrepare, 6, { clear }, nil, "after")
   core.insertCode(b.saveLoaded, 5, {
+    0xC6, 0x05, core.itob(b.trailGame), 0x00, -- mov byte [trailGame], 0
     core.callTo(b.sameMap),
     0x0F, 0x84, core.relTo("keep", -4),      -- je keep
     clear,
@@ -787,15 +868,16 @@ local function installHeaderKeep(b)
   end)
 end
 
----Each time the launcher loads the session's map (the trail's Start, Restart), the mission's own
----gold is added to the treasuries it loaded.
+---Each time the launcher loads the session's map in the trail's game (the trail's Start, the
+---Restart of a game it started), the mission's own gold is added to the treasuries it loaded.
 local function installMissionGold(b)
   local original
   patches.guarded({ { address = b.launcherAddress, size = LAUNCHER_SIZE } }, function()
     original = core.hookCode(function(how)
       local result = original(how)
       local current = session()
-      if how ~= 0 and current ~= nil and core.readString(b.chosenMap) == current.fileName then
+      if how ~= 0 and current ~= nil and core.readByte(b.trailGame) ~= 0
+          and core.readString(b.chosenMap) == current.fileName then
         addMissionGold(current.entry)
       end
       return result
@@ -931,9 +1013,11 @@ local function installStartHook()
   return true
 end
 
----Installs scenario missions. `missionsOf(trailName)` gives a trail's missions (1-based).
----Returns true when they can be played and whether the Start hook was installed.
-function scenario.enable(missionsOf)
+---Installs scenario missions. `missionsOf(trailName)` gives a trail's missions (1-based);
+---`briefingGold` is true when the briefing's gold lines are installed, which a scenario
+---mission's gold needs. Returns true when they can be played and whether the Start hook was
+---installed.
+function scenario.enable(missionsOf, briefingGold)
   trailOf = missionsOf
   -- without the Start hook a scenario mission would run the skirmish setup on its map
   local checked, installed = pcall(installStartHook)
@@ -944,11 +1028,14 @@ function scenario.enable(missionsOf)
   local lookupOk, lookup = pcall(bindMapLookup)
   if lookupOk then
     mapLookup = lookup
-    local treasuryOk, bound = pcall(bindTreasury)
+    local treasuryOk, bound = false, "the briefing's gold lines are not installed"
+    if briefingGold then
+      treasuryOk, bound = pcall(bindTreasury)
+    end
     if treasuryOk then
       treasury = bound
     else
-      log(WARNING, "scenario briefings show the mission's gold, and starts add none: " .. tostring(bound))
+      log(WARNING, "scenario missions show no gold and add none: " .. tostring(bound))
     end
   else
     log(WARNING, "custom map lookup is unavailable: " .. tostring(lookup))
@@ -961,6 +1048,7 @@ function scenario.enable(missionsOf)
     return false, true
   end
   result.trailMap = core.allocate(NAME_BUFFER, true)
+  result.trailGame = core.allocate(1, true)
   result.keepArmy = core.allocate(1, true)
   result.cap = core.allocate(1, true)
   local sites = {
@@ -990,7 +1078,7 @@ function scenario.enable(missionsOf)
   if treasury ~= nil then
     local added, addErr = pcall(installMissionGold, result)
     if not added then
-      log(WARNING, "scenario starts add no mission gold: " .. tostring(addErr))
+      log(WARNING, "scenario missions show no gold and add none: " .. tostring(addErr))
       treasury = nil
     end
   end

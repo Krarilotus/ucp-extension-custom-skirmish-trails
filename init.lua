@@ -149,7 +149,7 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
   end
 end
 
-local function detourSwitchToMenu()
+local function detourSwitchToMenu(missionTables)
   core.detourCode(function(registers)
     log(2, string.format("detour: SetupSkirmishMode: %s", ""))
 
@@ -170,6 +170,9 @@ local function detourSwitchToMenu()
         return registers
       end
       
+      if scenario.refreshMapLords(entry) then
+        interface.commitEntry(missionTables[trailName], mission, entry, trailName)
+      end
       interface.commitTextDescription(scenario.briefingEntry(entry, LOCKED_TEXTS[trailName]))
       patches.applyLord(entry)
       
@@ -564,7 +567,7 @@ return {
     description.enable()
     tradeability.enable()
     producibility.enable()
-    startgold.enable()
+    local briefingGold = startgold.enable()
     local okIcons, iconsError = pcall(patches.showStartModeIcons)
     if not okIcons then
       log(WARNING, "start mode pictures: " .. tostring(iconsError))
@@ -574,9 +577,9 @@ return {
       log(WARNING, "the briefing's team separator: " .. tostring(teamsError))
     end
 
-    detourSwitchToMenu()
+    detourSwitchToMenu(missionTables)
     hookPlayerNaming()
-    local _, installed = scenario.enable(function(trailName) return REGISTRY[trailName] end)
+    local _, installed = scenario.enable(function(trailName) return REGISTRY[trailName] end, briefingGold)
     startInstalled = installed
     unitlimits.enable()
   end,
