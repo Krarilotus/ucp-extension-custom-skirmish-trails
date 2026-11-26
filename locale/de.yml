@@ -46,6 +46,21 @@ option_3_4_text: |-
 option_4_header: 'Strikter Modus: CSV- und JSON-Dateien der Märsche im Detail prüfen'
 option_4_text: |-
   Protokolliert jedes Problem in den Marsch-Dateien. Kann beim Spielstart Fehlermeldungen anzeigen. Ohne diese Option erscheint eine Warnung pro fehlerhafter Datei.
+menu_paths_intro: "Die für diesen Marsch festgelegten Dateien. Leere einen Pfad, um diese Datei wegzulassen, und drücke dann „Speichern & schließen“."
+menu_paths_settings: "Marsch-Einstellungsdatei"
+menu_paths_csv: "CSV-Datei"
+menu_paths_none: "Für diesen Marsch sind keine Dateien festgelegt."
+menu_paths_cleared: "(geleert)"
+menu_paths_clear: "Leeren"
+menu_paths_clear_csv: "CSV-Pfade leeren"
+menu_paths_notice: "Eine Marsch-Einstellungsdatei ist festgelegt: Enthält sie trail_missions, wird deren CSV-Datei verwendet und die CSV-Pfade dienen nur als Ersatz."
+menu_paths_status: "{count} Pfad(e) werden beim Drücken von „Speichern & schließen“ geleert."
+menu_csv_intro: "Export schreibt jede Missionszeile der CSV-Datei dieses Marschs in eine eigene JSON-Datei. Import fügt die JSON-Dateien aus dem Ordner, der wie die CSV-Datei heißt, wieder zu einer CSV-Datei zusammen. Beide schreiben nach ucp/userdata/custom-skirmish-trails im Benutzerordner des Spiels; ucp3.log nennt die Dateien."
+menu_csv_steps: "Das Spiel erledigt die Arbeit: Wähle eine Schaltfläche, drücke „Speichern & schließen“ und starte dann das Spiel einmal."
+menu_csv_export: "CSV-Daten exportieren"
+menu_csv_import: "CSV-Daten importieren"
+menu_csv_requested: "{action} angefordert. Drücke „Speichern & schließen“ und starte dann das Spiel einmal, um es auszuführen."
+menu_csv_saved: "Gespeicherte Anforderung: {action} ({time}). Sie wird einmal beim nächsten Spielstart ausgeführt."
 misc: Sonstiges
 tags.scenarios: Szenarien
 tags.maps: Karten

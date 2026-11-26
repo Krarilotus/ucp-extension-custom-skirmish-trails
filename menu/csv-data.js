@@ -2,6 +2,7 @@
 // records a request (action + a time stamp); the game carries it out once at its next start.
 
 let csvDataPending = null;
+const csvDataLabels = {};
 
 SANDBOX_FUNCTIONS.getConfig = () =>
   csvDataPending === null
@@ -19,14 +20,13 @@ function csvDataRequest(action) {
     const button = document.getElementById(id);
     if (button) button.classList.toggle('chosen', id === action);
   }
-  const word = action === 'export' ? 'Export' : 'Import';
-  csvDataText(
-    'pending',
-    `${word} requested. Press "Save and close", then start the game once to run it.`,
-  );
+  csvDataText('pending', csvDataLabels.requested.replace('{action}', csvDataLabels[action]));
 }
 
 addEventListener('INIT_DONE', async () => {
+  for (const id of ['export', 'import', 'requested', 'saved']) {
+    csvDataLabels[id] = (await HOST_FUNCTIONS.getLocalizedString(`menu_csv_${id}`)) ?? id;
+  }
   const exportButton = document.getElementById('export');
   const importButton = document.getElementById('import');
   if (exportButton) exportButton.onclick = () => csvDataRequest('export');
@@ -38,7 +38,9 @@ addEventListener('INIT_DONE', async () => {
     if (values.action && values.request) {
       csvDataText(
         'pending',
-        `Saved request: ${values.action} (${values.request}). It runs once, at the next game start.`,
+        csvDataLabels.saved
+          .replace('{action}', csvDataLabels[values.action] ?? values.action)
+          .replace('{time}', values.request),
       );
     }
   } catch (e) {

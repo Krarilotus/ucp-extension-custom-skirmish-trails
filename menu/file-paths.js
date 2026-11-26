@@ -1,11 +1,7 @@
 // File paths panel: shows the trail's file settings (trail settings file, default csv file,
-// csv files per language) and clears them. The GUI's own reset only works for paths changed in
-// the same GUI session, so this is the way to empty a path later.
+// csv files per language) and clears them.
 
-const FILE_PATH_LABELS = {
-  'settings.path': 'Trail settings file',
-  'csv.path': 'Csv file',
-};
+const filePathsText = {};
 const filePathsCleared = new Set();
 let filePathsValues = {};
 
@@ -13,9 +9,10 @@ SANDBOX_FUNCTIONS.getConfig = () =>
   Object.fromEntries([...filePathsCleared].map((key) => [key, '']));
 
 function filePathLabel(key) {
-  if (FILE_PATH_LABELS[key]) return FILE_PATH_LABELS[key];
+  if (key === 'settings.path') return filePathsText.settings;
+  if (key === 'csv.path') return filePathsText.csv;
   const language = key.replace(/^csv\.languages\./, '');
-  return `Csv file (${language.charAt(0).toUpperCase()}${language.slice(1)})`;
+  return `${filePathsText.csv} (${language.charAt(0).toUpperCase()}${language.slice(1)})`;
 }
 
 function filePathKeys() {
@@ -37,19 +34,19 @@ function renderFilePaths() {
   const keys = filePathKeys().filter((key) => filePathCurrent(key) !== '' || filePathsCleared.has(key));
   if (keys.length === 0) {
     const row = table.insertRow();
-    row.insertCell().textContent = 'No files are set for this trail.';
+    row.insertCell().textContent = filePathsText.none;
   }
   for (const key of keys) {
     const row = table.insertRow();
     row.insertCell().textContent = filePathLabel(key);
     const value = row.insertCell();
-    value.textContent = filePathCurrent(key) || '(cleared)';
+    value.textContent = filePathCurrent(key) || filePathsText.cleared;
     value.className = 'path';
     const action = row.insertCell();
     if (!filePathsCleared.has(key)) {
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = 'Clear';
+      button.textContent = filePathsText.clear;
       button.onclick = () => {
         filePathsCleared.add(key);
         renderFilePaths();
@@ -59,15 +56,16 @@ function renderFilePaths() {
   }
 
   const settingsSet = filePathCurrent('settings.path') !== '';
-  document.getElementById('notice').textContent = settingsSet
-    ? 'A trail settings file is set: if it has trail_missions, its csv file is used and the csv path below is only a fallback.'
-    : '';
+  document.getElementById('notice').textContent = settingsSet ? filePathsText.notice : '';
   document.getElementById('status').textContent = filePathsCleared.size
-    ? `${filePathsCleared.size} path(s) will be cleared when you press "Save and close".`
+    ? filePathsText.status.replace('{count}', filePathsCleared.size)
     : '';
 }
 
 addEventListener('INIT_DONE', async () => {
+  for (const id of ['settings', 'csv', 'none', 'cleared', 'clear', 'notice', 'status']) {
+    filePathsText[id] = (await HOST_FUNCTIONS.getLocalizedString(`menu_paths_${id}`)) ?? id;
+  }
   try {
     const config = await HOST_FUNCTIONS.getCurrentConfig();
     filePathsValues = { ...(config.baseline || {}), ...(config.user || {}) };

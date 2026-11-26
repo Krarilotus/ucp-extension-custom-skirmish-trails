@@ -58,7 +58,7 @@ options:
     contents:
       type: custom
       source:
-        html: csv-data-firstedition.html
+        html: csv-data.html
         css: csv-data.css
         js: csv-data.js
 - category:
@@ -120,7 +120,7 @@ options:
     contents:
       type: custom
       source:
-        html: csv-data-warchest.html
+        html: csv-data.html
         css: csv-data.css
         js: csv-data.js
 - category:
@@ -182,7 +182,7 @@ options:
     contents:
       type: custom
       source:
-        html: csv-data-extremetrail.html
+        html: csv-data.html
         css: csv-data.css
         js: csv-data.js
 - category:

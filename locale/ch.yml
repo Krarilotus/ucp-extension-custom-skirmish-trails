@@ -46,6 +46,21 @@ option_3_4_text: |-
 option_4_header: '严格模式：详细检查征程的 CSV 和 JSON 文件'
 option_4_text: |-
   记录征程文件中的每一处问题。游戏启动时可能会弹出错误提示框。关闭此项时，每个有问题的文件只记录一条警告。
+menu_paths_intro: "为此征程设置的文件。清除路径即可不使用该文件，然后按“保存并关闭”。"
+menu_paths_settings: "征程设置文件"
+menu_paths_csv: "CSV 文件"
+menu_paths_none: "此征程未设置任何文件。"
+menu_paths_cleared: "（已清除）"
+menu_paths_clear: "清除"
+menu_paths_clear_csv: "清除 CSV 路径"
+menu_paths_notice: "已设置征程设置文件：如果其中有 trail_missions，则使用它的 CSV 文件，CSV 路径仅作为备用。"
+menu_paths_status: "按下“保存并关闭”后将清除 {count} 个路径。"
+menu_csv_intro: "导出会把此征程 CSV 文件中的每一行任务写入各自的 JSON 文件。导入会把与 CSV 文件同名文件夹中的 JSON 文件重新合并为一个 CSV 文件。两者都写入游戏用户文件夹中的 ucp/userdata/custom-skirmish-trails；ucp3.log 会列出这些文件。"
+menu_csv_steps: "由游戏完成这项工作：选择一个按钮，按“保存并关闭”，然后启动一次游戏。"
+menu_csv_export: "导出 CSV 数据"
+menu_csv_import: "导入 CSV 数据"
+menu_csv_requested: "已请求{action}。按“保存并关闭”，然后启动一次游戏以执行。"
+menu_csv_saved: "已保存的请求：{action}（{time}）。它将在下次启动游戏时执行一次。"
 misc: 其他
 tags.scenarios: 场景
 tags.maps: 地图

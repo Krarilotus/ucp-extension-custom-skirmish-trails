@@ -46,6 +46,21 @@ option_3_4_text: |-
 option_4_header: 'Katı mod: sefer CSV ve JSON dosyalarını ayrıntılı denetle'
 option_4_text: |-
   Sefer dosyalarındaki her sorunu günlüğe kaydeder. Oyun başlangıcında hata pencereleri gösterebilir. Kapalıyken sorunlu dosya başına bir uyarı gösterilir.
+menu_paths_intro: "Bu sefer için tanımlanan dosyalar. Bir dosyayı dışarıda bırakmak için yolunu temizleyin, ardından \"Kaydet ve Kapat\"a basın."
+menu_paths_settings: "Sefer ayar dosyası"
+menu_paths_csv: "CSV dosyası"
+menu_paths_none: "Bu sefer için tanımlanmış dosya yok."
+menu_paths_cleared: "(temizlendi)"
+menu_paths_clear: "Temizle"
+menu_paths_clear_csv: "CSV yollarını temizle"
+menu_paths_notice: "Bir sefer ayar dosyası tanımlı: trail_missions içeriyorsa onun CSV dosyası kullanılır ve CSV yolları yalnızca yedektir."
+menu_paths_status: "\"Kaydet ve Kapat\"a bastığınızda {count} yol temizlenecek."
+menu_csv_intro: "Dışa aktarma, bu seferin CSV dosyasındaki her görev satırını ayrı bir JSON dosyasına yazar. İçe aktarma, CSV dosyasıyla aynı adı taşıyan klasördeki JSON dosyalarını yeniden tek bir CSV dosyasında birleştirir. İkisi de oyunun kullanıcı klasöründeki ucp/userdata/custom-skirmish-trails klasörüne yazar; ucp3.log dosyaların adlarını verir."
+menu_csv_steps: "İşi oyun yapar: bir düğme seçin, \"Kaydet ve Kapat\"a basın, ardından oyunu bir kez başlatın."
+menu_csv_export: "CSV verilerini dışa aktar"
+menu_csv_import: "CSV verilerini içe aktar"
+menu_csv_requested: "{action} istendi. \"Kaydet ve Kapat\"a basın, ardından çalıştırmak için oyunu bir kez başlatın."
+menu_csv_saved: "Kaydedilen istek: {action} ({time}). Oyunun bir sonraki başlatılışında bir kez çalışır."
 misc: Diğer
 tags.scenarios: Senaryolar
 tags.maps: Haritalar

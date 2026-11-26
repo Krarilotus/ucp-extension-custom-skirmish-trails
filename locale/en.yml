@@ -37,6 +37,21 @@ option_3_4_text: Export the Extreme trail's csv file to one JSON file per missio
 option_4_header: 'Strict mode: check the trail csv and json files in detail'
 option_4_text: Logs every problem in the trail files. May show error message boxes at game start. Without it,
   one warning per file with problems.
+menu_paths_intro: "The files set for this trail. Clear a path to leave that file out, then press \"Save and Close\"."
+menu_paths_settings: "Trail settings file"
+menu_paths_csv: "Csv file"
+menu_paths_none: "No files are set for this trail."
+menu_paths_cleared: "(cleared)"
+menu_paths_clear: "Clear"
+menu_paths_clear_csv: "Clear the csv paths"
+menu_paths_notice: "A trail settings file is set: if it has trail_missions, its csv file is used and the csv paths are only a fallback."
+menu_paths_status: "{count} path(s) will be cleared when you press \"Save and Close\"."
+menu_csv_intro: "Export writes every mission line of this trail's csv file into a JSON file of its own. Import puts the JSON files in the folder named like the csv file back together into a csv file. Both write into ucp/userdata/custom-skirmish-trails in the game's user folder; ucp3.log names the files."
+menu_csv_steps: "The game does the work: choose a button, press \"Save and Close\", then start the game once."
+menu_csv_export: "Export CSV Data"
+menu_csv_import: "Import CSV Data"
+menu_csv_requested: "{action} requested. Press \"Save and Close\", then start the game once to run it."
+menu_csv_saved: "Saved request: {action} ({time}). It runs once, at the next game start."
 misc: Miscellaneous
 tags.scenarios: Scenarios
 tags.maps: Maps
