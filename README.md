@@ -18,9 +18,9 @@ This tool is recommended to manipulate the csv files https://edit-csv.net/
 10. A trail settings file per trail: title, summary, starting year, button pictures, background, mission button positions and count, own names for the AI keys (resources/trail-settings.schema.json)
 11. Mission data as a csv file and/or a folder of mission JSON files (resources/mission.schema.json), and Export / Import between them
 12. Language files with only the texts per game language
-13. Scenario missions: a mission can be a custom scenario map, started as Play a Map starts it, with its own events, goals and players; a win moves the trail on (`mission_kind`)
+13. Scenario missions: a mission can be a custom scenario map, started as Play a Map starts it, with its own events, goals and players; a win moves the trail on (`mission_type`: `scenario` or `skirmish_scenario`)
 14. Troop limits per mission, for example Crusader's limits in an Extreme trail (`unit_limit`)
-15. Door pictures per mission: locked, available and won, each optional (the game's marker where one is left out), with locked missions not clickable (`trail_marker_sheet`, `marker`)
+15. Door pictures per mission: locked, available and won, each optional (the game's marker where one is left out), with locked missions not clickable (`trail_icon_sheet`, `icon`)
 16. Player colours per mission: an AI player's skirmish colour (`player2_color` .. `player8_color`)
 17. A trail route: missions as named nodes that require each other, so a trail can branch into parallel paths, join again and have side missions; unlock conditions on a win's result and chicken rewards (`trail_route`)
 

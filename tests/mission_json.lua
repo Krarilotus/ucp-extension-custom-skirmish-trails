@@ -9,7 +9,7 @@ end
 
 local data = { format = 1, map_name = "Door01", players = { {} } }
 local row = missionjson.toRow(data, nil, "door.json")
-local headers = { "map_name", "num_players", "fairness", "start_levels", "keep_start_army" }
+local headers = { "map_name", "num_players", "fairness", "start_levels", "difficulty_scaling" }
 local exported = missionjson.fromRow(headers, row)
 assert(not exported:find('"advantage"', 1, true))
 assert(not exported:find('"start_mode"', 1, true))
@@ -24,15 +24,13 @@ exported = missionjson.fromRow(headers, row)
 assert(exported:find('"advantage": "ai_small"', 1, true))
 assert(exported:find('"start_mode": "normal"', 1, true))
 
-data.extra.keep_start_army = " 1 "
+data.extra.difficulty_scaling = " none "
 row = missionjson.toRow(data, nil, "door.json")
-assert(#warnings == 2 and row.keep_start_army == " 1 ")
+assert(#warnings == 2 and row.difficulty_scaling == " none ")
 
--- The CSV reader accepts an equivalent numeric flag while export preserves its spelling.
-row.keep_start_army = " 1 "
-assert(missionjson.startArmyFlag(row.keep_start_army) == 1)
+-- Export preserves the spelling the CSV reader accepts.
 exported = missionjson.fromRow(headers, row)
-assert(exported:find('"keep_start_army": " 1 "', 1, true))
+assert(exported:find('"difficulty_scaling": " none "', 1, true))
 
 -- Reconquista Extreme mission 1: each start position stays with its player slot.
 local reconquista = missionjson.toRow({

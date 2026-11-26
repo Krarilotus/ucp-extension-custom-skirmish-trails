@@ -253,11 +253,6 @@ function conversion.export(csvPath, aiMapping)
   local _, name = conversion.folderOf(csvPath)
   local folder = "export/" .. name
   for index, cells in ipairs(csv.missions) do
-    local keep = cells.keep_start_army or ""
-    if not keep:match("^%s*$") and missionjson.startArmyFlag(keep) == nil then
-      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: keep_start_army '%s' is not 0 or 1; "
-        .. "it is kept under \"extra\"", csvPath, index, keep))
-    end
     local file = folder .. "/" .. conversion.missionFileName(name, index)
     local done, writeError = storage.write(file, missionjson.fromRow(csv.header, cells, aiMapping))
     if not done then

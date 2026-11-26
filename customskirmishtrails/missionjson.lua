@@ -14,13 +14,17 @@
 --         "color": "blue" }
 --     ],
 --     "producible": { "bows": 1 }, "recruitable": { ... }, "resources": { ... }, "tradeable": { ... },
+--     "unit_limit": { "formula": { "base": 2500, "offset": 40 } }
+--                or { "by_alive": [ { "lords": 1, "limit": 2000 }, { "lords": 8, "limit": 250 } ] },
 --     "extra": { "column": "value" }    anything else, so that nothing is lost
 --   }
 --
 -- Cells that are whole numbers become JSON numbers. An empty cell is left out. Values the game
 -- ignores (the per-player columns of players past num_players) are left out when they hold the
 -- column's usual empty value and kept in "extra" otherwise, so that csv -> JSON -> csv gives the
--- same csv back.
+-- same csv back. The csv's unit_limit cell ("formula 2500 40", "by_alive 1=2000 8=250") is read by
+-- unitlimits.parse: native is left out, a formula or by_alive becomes its object (by_alive in the
+-- order of its lords), any other text stays in "extra".
 
 local missionjson = {}
 
@@ -33,7 +37,7 @@ local GROUPS = {
   { prefix = "recruitable_", key = "recruitable" },
   { prefix = "resource_", key = "resources" },
   { prefix = "tradeable_", key = "tradeable" },
-  { prefix = "marker_", key = "marker", optional = true }, -- left out when empty
+  { prefix = "icon_", key = "icon", optional = true }, -- left out when empty
 }
 local TEXT_LINES = 8
 
@@ -78,18 +82,44 @@ local function object()
   return { order = {}, values = {} }
 end
 
----keep_start_army as the CSV reader takes it (a number, 0 or 1): 0 or 1, nil for anything else.
-function missionjson.startArmyFlag(value)
-  local number = tonumber(value)
-  if number == 0 or number == 1 then
-    return number == 1 and 1 or 0
-  end
-  return nil
-end
-
 local function put(o, key, value)
   table.insert(o.order, key)
   o.values[key] = value
+end
+
+local function number(o, key, value)
+  put(o, key, { raw = tostring(value) })
+end
+
+---A unit_limit cell as JSON: false for native or empty, the object of a formula or by_alive, nil
+---for a text unitlimits.parse rejects.
+local function unitLimitJson(text)
+  if text == nil or text == "" then
+    return false
+  end
+  local policy = require("customskirmishtrails.unitlimits").parse(text)
+  if policy == nil then
+    return nil
+  elseif policy.kind == "native" then
+    return false
+  end
+  local limit = object()
+  if policy.kind == "formula" then
+    local formula = object()
+    number(formula, "base", policy.base)
+    number(formula, "offset", policy.offset)
+    put(limit, "formula", formula)
+  else
+    local points = { items = {} }
+    for _, point in ipairs(policy.points) do
+      local item = object()
+      number(item, "lords", point.lords)
+      number(item, "limit", point.limit)
+      table.insert(points.items, item)
+    end
+    put(limit, "by_alive", points)
+  end
+  return limit
 end
 
 -- a csv cell as JSON: { raw = "123" } for a number, the string otherwise
@@ -143,17 +173,18 @@ function missionjson.fromRow(header, cells, aiMapping)
   put(mission, "format", { raw = tostring(missionjson.FORMAT) })
   put(mission, "map_name", take("map_name"))
   put(mission, "mission_name", take("mission_name"))
-  for _, column in ipairs({ "mission_kind", "unit_limit", "scenario_briefing" }) do
+  for _, column in ipairs({ "mission_type", "difficulty_scaling", "scenario_briefing" }) do
     local value = take(column)
     if value ~= "" then
       put(mission, column, value)
     end
   end
-  -- keep_start_army: 0 or 1; any other text stays in "extra"
-  local keep = missionjson.startArmyFlag(cells.keep_start_army)
-  if keep ~= nil and cells.keep_start_army == tostring(keep) then
-    take("keep_start_army")
-    put(mission, "keep_start_army", { raw = tostring(keep) })
+  local limit = unitLimitJson(cells.unit_limit)
+  if limit ~= nil then
+    take("unit_limit")
+    if limit then
+      put(mission, "unit_limit", limit)
+    end
   end
   local lines = { items = {} }
   for line = 1, TEXT_LINES do
@@ -263,8 +294,8 @@ local function named(value, names, where)
 end
 
 local STRUCTURED_FIELDS = {
-  ["$schema"] = true, format = true, map_name = true, mission_name = true, mission_kind = true,
-  keep_start_army = true, unit_limit = true, scenario_briefing = true, text_description = true, advantage = true,
+  ["$schema"] = true, format = true, map_name = true, mission_name = true, mission_type = true,
+  difficulty_scaling = true, unit_limit = true, scenario_briefing = true, text_description = true, advantage = true,
   start_mode = true, players = true, extra = true,
 }
 for _, group in ipairs(GROUPS) do
@@ -280,6 +311,28 @@ local function checkArray(values, limit, where)
       error(where .. " must be an array")
     end
   end
+end
+
+---The unit_limit cell of a mission file's unit_limit object, in unitlimits.parse's text.
+local function unitLimitCell(value, where)
+  if value == nil then
+    return ""
+  elseif type(value) == "table" and type(value.formula) == "table" and value.by_alive == nil then
+    return string.format("formula %s %s", cellOf(value.formula.base, where .. ".formula.base"),
+      cellOf(value.formula.offset, where .. ".formula.offset"))
+  elseif type(value) == "table" and value.formula == nil and value.by_alive ~= nil then
+    checkArray(value.by_alive, 8, where .. ".by_alive")
+    local words = { "by_alive" }
+    for index, point in ipairs(value.by_alive) do
+      local at = string.format("%s.by_alive[%d]", where, index)
+      if type(point) ~= "table" then
+        error(at .. " must be an object")
+      end
+      words[#words + 1] = cellOf(point.lords, at .. ".lords") .. "=" .. cellOf(point.limit, at .. ".limit")
+    end
+    return table.concat(words, " ")
+  end
+  error(where .. ' must be { "formula": { "base", "offset" } } or { "by_alive": [ { "lords", "limit" } ] }')
 end
 
 local function readColumns(cells, values, prefix, where, warnOnConflict)
@@ -337,9 +390,10 @@ function missionjson.toRow(data, reverseMapping, file)
   local cells = {}
   cells.map_name = cellOf(data.map_name, file .. ": map_name")
   cells.mission_name = cellOf(data.mission_name, file .. ": mission_name")
-  for _, column in ipairs({ "mission_kind", "keep_start_army", "unit_limit", "scenario_briefing" }) do
+  for _, column in ipairs({ "mission_type", "difficulty_scaling", "scenario_briefing" }) do
     cells[column] = cellOf(data[column], file .. ": " .. column)
   end
+  cells.unit_limit = unitLimitCell(data.unit_limit, file .. ": unit_limit")
   local lines = data.text_description
   if lines == nil then lines = {} end
   checkArray(lines, TEXT_LINES, file .. ": text_description")

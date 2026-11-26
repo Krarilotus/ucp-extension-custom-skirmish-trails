@@ -146,7 +146,7 @@ function progress.withoutPictures(trail, r)
     return
   end
   log(WARNING, string.format("custom-skirmish-trails: %s: side missions and parallel paths need door pictures "
-    .. "(trail_marker_sheet); the trail plays its missions in their order", trail))
+    .. "(trail_icon_sheet); the trail plays its missions in their order", trail))
   r:playLinear()
   local state = stores[trail]
   if state ~= nil and state.route == r then

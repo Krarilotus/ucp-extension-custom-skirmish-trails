@@ -124,13 +124,16 @@ local function applyTrail(trailName, path, missions, limit, languageTexts, start
   MAP_OVERRIDES[trailName] = nil
   for index, entry in ipairs(result) do
     interface.applyColors(entry, string.format("%s mission %d", trailName, index))
-    local kind = scenario.kind(entry)
-    if kind == nil then
-      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unknown mission_kind '%s'",
-        trailName, index, tostring(entry.mission_kind)))
-    elseif kind == "scenario" and not startInstalled then
+    if scenario.difficultyScaling(entry) == nil then
+      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unknown difficulty_scaling '%s'; vanilla is used",
+        trailName, index, tostring(entry.difficulty_scaling)))
+    end
+    if scenario.missionType(entry) == nil then
+      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: unknown mission_type '%s'",
+        trailName, index, tostring(entry.mission_type)))
+    elseif scenario.isScenario(entry) and not startInstalled then
       result[index] = nil
-    elseif kind == "scenario" then
+    elseif scenario.isScenario(entry) then
       local fileName, reason = scenario.mapFileName(entry.map_name)
       if fileName == nil then
         log(WARNING, string.format("custom-skirmish-trails: %s mission %d: scenario map '%s': %s",
@@ -463,8 +466,8 @@ return {
         end
         routes[trail.name] = sides
         local pictures = false
-        if settings.visuals.markerSheet ~= nil then
-          local okMarkers, installed = pcall(markers.install, trail.name, settings.visuals.markerSheet,
+        if settings.visuals.iconSheet ~= nil then
+          local okMarkers, installed = pcall(markers.install, trail.name, settings.visuals.iconSheet,
             missionCounts[trail.name], sides)
           if not okMarkers then
             log(WARNING, string.format("custom-skirmish-trails: %s door pictures: %s", trail.type, tostring(installed)))

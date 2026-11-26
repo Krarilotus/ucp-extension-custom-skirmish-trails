@@ -57,7 +57,7 @@
       "description": "Summary under the trail title, wrapping after 540 pixels; omission keeps the game's text and a language file can override it.",
       "type": "string"
     },
-    "trail_locked_text": {
+    "mission_locked_text": {
       "description": "Briefing text shown before a dated scenario opens, with {date} replaced by its opening date; omission keeps the normal briefing unless translated.",
       "type": "string"
     },
@@ -93,8 +93,8 @@
           "description": "Trail background path at the game's original size (.tgx, .png, .jpg, .bmp or .gif); omission keeps the game's background.",
           "type": "string"
         },
-        "trail_marker_sheet": {
-          "description": "Path to a .gm1 sheet matching skirmish_trail_icons.gm1 (130 pictures of 100 x 100, same GM1 type); omission keeps the game's flags.",
+        "trail_icon_sheet": {
+          "description": "Path to a .gm1 sheet of the missions' icon pictures, laid out as skirmish_trail_icons.gm1: exactly its 130 pictures of 100 x 100 and its GM1 type, the only layout gmResourceModifier's ReserveGm accepts; omission keeps the game's flags.",
           "type": "string"
         }
       },

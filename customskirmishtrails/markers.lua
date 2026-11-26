@@ -1,9 +1,9 @@
--- Door pictures on the trail screen: trail_visuals.trail_marker_sheet and the missions'
--- marker_locked / marker_available / marker_won, each optional. A mission shows its picture of a
+-- Door pictures on the trail screen: trail_visuals.trail_icon_sheet and the missions'
+-- icon_locked / icon_available / icon_won, each optional. A mission shows its picture of a
 -- state in place of the game's marker of that state: locked (its click is not taken) until the
 -- trail reaches it, and, with an available picture, its date has come and its map is installed;
 -- available after that; a won mission draws its won picture over it. For a state without a
--- picture the game draws its own marker, so a mission without marker looks as it does without a
+-- picture the game draws its own marker, so a mission without icon looks as it does without a
 -- sheet. The game's chicken stays. A mission of the trail's route (route.lua) that the game's
 -- furthest mission doesn't describe (a side mission, a parallel path) is reached and won by the
 -- route and drawn only by its own pictures.
@@ -96,16 +96,16 @@ local function resolveNative()
   return native or nil
 end
 
----The marker sheet's pictures of `entry` ({ locked, available, won }, each nil when left out).
+---The icon sheet's pictures of `entry` ({ locked, available, won }, each nil when left out).
 local function picturesOf(trailName, index, entry)
   local pictures = {}
   for number, state in ipairs(STATES) do
-    local value = entry["marker_" .. state]
+    local value = entry["icon_" .. state]
     pictures[number] = math.tointeger(value)
     local empty = value == nil or value == ""
     if not empty and (pictures[number] == nil or pictures[number] < 0 or pictures[number] >= markers.PICTURES) then
-      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: marker_locked, marker_available and "
-        .. "marker_won must be pictures 0 to %d of the marker sheet", trailName, index, markers.PICTURES - 1))
+      log(WARNING, string.format("custom-skirmish-trails: %s mission %d: icon_locked, icon_available and "
+        .. "icon_won must be pictures 0 to %d of the icon sheet", trailName, index, markers.PICTURES - 1))
       return {}
     end
   end
@@ -127,7 +127,7 @@ local function refresh(trailName, door)
     door.list[index] = { pictures = pictures, open = pictures[2] == nil or scenario.isOpen(entry) }
     if pictures[2] == nil and door.route ~= nil and door.route:needsPictures(index - 1) then
       log(WARNING, string.format("custom-skirmish-trails: %s mission %d is off the trail's order and has no "
-        .. "marker_available; it can't be played", trailName, index))
+        .. "icon_available; it can't be played", trailName, index))
     end
   end
 end
@@ -282,7 +282,7 @@ function markers.install(trailName, sheetPath, count, r)
   hooks.registerHookCallback("afterInit", function()
     door.gm = modifier:GetReservedGm(token)
     if door.gm < 0 then
-      log(WARNING, "custom-skirmish-trails: gmResourceModifier did not load the marker sheet; the game's markers stay")
+      log(WARNING, "custom-skirmish-trails: gmResourceModifier did not load the icon sheet; the game's markers stay")
       progress.withoutPictures(trailName, r)
     end
   end)

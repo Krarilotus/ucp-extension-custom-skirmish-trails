@@ -1,17 +1,20 @@
--- Scenario missions: a trail mission with mission_kind "scenario" plays a custom scenario map
--- (map type 0, for example an Invasion map made in the editor or saved from a game). It starts
--- the way Custom Scenarios -> Play a Map starts a map, so the map's events, goals, invasions,
--- placed units and AI lords run as they do from Play a Map; an Invasion map opens the game's own
--- briefing. keep_start_army skips Play a Map's starting-army cut for one mission. The scenario the
--- trail started ends as the trail's skirmish mission: its end screen shows the skirmish
--- statistics, and leaving it returns to the trail map through the game's own trail code, which
--- advances the trail after a win.
+-- Scenario missions: a trail mission with mission_type "scenario" or "skirmish_scenario" plays a
+-- custom scenario map (map type 0). "scenario" is a map made as a scenario, for example an
+-- Invasion map from the editor (sync mode 0); "skirmish_scenario" is a skirmish game saved as a map
+-- and then edited as a scenario (sync mode 99). Both start the way Custom Scenarios -> Play a Map
+-- starts a map, so the map's events, goals, invasions, placed units and AI lords run as they do
+-- from Play a Map, and the game's briefing follows. difficulty_scaling "none" skips Play a Map's
+-- starting-army cut for one mission. The scenario the trail started ends as the trail's skirmish
+-- mission: its end screen shows the skirmish statistics, and leaving it returns to the trail map
+-- through the game's own trail code, which advances the trail after a win.
 --
 -- The trail's Start records which mission it started (the session): its trail, number and map.
 -- The session holds while that map is played in this run of the game, through Restart and loaded
 -- saves of it; the next trail Start, opening the Play a Map list or loading a save of another map
 -- (or one that names no map) ends it. A save of another game on the same map, loaded while the session holds, counts as the
--- session's mission.
+-- session's mission. A skirmish_scenario is also the game's trail mission once its map is loaded,
+-- so Restart, its saves, its troop limit and its win go by the game's trail state as well. The
+-- sync mode the map loads with is checked against the mission_type.
 --
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and
 -- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing, found
@@ -169,22 +172,34 @@ function scenario.mapFileName(name, skirmish)
   return name
 end
 
----The mission kind ("skirmish" when empty), or nil for a kind this version doesn't know.
-function scenario.kind(entry)
-  local kind = type(entry) == "table" and entry.mission_kind or nil
-  if kind == nil or kind == "" then
-    return "skirmish"
+local MISSION_TYPES = { skirmish = true, scenario = true, skirmish_scenario = true }
+local DIFFICULTY_SCALINGS = { vanilla = true, none = true }
+-- the sync mode the map of each scenario mission_type loads with
+local TYPE_SYNC_MODE = { scenario = SYNC_MODE_SINGLE_PLAYER, skirmish_scenario = SYNC_MODE_SKIRMISH }
+
+---`entry[field]` in lower case (`default` when empty), or nil for a value not in `known`.
+local function choice(entry, field, known, default)
+  local value = type(entry) == "table" and entry[field] or nil
+  if value == nil or value == "" then
+    return default
   end
-  kind = type(kind) == "string" and asciiLower(kind:match("^%s*(.-)%s*$")) or nil
-  if kind == "skirmish" or kind == "scenario" then
-    return kind
-  end
-  return nil
+  value = type(value) == "string" and asciiLower(value:match("^%s*(.-)%s*$")) or nil
+  return known[value] and value or nil
 end
 
----True when `entry` is a scenario mission.
+---The mission_type ("skirmish" when empty), or nil for a type this version doesn't know.
+function scenario.missionType(entry)
+  return choice(entry, "mission_type", MISSION_TYPES, "skirmish")
+end
+
+---The difficulty_scaling ("vanilla" when empty), or nil for a value this version doesn't know.
+function scenario.difficultyScaling(entry)
+  return choice(entry, "difficulty_scaling", DIFFICULTY_SCALINGS, "vanilla")
+end
+
+---True when `entry` starts as Play a Map starts a map (mission_type scenario or skirmish_scenario).
 function scenario.isScenario(entry)
-  return scenario.kind(entry) == "scenario"
+  return TYPE_SYNC_MODE[scenario.missionType(entry)] ~= nil
 end
 
 ---Whether a scenario mission's map can be played today, and the date it opens when it is dated
@@ -306,7 +321,7 @@ local function installSameMap(b)
 end
 
 ---Starting-army cut: a Play a Map start skips it when it loads the session's map and the
----session's mission has keep_start_army (Restart of it too).
+---session's mission has difficulty_scaling "none" (Restart of it too).
 local function installArmyCutSkip(b)
   local skip = b.armyCutSkip
   core.insertCode(b.armyCutJe, 6, {
@@ -464,10 +479,9 @@ function scenario.applyMapLords(entry, fileName)
   end
 end
 
----True when the mission keeps the player's whole starting army (keep_start_army 1).
+---True when the mission keeps the player's whole starting army (difficulty_scaling "none").
 local function keepsStartArmy(entry)
-  local value = entry.keep_start_army
-  return value == 1 or value == true or value == "1"
+  return scenario.difficultyScaling(entry) == "none"
 end
 
 ---The session, or nil when there is none or the Play a Map list ended it.
@@ -502,10 +516,11 @@ end
 
 ---Launches `mission` as the Play a Map list's Start (`how` LAUNCH_WITH_BRIEFING) or Restart
 ---(LAUNCH_RESTART) does: the session, the chosen map, Normal difficulty, the launcher; its next
----screen opens at once. A map saved from a skirmish game keeps the skirmish mode and its rules
----(for example, winning when every enemy lord is dead); the game then takes it for the trail
----mission, as for a skirmish mission: Restart starts it again from the trail, and the troop limit,
----a win and its saves go by the game's trail state.
+---screen opens at once. The map of a skirmish_scenario keeps the skirmish mode and its rules (for
+---example, winning when every enemy lord is dead); the game then takes it for the trail mission,
+---as for a skirmish mission: Restart starts it again from the trail, and the troop limit, a win and
+---its saves go by the game's trail state. A map whose sync mode doesn't match the mission_type is
+---reported, and only a skirmish_scenario on a skirmish map becomes the game's trail mission.
 local function launch(b, mission, how)
   setSession(mission.trailName, mission.index, mission.entry, mission.fileName)
   core.writeInteger(memory.IS_SKIRMISH_TRAIL, 0)
@@ -518,7 +533,12 @@ local function launch(b, mission, how)
     core.writeInteger(b.descriptionFlag, 0)
     description.writeGameText(b.descriptionText, DESCRIPTION_SIZE, briefing)
   end
-  if core.readInteger(b.syncMode) == SYNC_MODE_SKIRMISH then
+  local missionType = scenario.missionType(mission.entry)
+  local syncMode = core.readInteger(b.syncMode)
+  if syncMode ~= TYPE_SYNC_MODE[missionType] then
+    log(WARNING, string.format("custom-skirmish-trails: %s mission %d is a %s, and its map %s loads with sync mode %d",
+      mission.trailName, mission.index, missionType, mission.fileName, syncMode))
+  elseif missionType == "skirmish_scenario" then
     selectTrailMission(mission.trailName, mission.index)
   end
   core.writeInteger(b.menuSwitchDelay, 0)
@@ -575,9 +595,9 @@ local function installListStart(b)
 end
 
 ---The trail and mission of the scenario played, or nil and the check that failed. It is the
----session's mission while the chosen map name is the session's map. Otherwise a map saved from a
----skirmish game (sync 99) is the trail mission the game's trail state names, when that mission
----plays the chosen map.
+---session's mission while the chosen map name is the session's map. Otherwise a skirmish map (sync
+---99) is the trail mission the game's trail state names, when that mission is a skirmish_scenario
+---playing the chosen map.
 local function playedMission()
   local syncMode = core.readInteger(bindings.syncMode)
   if syncMode ~= SYNC_MODE_SINGLE_PLAYER and syncMode ~= SYNC_MODE_SKIRMISH then
@@ -596,7 +616,7 @@ local function playedMission()
   local ok, isTrail, _, trailName, mission = pcall(memory.fetchCurrentTrail)
   local missions = ok and isTrail and trailOf(trailName) or nil
   local entry = missions and missions[mission] or nil
-  if not scenario.isScenario(entry) or not scenario.isPlayedMission(entry) then
+  if scenario.missionType(entry) ~= "skirmish_scenario" or not scenario.isPlayedMission(entry) then
     return nil, string.format("%s, trail %s %s mission %s map '%s'", sessionCheck, tostring(isTrail),
       tostring(trailName), tostring(mission), tostring(entry and entry.map_name))
   end
@@ -690,8 +710,8 @@ end
 ---the trail's own skirmish setup must not run: the scenario started, or it can't start (switched
 ---off, invalid map name, not open yet, troop limit unavailable).
 function scenario.startIfScenario(trailName, index, entry)
-  local kind = scenario.kind(entry)
-  if kind == "skirmish" then
+  local missionType = scenario.missionType(entry)
+  if missionType == "skirmish" then
     if entry ~= nil and entry.map_name ~= nil then
       local fileName, reason = scenario.mapFileName(entry.map_name, true)
       if fileName == nil then
@@ -708,9 +728,9 @@ function scenario.startIfScenario(trailName, index, entry)
     end
     return false
   end
-  if kind == nil then
-    log(WARNING, string.format("custom-skirmish-trails: %s: unknown mission_kind '%s'; the mission doesn't start",
-      tostring(entry.map_name), tostring(entry.mission_kind)))
+  if missionType == nil then
+    log(WARNING, string.format("custom-skirmish-trails: %s: unknown mission_type '%s'; the mission doesn't start",
+      tostring(entry.map_name), tostring(entry.mission_type)))
     return true
   end
   if bindings == nil then
@@ -742,15 +762,16 @@ end
 ---True when the trail's Start can play `entry` today as far as its map goes: a valid map name,
 ---the date has come (scenario missions) and the map is installed. Logs nothing.
 function scenario.isOpen(entry)
-  local kind = scenario.kind(entry)
-  if kind == "skirmish" and entry.map_name == nil then
+  local missionType = scenario.missionType(entry)
+  local isScenario = scenario.isScenario(entry)
+  if missionType == "skirmish" and entry.map_name == nil then
     return true
   end
-  if kind == nil or (kind == "scenario" and bindings == nil) or mapLookup == nil then
+  if missionType == nil or (isScenario and bindings == nil) or mapLookup == nil then
     return false
   end
-  local fileName = scenario.mapFileName(entry.map_name, kind == "skirmish")
-  if fileName == nil or (kind == "scenario" and not scenario.availability(entry)) then
+  local fileName = scenario.mapFileName(entry.map_name, not isScenario)
+  if fileName == nil or (isScenario and not scenario.availability(entry)) then
     return false
   end
   local ok, path = pcall(mapLookup, fileName)

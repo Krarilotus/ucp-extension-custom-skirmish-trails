@@ -13,18 +13,21 @@ local function mission(map, limit)
   return missionjson.toRow({
     format = 1,
     map_name = map,
-    mission_kind = "scenario",
+    mission_type = "skirmish_scenario",
     players = { {} },
     unit_limit = limit,
   }, nil, map .. ".json")
 end
 
-local crusader = mission("Door01", "formula 2400 40")
-local byAlive = mission("Door02", "by_alive 8=250 4=500 2=1000 1=2000")
-local native = mission("Door03", "native")
+local crusader = mission("Door01", { formula = { base = 2400, offset = 40 } })
+local byAlive = mission("Door02", { by_alive = { { lords = 8, limit = 250 }, { lords = 4, limit = 500 },
+  { lords = 2, limit = 1000 }, { lords = 1, limit = 2000 } } })
+local native = mission("Door03")
+native.unit_limit = "native"
 local empty = mission("Door04")
-local encoded = missionjson.fromRow({ "map_name", "num_players", "mission_kind", "unit_limit" }, crusader)
-assert(encoded:find(crusader.unit_limit, 1, true))
+assert(crusader.unit_limit == "formula 2400 40" and byAlive.unit_limit == "by_alive 8=250 4=500 2=1000 1=2000")
+local encoded = missionjson.fromRow({ "map_name", "num_players", "mission_type", "unit_limit" }, crusader)
+assert(encoded:find('"formula": {\n      "base": 2400,\n      "offset": 40', 1, true))
 
 local expected = { 1160, 1000, nil, nil }
 local trails = { warchestTrail = { crusader, byAlive, native, empty } }

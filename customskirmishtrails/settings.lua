@@ -246,7 +246,7 @@ function settings.load(path, trailName)
     warn(path, "trail_id must be 1 to 64 letters, digits, '-' or '_', starting with a letter or digit")
   end
 
-  for key, field in pairs({ trail_title = "title", trail_summary = "summary", trail_locked_text = "lockedText" }) do
+  for key, field in pairs({ trail_title = "title", trail_summary = "summary", mission_locked_text = "lockedText" }) do
     local value = data[key]
     if nonEmptyString(value) then
       result[field] = value
@@ -279,7 +279,7 @@ function settings.load(path, trailName)
   end
   result.visuals = {}
   for jsonKey, key in pairs({ trail_button_idle = "buttonIdle", trail_button_highlighted = "buttonHighlighted",
-                              trail_background = "background", trail_marker_sheet = "markerSheet" }) do
+                              trail_background = "background", trail_icon_sheet = "iconSheet" }) do
     local value = visuals and visuals[jsonKey]
     if nonEmptyString(value) then
       result.visuals[key] = settings.resolveRelative(directory, value)

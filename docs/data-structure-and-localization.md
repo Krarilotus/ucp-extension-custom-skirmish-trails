@@ -53,7 +53,7 @@ Proposed shape of `<trail>_mission_NN.json` (version 2):
 
 - `num_players` disappears: it is the length of `players`.
 - `players[0]` is player 1. Empty slots are simply not listed.
-- Prefix groups (`producible_*`, `recruitable_*`, `resource_*`, `tradeable_*`, `marker_*`) become objects; an empty `marker` is left out.
+- Prefix groups (`producible_*`, `recruitable_*`, `resource_*`, `tradeable_*`, `icon_*`) become objects; an empty `icon` is left out.
 
 **The mapping is a table, not code.** Each CSV column maps to one JSON path:
 

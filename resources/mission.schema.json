@@ -21,21 +21,65 @@
       "description": "Mission title in the briefing, blank if omitted and replaceable by a language file.",
       "type": "string"
     },
-    "mission_kind": {
-      "description": "Use skirmish (the default) for a trail battle or scenario to play the map with its own players, goals and events.",
+    "mission_type": {
+      "description": "How the mission starts. skirmish (the default): the trail sets up a skirmish on the map. scenario: a map made as a scenario, with its own players, goals and events, started as Play a Map starts it. skirmish_scenario: a skirmish saved as a map and then edited as a scenario, started as Play a Map starts it and played as the trail's skirmish mission (Restart, saves, troop limit and win go by the trail). A map whose saved game mode doesn't match is reported in the log.",
       "type": "string",
       "enum": [
         "skirmish",
-        "scenario"
+        "scenario",
+        "skirmish_scenario"
       ]
     },
-    "keep_start_army": {
-      "description": "Use 1 to keep the full starting army on scenario start and restart, or 0 or omission to keep the normal scenario rules.",
-      "enum": [0, 1]
+    "difficulty_scaling": {
+      "description": "Scenario and skirmish_scenario missions only. vanilla (the default): what Play a Map does at the game's Normal difficulty, which cuts the placed starting army (every 4th military unit until about a quarter of its value is gone) on a map without invasion events. none: the placed starting army stays whole, also on Restart.",
+      "type": "string",
+      "enum": [
+        "vanilla",
+        "none"
+      ]
     },
     "unit_limit": {
-      "description": "Player troop cap, capped by the game's skirmish limit. Use native (the default), formula BASE OFFSET (BASE divided by living lords minus OFFSET), or by_alive LORDS=LIMIT pairs such as by_alive 8=250 1=2000.",
-      "type": "string"
+      "description": "The player's troop limit, never above the game's skirmish limit for the living lords. Omit it for the game's own limit (none in a scenario). Give either formula or by_alive.",
+      "type": "object",
+      "oneOf": [
+        {
+          "properties": {
+            "formula": {
+              "description": "base divided by the living lords, minus offset; base 2400 and offset 40 are Crusader's limits.",
+              "type": "object",
+              "properties": {
+                "base": { "type": "integer", "minimum": 1, "maximum": 100000 },
+                "offset": { "type": "integer", "minimum": 0, "maximum": 100000 }
+              },
+              "required": ["base", "offset"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["formula"],
+          "additionalProperties": false
+        },
+        {
+          "properties": {
+            "by_alive": {
+              "description": "The limit at the listed numbers of living lords, each count once; counts between two listed ones are interpolated and rounded down, counts outside them take the nearest listed limit.",
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 8,
+              "items": {
+                "type": "object",
+                "properties": {
+                  "lords": { "type": "integer", "minimum": 1, "maximum": 8 },
+                  "limit": { "type": "integer", "minimum": 0, "maximum": 100000 }
+                },
+                "required": ["lords", "limit"],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": ["by_alive"],
+          "additionalProperties": false
+        }
+      ]
     },
     "scenario_briefing": {
       "description": "Scenario missions only: the game's briefing text for this mission, shown instead of the map's own description, at most 999 bytes. A language file can give its own; omit to keep the map's text.",
@@ -179,7 +223,7 @@
             "minimum": 0
           },
           "color": {
-            "description": "AI player slot as orange, yellow, blue, black, purple, lightblue or green (2-8 in that order); omission uses its own slot or the first free one.",
+            "description": "AI player slot as orange, yellow, blue, black, purple, lightblue or green (2-8 in that order); slot 1 (red) is always the human player. Omission uses its own slot or the first free one.",
             "oneOf": [
               {
                 "type": "string",
@@ -247,8 +291,8 @@
         ]
       }
     },
-    "marker": {
-      "description": "Door pictures of the mission from trail_marker_sheet, one per state and each optional; a state without a picture shows the game's own marker. A mission off the trail's order (a side mission, a parallel path) needs its available picture.",
+    "icon": {
+      "description": "Door pictures of the mission from trail_icon_sheet, one per state and each optional; a state without a picture shows the game's own marker. Pictures 0-129: the picture count of the game's skirmish_trail_icons.gm1, the only count gmResourceModifier's ReserveGm accepts for the sheet. A mission off the trail's order (a side mission, a parallel path) needs its available picture.",
       "type": "object",
       "properties": {
         "locked": { "description": "Picture index (0-129) while the mission can't be clicked yet. Leave it out to draw nothing until it opens.", "type": "integer", "minimum": 0, "maximum": 129 },

@@ -2,7 +2,7 @@
 -- language. Every further language is one JSON file with only the texts:
 --
 --   {
---     "trail_title": "...", "trail_summary": "...", "trail_locked_text": "...",
+--     "trail_title": "...", "trail_summary": "...", "mission_locked_text": "...",
 --     "missions": {
 --       "1": { "mission_name": "...", "text_description_line_01": "...", "player2_name": "..." },
 --       "2": { ... }
@@ -89,8 +89,8 @@ function texts.load(path)
   if type(data.trail_summary) == "string" and data.trail_summary ~= "" then
     result.summary = data.trail_summary
   end
-  if type(data.trail_locked_text) == "string" and data.trail_locked_text ~= "" then
-    result.lockedText = data.trail_locked_text
+  if type(data.mission_locked_text) == "string" and data.mission_locked_text ~= "" then
+    result.lockedText = data.mission_locked_text
   end
   local problems = 0
   if type(data.missions) == "table" then
@@ -167,7 +167,7 @@ function texts.format(entries, title, summary, lockedText, keys)
     table.insert(lines, '  "trail_summary": ' .. q(summary) .. ",")
   end
   if lockedText ~= nil then
-    table.insert(lines, '  "trail_locked_text": ' .. q(lockedText) .. ",")
+    table.insert(lines, '  "mission_locked_text": ' .. q(lockedText) .. ",")
   end
   table.insert(lines, '  "missions": {')
   local missions = {}

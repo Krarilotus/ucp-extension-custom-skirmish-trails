@@ -61,7 +61,7 @@ function unitlimits.parse(text)
   end
   if #words == 3 and words[1] == "formula" then
     local base, offset = math.tointeger(tonumber(words[2])), math.tointeger(tonumber(words[3]))
-    if base ~= nil and offset ~= nil and base > 0 and offset >= 0 then
+    if base ~= nil and offset ~= nil and base > 0 and base <= MAX_LIMIT and offset >= 0 and offset <= MAX_LIMIT then
       return { kind = "formula", base = base, offset = offset }
     end
   end
@@ -83,7 +83,7 @@ function unitlimits.parse(text)
     end
   end
   return nil, string.format("'%s' is not 'native', 'formula BASE OFFSET' or 'by_alive LORDS=LIMIT ...' "
-    .. "(each LORDS 1-8 once, LIMIT at most %d)", text, MAX_LIMIT)
+    .. "(BASE 1-%d, OFFSET 0-%d, each LORDS 1-8 once, LIMIT at most %d)", text, MAX_LIMIT, MAX_LIMIT, MAX_LIMIT)
 end
 
 ---A policy's limit for `lords` living lords. by_alive interpolates linearly between the listed

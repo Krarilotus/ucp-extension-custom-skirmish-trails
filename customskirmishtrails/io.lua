@@ -141,8 +141,8 @@ local HEADERS_EXTRA = {
   "player6_color",
   "player7_color",
   "player8_color",
-  "mission_kind",
-  "keep_start_army",
+  "mission_type",
+  "difficulty_scaling",
   "unit_limit",
   "scenario_briefing",
 }
@@ -281,13 +281,13 @@ local HEADERS_TYPES = {
   ["player6_color"] = "string",
   ["player7_color"] = "string",
   ["player8_color"] = "string",
-  ["mission_kind"] = "string",
-  ["keep_start_army"] = "binary",
+  ["mission_type"] = "string",
+  ["difficulty_scaling"] = "string",
   ["unit_limit"] = "string",
   ["scenario_briefing"] = "string",
-  ["marker_locked"] = "integer",
-  ["marker_available"] = "integer",
-  ["marker_won"] = "integer",
+  ["icon_locked"] = "integer",
+  ["icon_available"] = "integer",
+  ["icon_won"] = "integer",
 }
 
 local ALLOW_NIL = {
@@ -301,10 +301,9 @@ local ALLOW_NIL = {
   ["player8_name"] = true,
   ["player1_lord"] = true,
   ["player1_skip_start_units"] = true,
-  ["keep_start_army"] = true,
-  ["marker_locked"] = true,
-  ["marker_available"] = true,
-  ["marker_won"] = true,
+  ["icon_locked"] = true,
+  ["icon_available"] = true,
+  ["icon_won"] = true,
   ["gold_player_1"] = true,
   ["gold_player_2"] = true,
   ["gold_player_3"] = true,
@@ -406,8 +405,7 @@ end
 
 local function numberify(name, index, expected, received, value)
   local nvalue = tonumber(value)
-  if nvalue == nil and ALLOW_NIL[name]
-      and (name ~= "keep_start_army" or value == nil or tostring(value):match("^%s*$")) then
+  if nvalue == nil and ALLOW_NIL[name] then
     return nil
   end
 

@@ -13,7 +13,7 @@
       "description": "Translated summary under the trail title; omit or leave empty to keep the original summary.",
       "type": "string"
     },
-    "trail_locked_text": {
+    "mission_locked_text": {
       "description": "Translated briefing for a dated scenario that has yet to open, with {date} filled in; omit or leave empty to keep the original text.",
       "type": "string"
     },
