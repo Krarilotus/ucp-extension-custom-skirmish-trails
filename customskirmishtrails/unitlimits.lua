@@ -121,8 +121,8 @@ end
 
 local function resolve()
   local okEntry, entry, syncMode, limitField, singlePlayerValue, players, killed =
-    pcall(utils.AOBExtract, ENTRY_AOB)
-  local okStore, store, base, storeField = pcall(utils.AOBExtract, STORE_AOB)
+    pcall(patches.extract, ENTRY_AOB)
+  local okStore, store, base, storeField = pcall(patches.extract, STORE_AOB)
   if not okEntry or not okStore or entry == nil or store == nil then
     log(WARNING, "could not find the troop limit; unit_limit is switched off")
     return nil
@@ -166,7 +166,7 @@ end
 ---The players' lords and keeps from the single-player defeat check, into `b`; false and the
 ---reason when it is not found.
 local function resolvePlayers(b)
-  local okSite, lordSite, playerSize, campgrounds, lordIds = pcall(utils.AOBExtract, SCENARIO_LORD_AOB)
+  local okSite, lordSite, playerSize, campgrounds, lordIds = pcall(patches.extract, SCENARIO_LORD_AOB)
   if not okSite or lordSite == nil then
     return false, "the single-player defeat check was not found"
   end
@@ -286,21 +286,17 @@ local function installEntry(b, s)
   end)
 end
 
----Binds the troop limit.
+---Binds the troop limit once before a route or custom limit needs it.
 function unitlimits.enable()
-  local ok, result = pcall(resolve)
-  if ok then
-    bindings = result
-    if bindings ~= nil then
-      local found, problem = resolvePlayers(bindings)
-      if not found then
-        bindings.playersProblem = problem
-        log(WARNING, problem .. "; trail results keep no players")
-      end
-    end
-  else
-    log(WARNING, "unit_limit is switched off: " .. tostring(result))
-  end
+  if bindings ~= nil then return end
+  bindings = resolve()
+end
+
+function unitlimits.bindPlayerFacts()
+  unitlimits.enable()
+  if bindings == nil then return false end
+  if bindings.playerSize ~= nil then return true end
+  return resolvePlayers(bindings)
 end
 
 ---Reads the unit_limit of every mission and installs the troop limit when a mission has a policy
@@ -324,34 +320,19 @@ function unitlimits.apply(trails, scenarioSession, playedMission)
   if not any or installed.skirmish then
     return
   end
-  if bindings == nil then
-    log(ERROR, "Custom troop limits in trail missions are off.")
-    return
-  end
-  if not unchanged(bindings) then
-    log(ERROR, "Custom troop limits in trail missions are off.")
-    log(WARNING, "the troop limit code was changed by another patch; unit_limit is switched off")
-    return
-  end
-  local ok, err = pcall(installStore, bindings)
-  if not ok then
-    log(ERROR, "Custom troop limits in trail missions are off.")
-    log(WARNING, "unit_limit is switched off: " .. tostring(err))
-    return
-  end
-  installed.skirmish = true
-  if scenarioSession == nil then
-    log(WARNING, "scenario missions are switched off, so are their troop limits")
-    return
-  end
-  session = scenarioSession
-  ok, err = pcall(installEntry, bindings, scenarioSession)
-  if not ok then
-    log(ERROR, "Custom troop limits in scenario missions are off.")
-    log(WARNING, "the troop limits of scenario missions are switched off: " .. tostring(err))
-    return
-  end
-  installed.scenario = true
+  patches.apply("Custom troop limits in trail missions", function()
+    unitlimits.enable()
+    if bindings == nil or not unchanged(bindings) then return false end
+    installStore(bindings)
+    installed.skirmish = true
+  end)
+  if not installed.skirmish or scenarioSession == nil then return end
+  patches.apply("Custom troop limits in scenario missions", function()
+    if not unitlimits.bindPlayerFacts() then return false end
+    installEntry(bindings, scenarioSession)
+    session = scenarioSession
+    installed.scenario = true
+  end)
 end
 
 return unitlimits

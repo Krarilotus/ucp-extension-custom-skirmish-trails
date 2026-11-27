@@ -1,18 +1,11 @@
 
 local common = require("customskirmishtrails.common")
-local memory = require("customskirmishtrails.memory")
 local tradeability = require("customskirmishtrails.tradeability")
 local producibility = require("customskirmishtrails.producibility")
 local recruitability = require("customskirmishtrails.recruitability")
 local descriptiveTexts = require("customskirmishtrails.descriptive_texts")
 local startgoods = require("customskirmishtrails.start_goods")
 local patches = require("customskirmishtrails.patches")
-
--- 
-local function setStartGold(value)
-  log(2, string.format("setStartGold: %s @ %X: %s", "gold",memory.START_GOLD, value))
-  core.writeInteger(memory.START_GOLD, value) -- check intesnity value validity
-end
 
 local PLAYER_MAPPING = {
   ["SK_RAT"] = 1,
@@ -172,7 +165,7 @@ local function commitEntry(addr, index, entry, trail)
   log(2, string.format("commitEntry: %s %X %s %X", entry, addr, index - 1, offset))
 
   local missionName = entry.mission_name
-  if missionName ~=  nil then
+  if missionName ~= nil and modules.textResourceModifier.SetText ~= nil then
     if trail == "firstEditionTrail" then
       -- first edition
       modules.textResourceModifier:SetText(0xF5, 0x01 + (index - 1), missionName)      

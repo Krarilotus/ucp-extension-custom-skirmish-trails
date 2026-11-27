@@ -138,8 +138,8 @@ local function hookTrailScreen()
     return true
   end
   local site = patches.siteAddress(VIEW_PREPARE_SITE, "the trail screen's button pictures")
-  local open = patches.functionAddress("open", "Trail screen button pictures")
-  if site == nil or open == nil then
+  local open = patches.functionAddress("open")
+  if site == nil or open == nil or not memory.bindTrailType() then
     return
   end
   core.detourCode(function(registers)

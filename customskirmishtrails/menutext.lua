@@ -74,11 +74,15 @@ local textWidth = nil
 
 ---The width in pixels of `text` (in the game's encoding) in `font`, or nil when the game's text
 ---width function is not found.
-function menutext.measure(textManager, text, font)
+function menutext.bindMeasure()
   if textWidth == nil then
-    local computeTextWidth = patches.find("56 8B 74 24 08 85 F6 75 06 33 C0 5E C2 08 00 8B C6", "the text width function")
+    local computeTextWidth = patches.find("56 8B 74 24 08 85 F6 75 06 33 C0 5E C2 08 00 8B C6")
     textWidth = computeTextWidth ~= nil and core.exposeCode(computeTextWidth, 3, 1) or false
   end
+  return textWidth ~= false
+end
+
+function menutext.measure(textManager, text, font)
   if not textWidth then
     return nil
   end
@@ -123,14 +127,14 @@ function menutext.apply(trailName, title, summary)
   if title == nil and summary == nil then
     return
   end
-  visuals.applyTexts(trailName, title, summary)
-
+  if modules.textResourceModifier.SetText == nil then return end
   local blocks = BLOCKS[trailName]
-  local titleBlock = patches.find(blocks.title, trailName .. " title")
-  local summaryBlock = patches.find(blocks.summary, trailName .. " summary")
-  if titleBlock == nil or summaryBlock == nil then
-    return
+  local titleBlock = patches.find(blocks.title)
+  local summaryBlock = patches.find(blocks.summary)
+  if titleBlock == nil or summaryBlock == nil or (summary ~= nil and not menutext.bindMeasure()) then
+    return false
   end
+  visuals.applyTexts(trailName, title, summary)
 
   -- both up by 10 pixels
   core.writeCodeInteger(titleBlock + 1, core.readInteger(titleBlock + 1) - MOVE_UP)

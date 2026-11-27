@@ -6,6 +6,7 @@ local function getStartGood(good)
   local g = common.resources[good]
   if g == nil then error(string.format("unknown good type: %s", good)) end
 
+  if memory.START_GOODS == nil then return end
   local addr = memory.START_GOODS + (4*g)
   log(2, string.format("getStartGood: %s @ %X", good,addr))
   return core.readInteger(addr)
@@ -15,6 +16,7 @@ local function setStartGood(good, value)
   local g = common.resources[good]
   if g == nil then error(string.format("unknown good type: %s", good)) end
 
+  if memory.START_GOODS == nil then return end
   local addr = memory.START_GOODS + (4*g)
   log(2, string.format("setStartGood: %s @ %X: %s", good,addr, value))
   core.writeInteger(addr, value)
@@ -47,7 +49,7 @@ local START_UNIT_TYPES = 20
 ---player1_skip_start_units = 1: player 1 gets no starting troops (the lord still comes).
 ---Called after the loader has filled the rows and before the game spawns them.
 local function skipStartUnits(entry)
-  if entry == nil or tonumber(entry.player1_skip_start_units) ~= 1 then
+  if memory.STARTING_TROOPS == nil or entry == nil or tonumber(entry.player1_skip_start_units) ~= 1 then
     return
   end
   for unitType = 0, START_UNIT_TYPES - 1 do

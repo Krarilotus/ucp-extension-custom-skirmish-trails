@@ -1,34 +1,20 @@
-
-local _, pColorArray = utils.AOBExtract("8B ? ? I(? ? ? ?) 6A 13 6A 00 51")
-local _, pTextManagerObj = utils.AOBExtract("8B ? I(? ? ? ?) A1 ? ? ? ? 52 8D 54 01 0A")
-
-local renderFunc = core.AOBScan("8B 44 24 20 8B 54 24 18 53")
-
-local placeholderAddress = core.allocate(100)
-core.writeString(placeholderAddress, "[placeholder]")
+local patches = require("customskirmishtrails.patches")
 
 local LINE_CAPACITY = 1000
-local textLines = {
-  core.allocate(LINE_CAPACITY, true),
-  core.allocate(LINE_CAPACITY, true),
-  core.allocate(LINE_CAPACITY, true),
-  core.allocate(LINE_CAPACITY, true),
-  core.allocate(LINE_CAPACITY, true),
-  core.allocate(LINE_CAPACITY, true),
-  core.allocate(LINE_CAPACITY, true),
-  core.allocate(LINE_CAPACITY, true),
-}
+local textLines = {}
 
 ---Writes `text` in the game's text encoding (textResourceModifier) into the `capacity` bytes at
 ---`address`, cut to fit.
 local function writeGameText(address, capacity, text)
-  local transformed = modules.textResourceModifier:TransformText(text)
+  local modifier = modules.textResourceModifier
+  if modifier.TransformText == nil then return end
+  local transformed = modifier:TransformText(text)
   local bounded = transformed:match("^[^%z]*"):sub(1, capacity - 1)
   core.writeString(address, bounded)
   core.writeByte(address + #bounded, 0)
 end
 
-local function genRenderText(address, xOffset, yOffset)
+local function genRenderText(address, line, renderFunc, pColorArray, pTextManagerObj)
   return core.AssemblyLambda([[
     pushad
     
@@ -52,11 +38,11 @@ local function genRenderText(address, xOffset, yOffset)
     popad
   ]], {
     func = renderFunc,
-    stringAddress = address or placeholderAddress,
+    stringAddress = address,
     pColorArray = pColorArray,
     pTextManagerObj = pTextManagerObj,
-    yOffset = 0x04 + (yOffset or 0),
-    xOffset = 0x100 + (xOffset or 0),
+    yOffset = 0x04 + 0x16 * (line - 1),
+    xOffset = 0x100,
   })
 end
 
@@ -64,11 +50,23 @@ end
 
 return {
   enable = function()
-    local codes = {}
-    for line, addr in pairs(textLines) do
-      table.insert(codes, genRenderText(addr, 0, 0x16 * (line - 1)))
+    if next(textLines) ~= nil then return true end
+    local _, colors = patches.extract("8B ? ? I(? ? ? ?) 6A 13 6A 00 51")
+    local _, textManager = patches.extract("8B ? I(? ? ? ?) A1 ? ? ? ? 52 8D 54 01 0A")
+    local render = patches.find("8B 44 24 20 8B 54 24 18 53")
+    local site = patches.find("8D A4 24 00 00 00 00 83 FD 01")
+    if colors == nil or textManager == nil or render == nil or site == nil then return false end
+    local codes, lines = {}, {}
+    for line = 1, 8 do
+      local address = core.allocate(LINE_CAPACITY, true)
+      lines[line] = address
+      codes[line] = genRenderText(address, line, render, colors, textManager)
     end
-    core.insertCode(core.AOBScan("8D A4 24 00 00 00 00 83 FD 01"), 7, codes, nil, 'after')
+    patches.guarded({ { address = site, size = 7 } }, function()
+      core.insertCode(site, 7, codes, nil, "after")
+    end)
+    textLines = lines
+    return true
   end,
   setText = function(line, text)
     local address = textLines[line]

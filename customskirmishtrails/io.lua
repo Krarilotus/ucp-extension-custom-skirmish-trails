@@ -4,7 +4,7 @@ local ucp = ucp or {internal = {
 }}
 local csv = require("customskirmishtrails.vendor.lua-csv")
 
-local strictness = "warning"
+local strict = false
 
 local HEADERS = {
   "map_name", 
@@ -391,27 +391,17 @@ local function fail(name, index, expected, received, value)
   local msg = string.format("header %s: entry %s, expected a '%s' but received a '%s' (length: %d): %s ", name, index, expected, received, text:len(), text)
   table.insert(fails, msg)
   -- every single problem only in strict mode; otherwise one summary line per file
-  log(strictness == "warning" and VERBOSE or WARNING, msg)
+  log(strict and WARNING or VERBOSE, msg)
 end
 
 local function numberify(name, index, expected, received, value)
   local nvalue = tonumber(value)
-  if nvalue == nil and ALLOW_NIL[name] then
+  if value == "" and ALLOW_NIL[name] then return nil end
+  if nvalue == nil or (expected == "binary" and nvalue ~= 1 and nvalue ~= 0)
+      or (expected == "integer" and math.tointeger(nvalue) == nil) then
+    fail(name, index, expected, received, value)
     return nil
   end
-
-  if nvalue == nil then
-    fail(name, index, expected, received, value)
-  elseif expected == "binary" and (nvalue ~= 1 and nvalue ~= 0) then
-    fail(name, index, expected, received, value)
-  elseif expected == "integer" then
-    local ivalue = tonumber(tostring(nvalue), 10)
-    if (ivalue == nil and not ALLOW_NIL[name]) or ivalue ~= nvalue then
-      fail(name, index, expected, received, value)
-    end
-    return ivalue
-  end
-
   return nvalue
 end
 
@@ -512,29 +502,16 @@ local function readCSV(path, limit, contents, requireMissions, jsonRows)
     if requireMissions then
       return nil, string.format("%d problems in the mission data (first: %s)", #fails, fails[1])
     end
-    local ll = WARNING
-    if strictness == "warning" then
-      ll = WARNING
-    elseif strictness == "error" then
-      ll = ERROR
-    elseif strictness == "fatal" then
-      ll = FATAL
-    end
-    if strictness == "warning" then
+    if not strict then
       log(WARNING, string.format("%d problems in the trail csv file %s; turn on strict mode in your profile to see them", #fails, path))
-    else
-      log(ll, string.format("There were %d warnings related to the skirmish trail csv file %s, consult the log for details", #fails, path))
     end
-
-    
   end
 
   return entries
 end
 
 return {
-  setStrictness = function(s) strictness = s end,
-  isStrict = function() return strictness ~= "warning" end,
+  setStrict = function(value) strict = value end,
   readCSV = readCSV,
   readBytes = readBytes,
   HEADERS =  HEADERS,

@@ -6,6 +6,8 @@ local patches = require("customskirmishtrails.patches")
 local cst_io = require("customskirmishtrails.io")
 
 local settings = {}
+local decoder = json:new({ strictTypes = true })
+local object = getmetatable(decoder:newObject())
 
 settings.TRAIL_TYPES = {
   First = "firstEditionTrail",
@@ -219,7 +221,7 @@ function settings.load(path, trailName, jsonSource)
     fail(path, "cannot read the trail settings file (%s)", tostring(err))
     return nil
   end
-  local ok, data = pcall(function() return json:decode(contents) end)
+  local ok, data = pcall(decoder.decode, decoder, contents)
   if not ok or type(data) ~= "table" then
     fail(path, "the trail settings file is not valid JSON: %s", tostring(data))
     return nil
@@ -293,8 +295,8 @@ function settings.load(path, trailName, jsonSource)
   end
 
   local visuals = data.trail_visuals
-  if visuals ~= nil and type(visuals) ~= "table" then
-    warn(path, "trail_visuals must be an object")
+  if visuals ~= nil and getmetatable(visuals) ~= object then
+    log(ERROR, path .. ": trail_visuals must be an object")
     visuals = nil
   end
   result.visuals = {}
@@ -308,6 +310,8 @@ function settings.load(path, trailName, jsonSource)
     local value = visuals and visuals[jsonKey]
     if nonEmptyString(value) then
       result.visuals[key] = settings.resolveRelative(directory, value)
+    elseif value ~= nil and type(value) ~= "string" then
+      log(ERROR, string.format("%s: trail_visuals.%s must be a string", path, jsonKey))
     end
   end
 

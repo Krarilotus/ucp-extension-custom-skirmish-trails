@@ -44,7 +44,6 @@ local function giveChickens(trail, chickens)
       return
     end
   end
-  log(ERROR, "Chicken rewards for completing trail missions are off.")
   log(WARNING, "the trail screen's chicken code was not found; a reward of chickens is not given")
 end
 
@@ -64,11 +63,10 @@ local function winStore(trail, purpose)
     return stores[trail]
   end
   local site = patches.siteAddress(WIN_STORES[trail], purpose)
-  if site == nil then
-    return nil
-  end
+  local selected = memory.TRAIL_PROGRESS_ADDRESSES[trail]
+  if site == nil or selected == nil then return nil end
   local store = site + 3
-  local state = { trail = trail, furthest = core.readInteger(store + 1), selected = memory.TRAIL_PROGRESS_ADDRESSES[trail] }
+  local state = { trail = trail, furthest = core.readInteger(store + 1), selected = selected }
   local stub = patches.luaStub(function(registers)
     local r = state.route
     if r ~= nil then
@@ -100,9 +98,7 @@ end
 ---Keeps the furthest row of `trail` in the user data file `path` instead of the game's own progress.
 function progress.install(trail, path, count)
   local state = winStore(trail, "the trail's own progress file")
-  if state == nil then
-    return
-  end
+  if state == nil then return false end
   state.count = count
   state.path = path
 
@@ -169,14 +165,18 @@ end
 ---playable main mission is selected. Each node's win is kept with the players alive then, and its
 ---reward of chickens is given at its first win. False when a game site is not found.
 function progress.installRoute(trail, r)
-  local state = winStore(trail, "side missions")
   local selectSite = SELECT_STORES[trail]
-  local select = state and patches.siteAddress(selectSite, "side missions")
-  local compare = state and patches.siteAddress(WIN_COMPARES[trail], "trail results")
+  local selected = memory.TRAIL_PROGRESS_ADDRESSES[trail]
+  local select = patches.siteAddress(selectSite, "side missions")
+  local compare = patches.siteAddress(WIN_COMPARES[trail], "trail results")
   local chicken = chickenHooked or patches.siteAddress(CHICKEN_SITE, "side missions")
-  if select == nil or compare == nil or not chicken or core.readInteger(select + 2) ~= state.selected then
+  if selected == nil or select == nil or compare == nil or not chicken
+      or core.readInteger(select + 2) ~= selected then
     return false
   end
+  local state = winStore(trail, "side missions")
+  if state == nil then return false end
+  patches.apply("Player facts for trail route results", unitlimits.bindPlayerFacts)
   local won = patches.luaStub(function(registers)
     local row = core.readInteger(state.selected)
     r:pass(row)

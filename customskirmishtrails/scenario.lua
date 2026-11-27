@@ -232,9 +232,8 @@ local function resolve()
     found[name] = { address = address }
   end
   for name, aob in pairs(EXTRACTS) do
-    local match, reason = core.AOBScanUnique(patches.plain(aob))
-    assert(match ~= nil, "could not bind scenario " .. name .. ": " .. tostring(reason))
-    local address, a, b = utils.AOBExtract(aob, match, match)
+    local address, a, b = patches.extract(aob)
+    assert(address ~= nil, "could not bind scenario " .. name)
     found[name] = { address = address, a, b }
   end
   local branch = patches.siteAddress(WIN_BRANCH_SITE, "the mission finished screen")
@@ -810,7 +809,7 @@ end
 ---The trail's Start (SetupSkirmishMode, cdecl, the selected mission's index): scenario missions
 ---start as above, every other mission runs the game's skirmish setup.
 local function installStartHook()
-  local setup = patches.functionAddress("setup", "Scenario trail Start control")
+  local setup = patches.functionAddress("setup")
   if setup == nil or not patches.matches(setup, "8B 44 24 04 8B 0D ? ? ? ?") then
     return false
   end
@@ -843,31 +842,22 @@ end
 
 ---Installs scenario missions. `missionsOf(trailName)` gives a trail's missions (1-based).
 ---Returns true when they can be played and whether the Start hook was installed.
-function scenario.enable(missionsOf)
+function scenario.enable(missionsOf, scenarios, maps, limits)
+  if not (scenarios or maps or limits) then return true, false end
   trailOf = missionsOf
-  -- without the Start hook a scenario mission would run the skirmish setup on its map
-  local checked, installed = pcall(installStartHook)
-  if not checked or not installed then
-    log(ERROR, "Scenario trail missions are off. The Start control could not be bound.")
-    log(WARNING, "unexpected game code at the trail's Start; scenario rows are withheld")
-    return false, false
+  if maps or scenarios then
+    local found, lookup = patches.apply("Custom trail map lookup", bindMapLookup)
+    if found then mapLookup = lookup end
   end
-  local lookupOk, lookup = pcall(bindMapLookup)
-  if lookupOk then
-    mapLookup = lookup
-  else
-    log(ERROR, "Custom trail map lookup and scenario missions are off. The map lookup code could not be bound.")
-    log(WARNING, "custom map lookup is unavailable: " .. tostring(lookup))
-    return false, true
+  local ready, result
+  if scenarios and mapLookup ~= nil then
+    ready, result = patches.apply("Scenario trail missions", function()
+      return resolve() or false
+    end)
   end
-  local ok, result = pcall(resolve)
-  if not ok or result == nil then
-    log(ERROR, "Scenario trail missions are off. The game code could not be verified.")
-    if not ok then
-      log(WARNING, tostring(result))
-    end
-    return false, true
-  end
+  -- The Start hook also stops an unavailable custom mission from running as a skirmish.
+  local started = patches.apply("Custom trail Start control", installStartHook)
+  if not started or not ready then return false, started end
   result.trailMap = core.allocate(NAME_BUFFER, true)
   result.keepArmy = core.allocate(1, true)
   result.cap = core.allocate(1, true)
@@ -879,24 +869,16 @@ function scenario.enable(missionsOf)
     { address = result.wonPrepare, size = WON_PREPARE_SIZE },
     { address = result.lostPrepare, size = LOST_PREPARE_SIZE },
   }
-  local installed, err = pcall(patches.guarded, sites, function()
+  local installed = patches.apply("Scenario trail missions", patches.guarded, sites, function()
     installSameMap(result)
     installArmyCutSkip(result)
     installSessionEnd(result)
     installEndScreens(result)
     installListStart(result)
   end)
-  if not installed then
-    log(ERROR, "Scenario trail missions are off. The game hooks could not be installed.")
-    log(WARNING, "scenario missions are switched off: " .. tostring(err))
-    return false, true
-  end
+  if not installed then return false, true end
   bindings = result
-  local kept, keepErr = pcall(installHeaderKeep, result)
-  if not kept then
-    log(ERROR, "Preserving the selected scenario map during previews is off.")
-    log(WARNING, "map and save previews change the chosen map: " .. tostring(keepErr))
-  end
+  patches.apply("Preserving the selected scenario map during previews", installHeaderKeep, result)
   return true, true
 end
 

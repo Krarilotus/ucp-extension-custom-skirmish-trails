@@ -59,10 +59,11 @@ end
 ---fits between the label and the coin, else the lowest and highest ("3000 - 4000").
 local function aiGoldText(textObject, values)
   local text = table.concat(values, " / ")
-  local label = menutext.measure(textObject,
-    modules.textResourceModifier:GetText(AI_LABEL_TEXT[1], AI_LABEL_TEXT[2]), AI_FONT)
+  local modifier = modules.textResourceModifier
+  local labelText = modifier.GetText ~= nil and modifier:GetText(AI_LABEL_TEXT[1], AI_LABEL_TEXT[2])
+  local label = labelText and menutext.measure(textObject, labelText, AI_FONT)
   local width = menutext.measure(textObject, text, AI_FONT)
-  if label == nil or width == nil or AI_LABEL_LEFT + label + AI_TEXT_GAP + width <= AI_TEXT_RIGHT then
+  if not label or width == nil or AI_LABEL_LEFT + label + AI_TEXT_GAP + width <= AI_TEXT_RIGHT then
     return text
   end
   local low, high = math.min(table.unpack(values)), math.max(table.unpack(values))
@@ -78,23 +79,23 @@ local function lineCode(address, stub, drawText)
   end
   local textObject = core.readInteger(address + 12)
   local drawNumber = address + LINE_SIZE + core.readInteger(address + 17)
-  return {
-    gameValue,
-    core.callTo(stub),
-    0x50,                                -- push eax
-    0x85, 0xD2,                          -- test edx, edx
-    0x74, core.byteRelTo("number", -1),  -- jz number
-    0x89, 0x14, 0x24,                    -- mov [esp], edx
-    0x83, 0x44, 0x24, 0x04, AI_TEXT_RIGHT, -- add dword [esp + 4], AI_TEXT_RIGHT (x)
-    0xC7, 0x44, 0x24, 0x0C, core.itob(-1), -- mov dword [esp + 12], -1 (right-aligned)
-    0xB9, core.itob(textObject),         -- mov ecx, text
-    core.callTo(drawText),
-    0xEB, core.byteRelTo("done", -1),    -- jmp done
-    "number",
-    0xB9, core.itob(textObject),         -- mov ecx, text
-    core.callTo(drawNumber),
-    "done",
-  }
+  return { gameValue, core.AssemblyLambda([[
+    call near ON_GOLD
+    push eax
+    test edx, edx
+    jz number
+    mov [esp], edx
+    add dword [esp + 4], TEXT_RIGHT
+    mov dword [esp + 0x0C], -1
+    mov ecx, TEXT_OBJECT
+    call near DRAW_TEXT
+    jmp done
+  number:
+    mov ecx, TEXT_OBJECT
+    call near DRAW_NUMBER
+  done:
+  ]], { ON_GOLD = stub, TEXT_RIGHT = AI_TEXT_RIGHT, TEXT_OBJECT = textObject,
+    DRAW_TEXT = drawText, DRAW_NUMBER = drawNumber }) }
 end
 
 ---`ownGold`: whether the mission's gold_player_N reach the game, so the briefing shows them.
@@ -102,8 +103,8 @@ local function showInBriefing(ownGold)
   local human = patches.siteAddress(HUMAN_SITE, "the human player's gold in the briefing")
   local ai = patches.siteAddress(AI_SITE, "the AI players' gold in the briefing")
   local label = patches.siteAddress(AI_LABEL_CALL_SITE, "the AI players' gold in the briefing")
-  if human == nil or ai == nil or label == nil then
-    return
+  if human == nil or ai == nil or label == nil or (ownGold and not menutext.bindMeasure()) then
+    return false
   end
   local textObject = core.readInteger(ai + 12)
   local drawText = label + 5 + core.readInteger(label + 1)
@@ -143,10 +144,11 @@ local function showInBriefing(ownGold)
   end)
 end
 
-function startgold.enable()
+function startgold.enable(customGold, scenarios)
   -- every player's start gold as the game sets up a skirmish (EBX: the player's slot)
-  local detourAddress = patches.find("89 86 00 E4 FF FF", "the start gold store")
-  if detourAddress ~= nil then
+  local ownGold = customGold and patches.apply("Custom start gold in trail missions", function()
+    local detourAddress = patches.find("89 86 00 E4 FF FF")
+    if detourAddress == nil then return false end
     core.detourCode(function(registers)
       local entry, isTrail = memory.currentEntry()
       local value = isTrail and not scenario.isScenario(entry) and gold(entry, registers.EBX) or nil
@@ -155,12 +157,8 @@ function startgold.enable()
       end
       return registers
     end, detourAddress, 6)
-  end
-
-  local ok, err = pcall(showInBriefing, detourAddress ~= nil)
-  if not ok then
-    log(WARNING, "the briefing shows the game's gold: " .. tostring(err))
-  end
+  end)
+  if ownGold or scenarios then patches.apply("Custom gold in trail briefings", showInBriefing, ownGold) end
 end
 
 return startgold

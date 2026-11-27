@@ -158,7 +158,6 @@ local BRIEFING_SEPARATOR_SITE = { fn = "brief", offset = 0x9EC, bytes = "8B 44 B
 local NAME_STRIDE = 0xFA
 local SHORT_NAME_STRIDE = 0x5A
 
-local functions = {}
 local state = {
   namesHookInstalled = false,
   originalLord = nil,
@@ -169,20 +168,37 @@ function patches.plain(aob)
   return (aob:gsub("I%(", ""):gsub("%)", ""))
 end
 
----The unique code match of `pattern`, or nil with an error naming `purpose`.
-function patches.find(pattern, purpose)
-  local address, reason = core.AOBScanUnique(pattern)
-  if address == nil then
-    log(ERROR, string.format("%s is off. Its game code was %s.", purpose, reason))
+local matchesByPattern = {}
+
+---The unique executable-code match, or nil if it could not be verified.
+function patches.find(pattern)
+  if matchesByPattern[pattern] == nil then
+    matchesByPattern[pattern] = core.AOBScanUnique(pattern) or false
   end
-  return address
+  return matchesByPattern[pattern] or nil
 end
 
-local function locate(name, purpose)
-  if functions[name] == nil then
-    functions[name] = patches.find(FUNCTION_AOBS[name], purpose) or false
+---Capture only at the verified match.
+function patches.extract(pattern)
+  local address = patches.find(patches.plain(pattern))
+  if address ~= nil then
+    return utils.AOBExtract(pattern, address, address)
   end
-  return functions[name] or nil
+end
+
+---Report an unavailable feature at the installation boundary.
+function patches.apply(feature, install, ...)
+  local ok, result = pcall(install, ...)
+  if not ok or result == false then
+    log(ERROR, feature .. " is off.")
+    if not ok then log(WARNING, tostring(result)) end
+    return false
+  end
+  return true, result
+end
+
+local function locate(name)
+  return patches.find(FUNCTION_AOBS[name])
 end
 
 ---True when the bytes at `address` match `pattern` ("8B 04 D5 ? ? ? ?").
@@ -192,7 +208,7 @@ end
 
 ---The address of a patch site, or nil (with a warning) when its bytes are not what we expect.
 local function siteAddress(site, purpose)
-  local base = locate(site.fn, purpose)
+  local base = locate(site.fn)
   if base == nil then
     return nil
   end
@@ -239,7 +255,7 @@ function patches.setChickenBudgets(budgets)
     fn = "open", offset = 0x93,
     bytes = "BA 03 00 00 00 89 15 ? ? ? ? 75 2A 8B 0D ? ? ? ? 33 C0",
   }, "the trails' chicken budgets")
-  if site == nil then return end
+  if site == nil then return false end
   local tableAddress = core.allocate(12, true)
   for index = 0, 2 do
     core.writeInteger(tableAddress + index * 4, budgets[index] or patches.NATIVE_CHICKENS)
@@ -280,7 +296,7 @@ end
 
 ---Sets how many missions `trailName` has. All sites are checked first; one unexpected site
 ---leaves the trail at its vanilla count.
-function patches.setMissionCount(trailName, count)
+function patches.setMissionCount(trailName, count, missionTable)
   local addresses = {}
   for _, site in ipairs(COUNT_SITES) do
     if site.trail == trailName then
@@ -291,20 +307,50 @@ function patches.setMissionCount(trailName, count)
       table.insert(addresses, { site = site, address = address })
     end
   end
-  for _, entry in ipairs(addresses) do
-    local value = entry.site.value == "N" and count or (count - 1)
-    writeImmediate(entry.address + entry.site.immOffset, entry.site.immSize, value)
-  end
-
+  local clamp, selected, tableSites
   if trailName == "extremeTrail" then
-    local clamp = siteAddress(EXTREME_CLAMP_SITE, "the Extreme trail's selected mission")
-    local selected = siteAddress(EXTREME_SELECTED_SITE, "the Extreme trail's selected mission")
-    if clamp ~= nil and selected ~= nil then
-      core.writeCodeInteger(clamp + 1, core.readInteger(selected + 1))
+    clamp = siteAddress(EXTREME_CLAMP_SITE, "the Extreme trail's selected mission")
+    selected = siteAddress(EXTREME_SELECTED_SITE, "the Extreme trail's selected mission")
+    if clamp == nil or selected == nil then return false end
+    selected = core.readInteger(selected + 1)
+    if count > patches.VANILLA_COUNT.extremeTrail then
+      if missionTable == nil then return false end
+      tableSites = {}
+      for _, site in ipairs(EXTREME_TABLE_SITES) do
+        local address = siteAddress(site, "the Extreme trail's mission table")
+        if address == nil or core.readInteger(address + 2) ~= missionTable then return false end
+        table.insert(tableSites, address + 2)
+      end
     end
   end
+
+  local edits = {}
+  for _, entry in ipairs(addresses) do
+    local site = entry.site
+    table.insert(edits, { address = entry.address + site.immOffset, size = site.immSize,
+      value = site.value == "N" and count or count - 1 })
+  end
+  if clamp ~= nil then
+    table.insert(edits, { address = clamp + 1, size = 4, value = selected })
+  end
+  if tableSites ~= nil then
+    local newTable = core.allocate(patches.CAPACITY.extremeTrail * MISSION_SIZE, true)
+    for index = 0, patches.CAPACITY.extremeTrail - 1 do
+      local source = math.min(index, patches.VANILLA_COUNT.extremeTrail - 1)
+      core.copyMemory(newTable + index * MISSION_SIZE, missionTable + source * MISSION_SIZE, MISSION_SIZE)
+    end
+    missionTable = newTable
+    for _, address in ipairs(tableSites) do
+      table.insert(edits, { address = address, size = 4, value = missionTable })
+    end
+  end
+  patches.guarded(edits, function()
+    for _, edit in ipairs(edits) do
+      writeImmediate(edit.address, edit.size, edit.value)
+    end
+  end)
   log(INFO, string.format("%s has %d missions", trailName, count))
-  return true
+  return missionTable or true
 end
 
 ---The address of the button position table of `trailName` (x, y pairs of 4-byte integers).
@@ -322,64 +368,29 @@ function patches.setPositions(trailName, positions)
   if positionTable == nil then
     return false
   end
-  for index, position in ipairs(positions) do
-    if index > patches.CAPACITY[trailName] then
-      break
-    end
-    core.writeInteger(positionTable + (index - 1) * 8, position.x)
-    core.writeInteger(positionTable + (index - 1) * 8 + 4, position.y)
-  end
+  local flags = {}
   if trailName == "firstEditionTrail" then
     for _, site in ipairs(FIRST_TRAIL_FLAG_SHIFT_SITES) do
       local address = siteAddress(site, "the first trail's flag shift")
-      if address ~= nil then
-        core.writeCodeByte(address + 2, 0x7F) -- mission index 127 never exists
-      end
+      if address == nil then return false end
+      table.insert(flags, address + 2)
     end
+  end
+  for index = 1, math.min(#positions, patches.CAPACITY[trailName]) do
+    local position = positions[index]
+    core.writeInteger(positionTable + (index - 1) * 8, position.x)
+    core.writeInteger(positionTable + (index - 1) * 8 + 4, position.y)
+  end
+  for _, address in ipairs(flags) do
+    core.writeCodeByte(address, 0x7F) -- mission index 127 never exists
   end
   return true
-end
-
----Moves the Extreme trail's mission table to memory with room for `capacity` missions and
----returns its new address (or the old one when the move is not possible).
-function patches.growExtremeTable(currentTable, capacity)
-  local addresses = {}
-  for _, site in ipairs(EXTREME_TABLE_SITES) do
-    local address = siteAddress(site, "the Extreme trail's mission table")
-    if address == nil or core.readInteger(address + 2) ~= currentTable then
-      log(ERROR, "Extending the Extreme trail past 20 missions is off.")
-      if address ~= nil then
-        log(WARNING, "the Extreme trail's mission table is not where expected; it keeps 20 missions")
-      end
-      return currentTable
-    end
-    table.insert(addresses, address)
-  end
-  local vanilla = patches.VANILLA_COUNT.extremeTrail
-  local newTable = core.allocate(capacity * MISSION_SIZE, true)
-  for index = 0, capacity - 1 do
-    -- missions without a csv line play the last vanilla mission
-    local source = math.min(index, vanilla - 1)
-    core.copyMemory(newTable + index * MISSION_SIZE, currentTable + source * MISSION_SIZE, MISSION_SIZE)
-  end
-  for _, address in ipairs(addresses) do
-    core.writeCodeInteger(address + 2, newTable)
-  end
-  return newTable
 end
 
 ---Sets the year each trail starts in. `years` maps trail names to a year, or nil to keep the
 ---game's own year.
 function patches.setStartYears(years)
-  local any = false
-  for _, year in pairs(years) do
-    if year ~= nil then
-      any = true
-    end
-  end
-  if not any then
-    return
-  end
+  if next(years) == nil then return end
   local months = {}
   for trailName, vanilla in pairs(VANILLA_START_MONTHS) do
     months[trailName] = years[trailName] ~= nil and years[trailName] * 12 or vanilla
@@ -388,28 +399,24 @@ function patches.setStartYears(years)
   local first = siteAddress(DATES_FIRST_SITE, "the first trail's start year")
   local warchest = siteAddress(DATES_WARCHEST_SITE, "the Warchest trail's start year")
   local extreme = siteAddress(DATES_EXTREME_SITE, "the Extreme trail's start year")
-  if first == nil or warchest == nil or extreme == nil then
-    log(ERROR, "Custom trail starting years could not be applied.")
-    return
-  end
-  core.writeCodeInteger(first + DATES_FIRST_SITE.immOffset, months.firstEditionTrail)
-  core.writeCodeInteger(warchest + DATES_WARCHEST_SITE.immOffset, months.warchestTrail)
-
-  -- The Extreme trail shares eax with the Warchest one; give it a store of its own:
-  -- mov dword [ecx + 0x22D8], months ; jmp back
-  local cave = core.allocateCode({ 0xC7, 0x81, 0xD8, 0x22, 0x00, 0x00, 0, 0, 0, 0, 0xE9, 0, 0, 0, 0 })
-  core.writeCodeInteger(cave + 6, months.extremeTrail)
-  core.writeCodeInteger(cave + 11, core.getRelativeAddress(cave + 10, extreme + 6, -5))
-  core.writeCodeBytes(extreme, { 0xE9, table.unpack(core.itob(core.getRelativeAddress(extreme, cave, -5))) })
-  core.writeCodeByte(extreme + 5, 0x90)
-
-  -- the defaults the game uses when it has no user config yet
-  local defaults = locate("configdefaults", "Custom trail start dates in new configurations")
-  if defaults ~= nil then
+  local defaults = locate("configdefaults")
+  if first == nil or warchest == nil or extreme == nil or defaults == nil then return false end
+  local extremeStore = core.AssemblyLambda("mov dword [ecx + YEAR_FIELD], MONTHS", {
+    YEAR_FIELD = 0x22D8, MONTHS = months.extremeTrail,
+  })
+  patches.guarded({
+    { address = first + DATES_FIRST_SITE.immOffset, size = 4 },
+    { address = warchest + DATES_WARCHEST_SITE.immOffset, size = 4 },
+    { address = extreme, size = 6 },
+    { address = defaults, size = 30 },
+  }, function()
+    core.insertCode(extreme, 6, { extremeStore })
+    core.writeCodeInteger(first + DATES_FIRST_SITE.immOffset, months.firstEditionTrail)
+    core.writeCodeInteger(warchest + DATES_WARCHEST_SITE.immOffset, months.warchestTrail)
     core.writeCodeInteger(defaults + 6, months.firstEditionTrail)
     core.writeCodeInteger(defaults + 16, months.warchestTrail)
     core.writeCodeInteger(defaults + 26, months.extremeTrail)
-  end
+  end)
   log(INFO, string.format("trails start in %d, %d and %d",
     months.firstEditionTrail // 12, months.warchestTrail // 12, months.extremeTrail // 12))
 end
@@ -418,10 +425,8 @@ end
 
 local function nameArrays()
   if state.names == nil then
-    local sync = locate("syncnames", "Custom AI names in trail missions")
-    if sync == nil then
-      return nil
-    end
+    local sync = locate("syncnames")
+    if sync == nil then return false end
     -- syncAIPlayerNames: "mov ebx, shortNames[1]" and "mov ebp, names[1]"
     state.names = {
       short = core.readInteger(sync + 0x19) - SHORT_NAME_STRIDE,
@@ -442,13 +447,10 @@ end
 
 ---Writes the names a mission entry gives its players into the game's two name tables.
 function patches.applyPlayerNames(entry)
-  if entry == nil then
+  if entry == nil or not state.names or modules.textResourceModifier.TransformText == nil then
     return
   end
-  local arrays = nameArrays()
-  if arrays == nil then
-    return
-  end
+  local arrays = state.names
   for player = 1, 8 do
     local name = entry[string.format("player%d_name", player)]
     if type(name) == "string" and name ~= "" then
@@ -463,20 +465,12 @@ end
 
 local LORD_TYPES = { arab = 1, europ = 0 }
 
-local function lordAddress()
-  if state.lordTypes == nil then
-    local getLordType = locate("lordtype", "Custom player lord type in trail missions")
-    if getLordType == nil then
-      state.lordTypes = false
-    elseif matches(getLordType + 0x3D, "8B 04 85 ? ? ? ?") then
-      state.lordTypes = core.readInteger(getLordType + 0x40)
-    else
-      log(ERROR, "Choosing the player's lord type in trail missions is off.")
-      log(WARNING, "unexpected game code for the lord type; player1_lord is disabled")
-      state.lordTypes = false
-    end
+function patches.bindLord()
+  local getLordType = locate("lordtype")
+  if getLordType == nil or not matches(getLordType + 0x3D, "8B 04 85 ? ? ? ?") then
+    return false
   end
-  return state.lordTypes and (state.lordTypes + 4) or nil -- player 1
+  state.lordAddress = core.readInteger(getLordType + 0x40) + 4
 end
 
 ---The lord type a csv value names: 1 Arabian, 0 European, nil when the value is empty or unknown.
@@ -499,7 +493,7 @@ end
 ---Gives the human player the lord a mission entry asks for, and puts the player's own lord
 ---back for missions (and games) that ask for none.
 function patches.applyLord(entry)
-  local address = lordAddress()
+  local address = state.lordAddress
   if address == nil then
     return
   end
@@ -529,14 +523,15 @@ function patches.showStartModeIcons()
     core.writeInteger(frames + 4 * (index - 1), value)
   end
   patches.guarded({ { address = check, size = 8 }, { address = frame, size = 5 } }, function()
-    core.insertCode(check, 8, {
-      0x8B, 0x0D, core.itob(startMode),                    -- mov ecx, [startMode]
-      0x49,                                                -- dec ecx
-      0x83, 0xF9, #START_MODE_FRAMES - 1,                  -- cmp ecx, 2
-      0x0F, 0x87, core.relTo(check + START_MODE_SKIP, -4), -- ja past the drawing
-      0x8B, 0x0C, 0x8D, core.itob(frames),                 -- mov ecx, [ecx*4 + frames]
-    })
-    core.writeCode(frame, { 0x51, 0x90, 0x90, 0x90, 0x90 }) -- push ecx
+    core.insertCode(check, 8, { core.AssemblyLambda([[
+      mov ecx, dword [START_MODE]
+      dec ecx
+      cmp ecx, LAST_FRAME
+      ja near SKIP_DRAW
+      mov ecx, dword [ecx*4 + FRAMES]
+    ]], { START_MODE = startMode, LAST_FRAME = #START_MODE_FRAMES - 1,
+      SKIP_DRAW = check + START_MODE_SKIP, FRAMES = frames }) })
+    core.writeCode(frame, core.assemble("push ecx\nnop\nnop\nnop\nnop"))
   end)
 end
 
@@ -548,15 +543,16 @@ function patches.separateBriefingTeams()
   if mode == nil or teams == nil or separator == nil then
     return false
   end
+  local code = core.AssemblyLambda([[
+    mov eax, dword [esp + esi*4 + 0x28]
+    cmp dword [GAME_MODE], 1
+    je compare
+    mov eax, dword [esi*4 + TEAMS]
+  compare:
+    cmp eax, dword [esp + 0x28]
+  ]], { GAME_MODE = core.readInteger(mode + 1), TEAMS = core.readInteger(teams + 3) })
   patches.guarded({ { address = separator, size = 8 } }, function()
-    core.insertCode(separator, 8, {
-      0x8B, 0x44, 0xB4, 0x28,                                -- mov eax, [esp + esi*4 + 0x28]
-      0x83, 0x3D, core.itob(core.readInteger(mode + 1)), 1,  -- cmp dword [mode], 1
-      0x74, core.byteRelTo("compare", -1),                   -- je compare
-      0x8B, 0x04, 0xB5, core.itob(core.readInteger(teams + 3)), -- mov eax, [esi*4 + teams]
-      "compare",
-      0x3B, 0x44, 0x24, 0x28,                                -- cmp eax, [esp + 0x28]
-    })
+    core.insertCode(separator, 8, { code })
   end)
 end
 
@@ -570,16 +566,15 @@ end
 
 ---Calls `onNamed(isTrailBriefing, callerReturn)` every time the game has named its AI players
 ---(for a mission briefing and when a map starts).
-function patches.hookPlayerNaming(onNamed)
+function patches.hookPlayerNaming(onNamed, customNames)
   if state.namesHookInstalled then
     return
   end
   local exit = siteAddress(AINAMES_EXIT_SITE, "player names")
   local briefingCall = siteAddress(BRIEFING_NAMES_CALL, "player names in the briefing")
-  if exit == nil or briefingCall == nil then
-    return
-  end
-  local loop = locate("ainames", "Player names") + AINAMES_LOOP_OFFSET
+  if exit == nil or briefingCall == nil then return false end
+  if customNames and not nameArrays() then return false end
+  local loop = locate("ainames") + AINAMES_LOOP_OFFSET
   local briefingReturn = briefingCall + 5
 
   local stub = patches.luaStub(function(registers)
@@ -592,14 +587,15 @@ function patches.hookPlayerNaming(onNamed)
     return registers
   end)
 
-  -- cave: jl loop / call stub / pop edi / pop esi / ret
-  local cave = core.allocateCode({ 0x0F, 0x8C, 0, 0, 0, 0, 0xE8, 0, 0, 0, 0, 0x5F, 0x5E, 0xC3 })
-  core.writeCodeInteger(cave + 2, core.getRelativeAddress(cave, loop, -6))
-  core.writeCodeInteger(cave + 7, core.getRelativeAddress(cave + 6, stub, -5))
-  -- the loop's own "jl loop" (6 bytes) becomes "jmp cave / nop"; the cmp before it stays
+  -- The cmp before the replaced branch supplies the loop condition.
   local jump = exit + 6
-  core.writeCodeBytes(jump, { 0xE9, table.unpack(core.itob(core.getRelativeAddress(jump, cave, -5))) })
-  core.writeCodeByte(jump + 5, 0x90)
+  core.insertCode(jump, 6, { core.AssemblyLambda([[
+    jl near NAMING_LOOP
+    call near ON_NAMED
+    pop edi
+    pop esi
+    ret
+  ]], { NAMING_LOOP = loop, ON_NAMED = stub }) })
   state.namesHookInstalled = true
 end
 
