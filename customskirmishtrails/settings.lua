@@ -198,7 +198,7 @@ local function readAiMapping(path, value)
   for _, key in ipairs(settings.AI_KEYS) do
     local alias = value[key]
     if nonEmptyString(alias) then
-      -- every alias has to name one AI only, or Import could not turn it back
+      -- every alias names one AI only, so a name in a trail file resolves to one AI
       if alias ~= key and mapping[alias] ~= nil then
         warn(path, "ai_character_mapping alias '%s' for %s is another AI's key; %s keeps its own name", alias, key, key)
       elseif seen[alias] ~= nil then
