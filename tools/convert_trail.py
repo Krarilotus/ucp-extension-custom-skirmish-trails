@@ -265,15 +265,23 @@ def csv_to_json(source, destination, trail_type, base_settings):
     write_json(destination, settings)
 
 
+def resolve_relative(directory, path):
+    # Match settings.resolveRelative in customskirmishtrails/settings.lua, with the game as the working directory.
+    path = path.replace("\\", "/")
+    if re.match(r"^(?:[a-z]:/|/|ucp/)", path, re.IGNORECASE | re.ASCII):
+        return Path(path)
+    return Path(f"{directory}/{path}")
+
+
 def json_to_csv(source, destination):
     settings = load_json(source)
     route = settings.get("trail_route", {})
     if any("file" in node for node in route.values()):
-        files = [source.parent / name for name in route_files(route)]
+        files = [resolve_relative(source.parent, name) for name in route_files(route)]
     else:
         # Match customskirmishtrails/conversion.lua (listMissionFiles) and sync.lua.
-        name = re.sub(r"(?i)\.csv$", "", settings["trail_missions"]["base_name"]).rstrip("/\\")
-        folder = source.parent / name.replace("\\", "/")
+        name = re.sub(r"\.csv\Z", "", settings["trail_missions"]["base_name"], flags=re.IGNORECASE)
+        folder = resolve_relative(source.parent, name)
         pattern = re.compile(rf"{re.escape(folder.name)}_mission_([0-9]+)\.json", re.IGNORECASE | re.ASCII)
         numbered = []
         for path in folder.iterdir():
@@ -304,6 +312,15 @@ def json_to_csv(source, destination):
     if "" in columns:
         del columns[""]
         columns[""] = None
+    # Match the required numeric cells and scenario exception in customskirmishtrails/io.lua.
+    required_numbers = [column for column in columns if re.fullmatch(
+        r"num_players|fairness|start_levels|(?:start_position|team|aiv_type)[1-8]", column)]
+    whitespace = " \t\n\r\v\f"
+    for index, (path, row) in enumerate(zip(files, rows, strict=True), 1):
+        scenario = row.get("mission_type", "").strip(whitespace).lower() in ("scenario", "skirmish_scenario")
+        for column in required_numbers:
+            if (column == "num_players" or not scenario) and not row.get(column, "").strip(whitespace):
+                raise ValueError(f"{path}: mission {index} has an empty CSV cell in {column!r}")
     with destination.open("x", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, columns)
         writer.writeheader()
