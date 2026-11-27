@@ -71,6 +71,7 @@ local function cellOf(value, where)
 end
 
 local function named(value, names, where)
+  if value == nil then return nil end
   if type(value) == "string" then
     for number, name in ipairs(names) do
       if value:lower() == name then
@@ -211,7 +212,7 @@ function missionjson.toRow(data, reverseMapping, file)
         if spec.key == "ai" then
           value = cellOf(value, where .. ".ai")
           cells[spec.column] = (reverseMapping ~= nil and reverseMapping[value]) or (value ~= "" and value or "0")
-        else
+        elseif value ~= nil or spec.empty == "" then
           cells[spec.column] = cellOf(value, where .. "." .. spec.key)
         end
       end

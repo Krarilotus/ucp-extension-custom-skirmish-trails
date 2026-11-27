@@ -421,7 +421,7 @@ local function scenarioUnused(name)
     or name:match("^team%d$") or name:match("^aiv_type%d$")
 end
 
-local function validateInput(input, index, source)
+local function validateInput(input, index, source, jsonRow)
   index = index or "<NA>"
   local isScenario = require("customskirmishtrails.scenario").isScenario(input)
 
@@ -429,6 +429,9 @@ local function validateInput(input, index, source)
     local t = HEADERS_TYPES[name]
     if name == "" then
       -- an unnamed column, from a trailing comma in the header line
+      input[name] = nil
+    elseif value == "" and jsonRow ~= nil and t ~= nil and t ~= "string" and jsonRow[name] == nil then
+      -- Absent JSON numbers and flags use the same defaults as absent CSV columns.
       input[name] = nil
     elseif isScenario and scenarioUnused(name) and tostring(value):match("^%s*$") then
       input[name] = nil
@@ -466,7 +469,7 @@ local function validateInput(input, index, source)
 end
 
 ---Reads the trail csv file `path`, or `contents` in its place.
-local function readCSV(path, limit, contents, requireMissions)
+local function readCSV(path, limit, contents, requireMissions, jsonRows)
   log(2, string.format("readCSV: %s", path))
   local reason
   if contents == nil then
@@ -497,7 +500,7 @@ local function readCSV(path, limit, contents, requireMissions)
   fails = {}
 
   for index, entry in ipairs(entries) do
-    local valid, err = pcall(validateInput, entry, index, requireMissions)
+    local valid, err = pcall(validateInput, entry, index, requireMissions, jsonRows and jsonRows[index])
     if not valid then
       local msg = string.format("entry #%i contains invalid information: %s", index, err)
       log(WARNING, msg)

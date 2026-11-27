@@ -275,7 +275,7 @@ local function readTrailSource(config, trail)
     return
   end
 
-  local settings, csvText
+  local settings, csvText, jsonRows
   if type(settingsPath) == "string" and settingsPath ~= "" then
     settings = settingsModule.load(settingsPath, trail.name, not legacy)
     if settings == nil and not legacy then return end
@@ -289,10 +289,11 @@ local function readTrailSource(config, trail)
     if missions ~= nil then
       csvPath = missions.csv
       if missions.mode ~= "csv" then
-        local ok, result = pcall(sync.run, missions, settings.hasAiMapping and settings.aiMapping or nil,
+        local ok, result, rows = pcall(sync.run, missions, settings.hasAiMapping and settings.aiMapping or nil,
           knownHeaders(), legacy)
         if ok then
           csvText = result
+          if not legacy then jsonRows = rows end
         else
           sourceWarning(trail, settingsPath, result)
           if not legacy then return end
@@ -305,7 +306,7 @@ local function readTrailSource(config, trail)
   local sourcePath = legacy and (csvText and settingsPath or csvPath) or path
   if type(sourcePath) ~= "string" or sourcePath == "" then return settings end
   local plannedCount = settings and settings.positions and #settings.positions or patches.VANILLA_COUNT[trail.name]
-  local ok, entries, reason = pcall(cst_io.readCSV, sourcePath, plannedCount + 1, csvText, not legacy)
+  local ok, entries, reason = pcall(cst_io.readCSV, sourcePath, plannedCount + 1, csvText, not legacy, jsonRows)
   if not ok or entries == nil then
     sourceWarning(trail, sourcePath, ok and reason or entries)
     if legacy then return settings end

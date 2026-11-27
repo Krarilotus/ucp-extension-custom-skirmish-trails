@@ -19,7 +19,7 @@ local function missionFiles(missions)
   return files
 end
 
----Returns in-memory CSV for the mission reader, or nil for the legacy CSV fallback.
+---Returns in-memory CSV and its source rows, or nil for the legacy CSV fallback.
 function sync.run(missions, aiMapping, knownHeaders, legacy)
   local csv = legacy and conversion.readTable(missions.csv) or nil
   local files = missionFiles(missions)
@@ -49,7 +49,7 @@ function sync.run(missions, aiMapping, knownHeaders, legacy)
     end
   end
   local header = conversion.columnOrder(csv and csv.header or nil, rows, knownHeaders, legacy)
-  return conversion.csvText(header, rows, "\r\n")
+  return conversion.csvText(header, rows, "\r\n"), rows
 end
 
 return sync
