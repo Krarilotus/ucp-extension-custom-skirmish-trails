@@ -44,6 +44,7 @@ local function giveChickens(trail, chickens)
       return
     end
   end
+  log(ERROR, "Chicken rewards for completing trail missions are off.")
   log(WARNING, "the trail screen's chicken code was not found; a reward of chickens is not given")
 end
 

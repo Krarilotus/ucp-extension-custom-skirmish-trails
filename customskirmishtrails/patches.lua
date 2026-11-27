@@ -351,6 +351,7 @@ function patches.growExtremeTable(currentTable, capacity)
       return currentTable
     end
     if core.readInteger(address + 2) ~= currentTable then
+      log(ERROR, "Extending the Extreme trail past 20 missions is off.")
       log(WARNING, "the Extreme trail's mission table is not where expected; it keeps 20 missions")
       return currentTable
     end
@@ -471,6 +472,7 @@ local function lordAddress()
     elseif matches(getLordType + 0x3D, "8B 04 85 ? ? ? ?") then
       state.lordTypes = core.readInteger(getLordType + 0x40)
     else
+      log(ERROR, "Choosing the player's lord type in trail missions is off.")
       log(WARNING, "unexpected game code for the lord type; player1_lord is disabled")
       state.lordTypes = false
     end

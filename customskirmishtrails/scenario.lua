@@ -537,9 +537,14 @@ end
 -- the scenario mission the Play a Map list starts when it opens: { trailName, index, entry, fileName }
 local pending = nil
 
+local missingMapReported = {}
 local function hasMap(fileName)
   if mapLookup ~= nil and mapLookup(fileName) then
     return true
+  end
+  if mapLookup ~= nil and not missingMapReported[fileName] then
+    missingMapReported[fileName] = true
+    log(ERROR, string.format("This trail mission cannot start. Map %s could not be found.", fileName))
   end
   log(WARNING, string.format("cannot find map '%s'; the mission doesn't start", fileName))
   return false
@@ -831,6 +836,7 @@ function scenario.enable(missionsOf)
   -- without the Start hook a scenario mission would run the skirmish setup on its map
   local checked, installed = pcall(installStartHook)
   if not checked or not installed then
+    log(ERROR, "Scenario trail missions are off. The Start control could not be bound.")
     log(WARNING, "unexpected game code at the trail's Start; scenario rows are withheld")
     return false, false
   end
@@ -838,12 +844,14 @@ function scenario.enable(missionsOf)
   if lookupOk then
     mapLookup = lookup
   else
+    log(ERROR, "Custom trail map lookup is off. The map lookup code could not be bound.")
     log(WARNING, "custom map lookup is unavailable: " .. tostring(lookup))
   end
   local ok, result = pcall(resolve)
   if not ok or result == nil then
+    log(ERROR, "Scenario trail missions are off. The game code could not be verified.")
     if not ok then
-      log(WARNING, "scenario missions are switched off: " .. tostring(result))
+      log(WARNING, tostring(result))
     end
     return false, true
   end
@@ -866,12 +874,14 @@ function scenario.enable(missionsOf)
     installListStart(result)
   end)
   if not installed then
+    log(ERROR, "Scenario trail missions are off. The game hooks could not be installed.")
     log(WARNING, "scenario missions are switched off: " .. tostring(err))
     return false, true
   end
   bindings = result
   local kept, keepErr = pcall(installHeaderKeep, result)
   if not kept then
+    log(ERROR, "Preserving the selected scenario map during previews is off.")
     log(WARNING, "map and save previews change the chosen map: " .. tostring(keepErr))
   end
   return true, true

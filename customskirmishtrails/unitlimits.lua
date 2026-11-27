@@ -341,6 +341,7 @@ function unitlimits.apply(trails, scenarioSession, playedMission)
   session = scenarioSession
   ok, err = pcall(installEntry, bindings, scenarioSession)
   if not ok then
+    log(ERROR, "Custom troop limits in scenario missions are off.")
     log(WARNING, "the troop limits of scenario missions are switched off: " .. tostring(err))
     return
   end

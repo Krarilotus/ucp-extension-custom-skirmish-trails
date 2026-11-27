@@ -318,7 +318,7 @@ function markers.install(trailName, sheetPath, count, r)
   hooks.registerHookCallback("afterInit", function()
     door.gm = modifier:GetReservedGm(token)
     if door.gm < 0 then
-      log(WARNING, "gmResourceModifier did not load the icon sheet; the game's markers stay")
+      log(ERROR, "Trail door pictures are off. The graphics modifier did not load the sheet.")
       progress.withoutPictures(trailName, r)
     end
   end)

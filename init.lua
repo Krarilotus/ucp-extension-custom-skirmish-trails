@@ -395,7 +395,10 @@ return {
           local okMarkers, installed = pcall(markers.install, trail.name, settings.visuals.iconSheet,
             missionCounts[trail.name], sides)
           if not okMarkers then
-            log(WARNING, string.format("%s door pictures: %s", trail.type, tostring(installed)))
+            log(WARNING, tostring(installed))
+          end
+          if not (okMarkers and installed) then
+            log(ERROR, trail.type .. " trail door pictures are off.")
           end
           pictures = okMarkers and installed
         end
@@ -500,10 +503,12 @@ return {
     startgold.enable()
     local okIcons, iconsError = pcall(patches.showStartModeIcons)
     if not okIcons then
+      log(ERROR, "Custom starting mode pictures are off.")
       log(WARNING, "start mode pictures: " .. tostring(iconsError))
     end
     local okTeams, teamsError = pcall(patches.separateBriefingTeams)
     if not okTeams then
+      log(ERROR, "The team separator in trail briefings is off.")
       log(WARNING, "the briefing's team separator: " .. tostring(teamsError))
     end
 
