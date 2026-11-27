@@ -162,7 +162,6 @@ end
 
 local function commitEntry(addr, index, entry, trail)
   local offset = addr + 144 * (index - 1)
-  log(2, string.format("commitEntry: %s %X %s %X", entry, addr, index - 1, offset))
 
   local missionName = entry.mission_name
   if missionName ~= nil and modules.textResourceModifier.SetText ~= nil then
@@ -186,14 +185,12 @@ local function commitEntry(addr, index, entry, trail)
     core.writeString(mapNameAddress, mapName)
     STRING_ADDRESSES[mapName] = mapNameAddress
 
-    log(2, string.format("commitEntry: map name: %s", mapName))
   end
 
   local mapNameAddress = STRING_ADDRESSES[mapName]
   for name, value in pairs(entry) do
     
     if name == "map_name" then
-      -- log(2, string.format("commitEntry: writing map name: %X", mapNameAddress))
       value = mapNameAddress
       -- core.writeInteger(offset + ENTRY_OFFSETS["map_name"], value)
     end
@@ -204,7 +201,6 @@ local function commitEntry(addr, index, entry, trail)
         if name:sub(1, ("player"):len()) == "player" then
           value = playerValue(value, trail)
         end
-        log(2, string.format("commitEntry: %s @ %X: %s", name,offset + fieldOffset, value))
         core.writeInteger(offset + fieldOffset, value)
       end
     else
@@ -214,7 +210,6 @@ local function commitEntry(addr, index, entry, trail)
 end
 
 local function commitEntryExtra(entry)
-  log(VERBOSE, string.format("commitEntryExtra: %s", entry))
   -- no json:encode(entry) here: UCP's JSON encoder crashed the game in ucrtbase
 
   -- set somewhere else!
@@ -232,7 +227,6 @@ local function commitEntryExtra(entry)
 end
 
 local function commitTextDescription(entry)
-  log(VERBOSE, string.format("commitTextDescription: %s => %s", entry, entry.text_description_line_01))
   descriptiveTexts.setTextDescriptions(entry)
 end
 

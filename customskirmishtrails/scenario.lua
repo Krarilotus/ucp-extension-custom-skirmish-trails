@@ -18,9 +18,7 @@
 --
 -- Every game site is found by an AOB that matches once in Stronghold Crusader.exe and
 -- Stronghold_Crusader_Extreme.exe 1.41, with the same layout in both. If one is missing or
--- has unexpected bytes, scenario missions are switched off and start nothing. Only the
--- map header reader is optional: without it, the screens that preview a map or a save (the in-game
--- trail roster, the Load screen) change the chosen map during the session.
+-- has unexpected bytes, scenario missions are switched off and start nothing.
 
 local patches = require("customskirmishtrails.patches")
 local memory = require("customskirmishtrails.memory")
@@ -225,6 +223,8 @@ function scenario.availability(entry)
 end
 
 local function resolve()
+  local header, reason = core.AOBScanUnique(HEADER)
+  assert(header ~= nil, "map header reader: " .. tostring(reason))
   local found = {}
   for name, aob in pairs(SCANS) do
     local address, reason = core.AOBScanUnique(aob)
@@ -256,6 +256,7 @@ local function resolve()
     return nil
   end
   return {
+    header = header,
     launcher = core.exposeCode(found.launcher.address, 1, 0),
     customScenarios = core.exposeCode(found.customScenarios.address, 1, 0),
     listPrepare = list.address,
@@ -697,19 +698,14 @@ end
 ---file into the chosen map that Restart, saves, the troop limit and the end screen need. While a
 ---session holds, they leave the chosen map as it was.
 local function installHeaderKeep(b)
-  local address, reason = core.AOBScanUnique(HEADER)
-  assert(address ~= nil, "map header reader: " .. tostring(reason))
   local original
-  patches.guarded({ { address = address, size = HEADER_SIZE } }, function()
-    original = core.hookCode(function(this, flag)
-      local kept = session() ~= nil and core.readString(b.chosenMap) or nil
-      local result = original(this, flag)
-      if kept ~= nil then
-        writeName(b.chosenMap, kept)
-      end
-      return result
-    end, address, 2, 1, HEADER_SIZE)
-  end)
+  original = core.hookCode(function(this, flag)
+    local kept = session() ~= nil and core.readString(b.chosenMap) or nil
+    local result = original(this, flag)
+    if kept ~= nil then writeName(b.chosenMap, kept) end
+    return result
+  end, b.header, 2, 1, HEADER_SIZE)
+  assert(original ~= nil, "the map header reader has no original handler")
 end
 
 ---Starts `entry` (`trailName` mission `index`) when it is a scenario mission. Returns true when
@@ -858,27 +854,30 @@ function scenario.enable(missionsOf, scenarios, maps, limits)
   -- The Start hook also stops an unavailable custom mission from running as a skirmish.
   local started = patches.apply("Custom trail Start control", installStartHook)
   if not started or not ready then return false, started end
-  result.trailMap = core.allocate(NAME_BUFFER, true)
-  result.keepArmy = core.allocate(1, true)
-  result.cap = core.allocate(1, true)
-  local sites = {
-    { address = result.armyCutJe, size = 6 },
-    { address = result.listPrepare, size = 6 },
-    { address = result.saveLoaded, size = SAVE_LOADED_SIZE },
-    { address = result.listFrame, size = 6 },
-    { address = result.wonPrepare, size = WON_PREPARE_SIZE },
-    { address = result.lostPrepare, size = LOST_PREPARE_SIZE },
-  }
-  local installed = patches.apply("Scenario trail missions", patches.guarded, sites, function()
-    installSameMap(result)
-    installArmyCutSkip(result)
-    installSessionEnd(result)
-    installEndScreens(result)
-    installListStart(result)
+  local installed = patches.apply("Scenario trail missions", function()
+    result.trailMap = core.allocate(NAME_BUFFER, true)
+    result.keepArmy = core.allocate(1, true)
+    result.cap = core.allocate(1, true)
+    local sites = {
+      { address = result.header, size = HEADER_SIZE },
+      { address = result.armyCutJe, size = 6 },
+      { address = result.listPrepare, size = 6 },
+      { address = result.saveLoaded, size = SAVE_LOADED_SIZE },
+      { address = result.listFrame, size = 6 },
+      { address = result.wonPrepare, size = WON_PREPARE_SIZE },
+      { address = result.lostPrepare, size = LOST_PREPARE_SIZE },
+    }
+    patches.guarded(sites, function()
+      installSameMap(result)
+      installHeaderKeep(result)
+      installArmyCutSkip(result)
+      installSessionEnd(result)
+      installEndScreens(result)
+      installListStart(result)
+    end)
   end)
   if not installed then return false, true end
   bindings = result
-  patches.apply("Preserving the selected scenario map during previews", installHeaderKeep, result)
   return true, true
 end
 

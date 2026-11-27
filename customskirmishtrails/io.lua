@@ -417,8 +417,8 @@ local function validateInput(input, index, source, jsonRow)
 
   for name, value in pairs(input) do
     local t = HEADERS_TYPES[name]
-    if name == "" then
-      -- an unnamed column, from a trailing comma in the header line
+    if name == "" or (name == "map_name" and value == "") then
+      -- Unnamed columns and blank map names leave the native row unchanged.
       input[name] = nil
     elseif value == "" and jsonRow ~= nil and t ~= nil and t ~= "string" and jsonRow[name] == nil then
       -- Absent JSON numbers and flags use the same defaults as absent CSV columns.
@@ -493,18 +493,14 @@ local function readCSV(path, limit, contents, requireMissions, jsonRows)
     local valid, err = pcall(validateInput, entry, index, requireMissions, jsonRows and jsonRows[index])
     if not valid then
       local msg = string.format("entry #%i contains invalid information: %s", index, err)
+      if requireMissions then return nil, msg end
       log(WARNING, msg)
       table.insert(fails, msg)
     end
   end
 
-  if #fails > 0 then
-    if requireMissions then
-      return nil, string.format("%d problems in the mission data (first: %s)", #fails, fails[1])
-    end
-    if not strict then
-      log(WARNING, string.format("%d problems in the trail csv file %s; turn on strict mode in your profile to see them", #fails, path))
-    end
+  if #fails > 0 and not strict then
+    log(WARNING, string.format("%d problems in the trail csv file %s; turn on strict mode in your profile to see them", #fails, path))
   end
 
   return entries

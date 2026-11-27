@@ -294,21 +294,46 @@ local function writeImmediate(address, size, value)
   end
 end
 
----Sets how many missions `trailName` has. All sites are checked first; one unexpected site
----leaves the trail at its vanilla count.
-function patches.setMissionCount(trailName, count, missionTable)
-  local addresses = {}
-  for _, site in ipairs(COUNT_SITES) do
-    if site.trail == trailName then
-      local address = siteAddress(site, trailName .. " mission count")
-      if address == nil then
-        return false
+---The address of the button position table of `trailName` (x, y pairs of 4-byte integers).
+function patches.positionTable(trailName)
+  local address = siteAddress(POSITION_SITES[trailName], trailName .. " button positions")
+  if address == nil then
+    return nil
+  end
+  return core.readInteger(address + 3)
+end
+
+---Preflights and applies the count and button layout together.
+function patches.setMissionLayout(trailName, positions, missionTable)
+  local count = #positions
+  local changedCount = count ~= patches.VANILLA_COUNT[trailName]
+  local positionTable = patches.positionTable(trailName)
+  if positionTable == nil then return false end
+  local edits = {}
+  for index, position in ipairs(positions) do
+    local address = positionTable + (index - 1) * 8
+    table.insert(edits, { address = address, size = 4, value = position.x })
+    table.insert(edits, { address = address + 4, size = 4, value = position.y })
+  end
+  if trailName == "firstEditionTrail" then
+    for _, site in ipairs(FIRST_TRAIL_FLAG_SHIFT_SITES) do
+      local address = siteAddress(site, "the first trail's flag shift")
+      if address == nil then return false end
+      table.insert(edits, { address = address + 2, size = 1, value = 0x7F }) -- mission index 127 never exists
+    end
+  end
+  if changedCount then
+    for _, site in ipairs(COUNT_SITES) do
+      if site.trail == trailName then
+        local address = siteAddress(site, trailName .. " mission count")
+        if address == nil then return false end
+        table.insert(edits, { address = address + site.immOffset, size = site.immSize,
+          value = site.value == "N" and count or count - 1 })
       end
-      table.insert(addresses, { site = site, address = address })
     end
   end
   local clamp, selected, tableSites
-  if trailName == "extremeTrail" then
+  if changedCount and trailName == "extremeTrail" then
     clamp = siteAddress(EXTREME_CLAMP_SITE, "the Extreme trail's selected mission")
     selected = siteAddress(EXTREME_SELECTED_SITE, "the Extreme trail's selected mission")
     if clamp == nil or selected == nil then return false end
@@ -324,12 +349,6 @@ function patches.setMissionCount(trailName, count, missionTable)
     end
   end
 
-  local edits = {}
-  for _, entry in ipairs(addresses) do
-    local site = entry.site
-    table.insert(edits, { address = entry.address + site.immOffset, size = site.immSize,
-      value = site.value == "N" and count or count - 1 })
-  end
   if clamp ~= nil then
     table.insert(edits, { address = clamp + 1, size = 4, value = selected })
   end
@@ -349,42 +368,8 @@ function patches.setMissionCount(trailName, count, missionTable)
       writeImmediate(edit.address, edit.size, edit.value)
     end
   end)
-  log(INFO, string.format("%s has %d missions", trailName, count))
+  if changedCount then log(INFO, string.format("%s has %d missions", trailName, count)) end
   return missionTable or true
-end
-
----The address of the button position table of `trailName` (x, y pairs of 4-byte integers).
-function patches.positionTable(trailName)
-  local address = siteAddress(POSITION_SITES[trailName], trailName .. " button positions")
-  if address == nil then
-    return nil
-  end
-  return core.readInteger(address + 3)
-end
-
----Writes the button positions of `trailName`; `positions` is a list of { x = , y = }.
-function patches.setPositions(trailName, positions)
-  local positionTable = patches.positionTable(trailName)
-  if positionTable == nil then
-    return false
-  end
-  local flags = {}
-  if trailName == "firstEditionTrail" then
-    for _, site in ipairs(FIRST_TRAIL_FLAG_SHIFT_SITES) do
-      local address = siteAddress(site, "the first trail's flag shift")
-      if address == nil then return false end
-      table.insert(flags, address + 2)
-    end
-  end
-  for index = 1, math.min(#positions, patches.CAPACITY[trailName]) do
-    local position = positions[index]
-    core.writeInteger(positionTable + (index - 1) * 8, position.x)
-    core.writeInteger(positionTable + (index - 1) * 8 + 4, position.y)
-  end
-  for _, address in ipairs(flags) do
-    core.writeCodeByte(address, 0x7F) -- mission index 127 never exists
-  end
-  return true
 end
 
 ---Sets the year each trail starts in. `years` maps trail names to a year, or nil to keep the

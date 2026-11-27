@@ -21,7 +21,6 @@ local function setWeaponProducible(weapon, value)
   local offsets = WEAPON_PRODUCIBLE_OFFSETS.offsets
   if not address then return end
   local addr = address + offsets[weapon]
-  log(2, string.format("setWeaponProducible: %s @ %X: %s", weapon,addr, value))
   f(addr, value)
 end
 
@@ -40,7 +39,6 @@ local function getWeaponProducible(weapon, value)
   local offsets = WEAPON_PRODUCIBLE_OFFSETS.offsets
   local addr = address + offsets[weapon]
   local value = f(addr)
-  log(2, string.format("getWeaponProducible: %s @ %X: %s", weapon,addr, value))
   return value
 end
 
@@ -71,8 +69,6 @@ return {
           registers.EAX = common.resources.bow
         end
 
-        log(2, string.format("producibility: fletcher: %s (%s, %s)", registers.EAX, canBow, canCrossBow))
-
         return registers
       end, pFletcherDetour, 5)
 
@@ -90,8 +86,6 @@ return {
         else
           registers.EAX = common.resources.spear
         end
-
-        log(2, string.format("producibility: poleturner: %s (%s, %s)", registers.EAX, canSpear, canPike))
 
         return registers
       end, pPoleTurnerDetour, 5)

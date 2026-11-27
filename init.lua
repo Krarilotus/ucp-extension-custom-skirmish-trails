@@ -61,23 +61,27 @@ local function insertStartGoodsDetour()
   end, site, 5)
 end
 
-local function applyTrail(trailName, result, missions, languageTexts, startInstalled, keys)
-  -- the game language's texts over the default texts of the csv
-  textsModule.apply(languageTexts, result, keys)
+local function applyMapOverrides(trailName, entries, keys)
+  local overrides = MAP_OVERRIDES[trailName]
+  if overrides == nil then return end
   local rowOf = {}
   for row, key in ipairs(keys or {}) do
     rowOf[key] = row
   end
-  for mission, mapName in pairs(MAP_OVERRIDES[trailName] or {}) do
+  for mission, mapName in pairs(overrides) do
     local index = rowOf[mission] or mission
-    if result[index] ~= nil then
-      result[index].map_name = mapName
+    if entries[index] ~= nil then
+      entries[index].map_name = mapName
     else
       log(WARNING, string.format("setMissionMap: the trail has no mission %s; %s is not used",
         tostring(mission), mapName))
     end
   end
   MAP_OVERRIDES[trailName] = nil
+end
+
+local function applyTrail(trailName, result, missions, languageTexts, startInstalled, keys)
+  textsModule.apply(languageTexts, result, keys)
   for index, entry in ipairs(result) do
     interface.applyColors(entry, string.format("%s mission %d", trailName, index))
     if scenario.difficultyScaling(entry) == nil then
@@ -314,7 +318,6 @@ local function missionOptions(trailEntries, trailSettings)
     end
     for _, entry in ipairs(entries) do
       requested.scenarios = requested.scenarios or scenario.isScenario(entry)
-      requested.maps = requested.maps or (entry.map_name ~= nil and entry.map_name ~= "")
       requested.limits = requested.limits or (entry.unit_limit ~= nil and entry.unit_limit ~= "")
       requested.lord = requested.lord or (entry.player1_lord ~= nil and entry.player1_lord ~= "")
       requested.troops = requested.troops or tonumber(entry.player1_skip_start_units) == 1
@@ -372,20 +375,25 @@ return {
       and trailSettings.extremeTrail.positions ~= nil
       and #trailSettings.extremeTrail.positions > patches.VANILLA_COUNT.extremeTrail)
     if needTables then
-      local site, first, extreme, warchest = patches.extract("8D ? I(? ? ? ?) 75 08 8D ? I(? ? ? ?) EB 0B 83 F9 01 75 06 8D ? I(? ? ? ?) 53")
-      if site == nil then
-        log(ERROR, "Custom trail mission tables are off.")
-        trailEntries = {}
+      local applied, tables = patches.apply("Custom trail mission tables", function()
+        local site, first, extreme, warchest = patches.extract("8D ? I(? ? ? ?) 75 08 8D ? I(? ? ? ?) EB 0B 83 F9 01 75 06 8D ? I(? ? ? ?) 53")
+        if site == nil or first == nil or extreme == nil or warchest == nil then return false end
+        return { firstEditionTrail = first, warchestTrail = warchest, extremeTrail = extreme }
+      end)
+      if applied then
+        missionTables = tables
       else
-        missionTables = { firstEditionTrail = first, warchestTrail = warchest, extremeTrail = extreme }
+        trailEntries = {}
       end
     end
     if next(trailEntries) ~= nil then
       if patches.apply("Custom trail mission context", memory.bindMissionContext) then
         for _, trail in ipairs(TRAILS) do
-          if trailEntries[trail.name] ~= nil and memory.bindProgress(trail.name) == nil then
-            sourceFailure(trail, sourcePaths[trail.name], "the selected mission binding is unavailable")
-            trailEntries[trail.name] = nil
+          if trailEntries[trail.name] ~= nil then
+            local bound = patches.apply(trail.type .. " trail selected mission", function()
+              return memory.bindProgress(trail.name) ~= nil
+            end)
+            if not bound then trailEntries[trail.name] = nil end
           end
         end
       else
@@ -398,14 +406,11 @@ return {
       missionCounts[trail.name] = patches.VANILLA_COUNT[trail.name]
       if settings ~= nil then
         if settings.positions ~= nil then
-          local count = #settings.positions
-          if count ~= missionCounts[trail.name] then
-            local applied, missionTable = patches.apply(trail.type .. " trail mission count",
-              patches.setMissionCount, trail.name, count, missionTables[trail.name])
-            if applied then
-              missionCounts[trail.name] = count
-              if type(missionTable) == "number" then missionTables[trail.name] = missionTable end
-            end
+          local applied, missionTable = patches.apply(trail.type .. " trail mission layout",
+            patches.setMissionLayout, trail.name, settings.positions, missionTables[trail.name])
+          if applied then
+            missionCounts[trail.name] = #settings.positions
+            if type(missionTable) == "number" then missionTables[trail.name] = missionTable end
           end
           -- Extreme missions past the game's 20 have no name in the game's texts; a csv
           -- line's mission_name replaces this one
@@ -415,11 +420,6 @@ return {
               modifier:SetText(0xF5, 0x51 + (index - 1), string.format("Mission %d", index))
             end
           end
-          local positions = {}
-          for index = 1, math.min(missionCounts[trail.name], #settings.positions) do
-            positions[index] = settings.positions[index]
-          end
-          patches.apply(trail.type .. " trail mission positions", patches.setPositions, trail.name, positions)
         end
         startYears[trail.name] = settings.startingYear
         patches.apply(trail.type .. " trail artwork", visuals.applyVisuals, trail.name, settings.visuals)
@@ -458,8 +458,12 @@ return {
     end
     patches.apply("Custom trail starting years", patches.setStartYears, startYears)
 
+    for trailName, entries in pairs(trailEntries) do
+      for index = #entries, missionCounts[trailName] + 1, -1 do
+        entries[index] = nil
+      end
+    end
     local requested = missionOptions(trailEntries, trailSettings)
-    local startInstalled
     if next(trailEntries) ~= nil then
       if requested.production then patches.apply("Trail weapon production", producibility.enable) end
       if requested.recruitment then patches.apply("Trail recruitment", memory.bindRecruitability) end
@@ -490,9 +494,6 @@ return {
       end
       if requested.mode then patches.apply("Custom starting mode pictures", patches.showStartModeIcons) end
       patches.apply("The team separator in trail briefings", patches.separateBriefingTeams)
-      local _, installed = scenario.enable(function(trailName) return REGISTRY[trailName] end,
-        requested.scenarios, requested.maps, requested.limits)
-      startInstalled = installed
     end
     -- after the routes have read their files from the user data folder (their afterInit callbacks)
     hooks.registerHookCallback("afterInit", function()
@@ -509,6 +510,20 @@ return {
         chickenBudgets[index] = budget == "unlimited" and patches.CAPACITY[trailName] + 1 or budget
       end
       patches.apply("Custom trail chicken budgets", patches.setChickenBudgets, chickenBudgets)
+
+      local maps
+      for trailName, entries in pairs(trailEntries) do
+        local settings = trailSettings[trailName]
+        applyMapOverrides(trailName, entries, settings and settings.missionKeys)
+        for _, entry in ipairs(entries) do
+          if entry.map_name ~= nil and entry.map_name ~= "" then
+            maps = true
+            break
+          end
+        end
+      end
+      local _, startInstalled = scenario.enable(function(trailName) return REGISTRY[trailName] end,
+        requested.scenarios, maps, requested.limits)
 
       local language = data.version.getGameLanguage() or ""
 
@@ -535,9 +550,6 @@ return {
         local entries, path = trailEntries[trail.name], sourcePaths[trail.name]
         if entries ~= nil then
           log(INFO, string.format("%s trail (%s): %s", trail.type, language, path))
-          for index = #entries, missionCounts[trail.name] + 1, -1 do
-            entries[index] = nil
-          end
           local okTrail, trailError = pcall(applyTrail, trail.name, entries, missionTables[trail.name],
             languageTexts, startInstalled, trailSettingsForTexts and trailSettingsForTexts.missionKeys)
           if not okTrail then sourceFailure(trail, path, trailError) end
