@@ -270,7 +270,7 @@ def resolve_relative(directory, path):
     path = path.replace("\\", "/")
     if re.match(r"^(?:[a-z]:/|/|ucp/)", path, re.IGNORECASE | re.ASCII):
         return Path(path)
-    return Path(f"{directory}/{path}")
+    return Path(directory) / path
 
 
 def json_to_csv(source, destination):
@@ -313,13 +313,14 @@ def json_to_csv(source, destination):
         del columns[""]
         columns[""] = None
     # Match the required numeric cells and scenario exception in customskirmishtrails/io.lua.
-    required_numbers = [column for column in columns if re.fullmatch(
-        r"num_players|fairness|start_levels|(?:start_position|team|aiv_type)[1-8]", column)]
+    # Its CSV reader trims names and values (vendor/lua-csv.lua, trim_space), and a later column wins.
     whitespace = " \t\n\r\v\f"
     for index, (path, row) in enumerate(zip(files, rows, strict=True), 1):
-        scenario = row.get("mission_type", "").strip(whitespace).lower() in ("scenario", "skirmish_scenario")
-        for column in required_numbers:
-            if (column == "num_players" or not scenario) and not row.get(column, "").strip(whitespace):
+        cells = {column.strip(whitespace): row.get(column, "").strip(whitespace) for column in columns}
+        scenario = cells.get("mission_type", "").lower() in ("scenario", "skirmish_scenario")
+        for column, value in cells.items():
+            required = re.fullmatch(r"num_players|fairness|start_levels|(?:start_position|team|aiv_type)[1-8]", column)
+            if required and (column == "num_players" or not scenario) and not value:
                 raise ValueError(f"{path}: mission {index} has an empty CSV cell in {column!r}")
     with destination.open("x", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, columns)
