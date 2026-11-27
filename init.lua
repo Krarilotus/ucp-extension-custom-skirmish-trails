@@ -371,10 +371,9 @@ return {
     end
     if next(trailSettings) == nil and next(trailEntries) == nil then return end
 
-    local needTables = next(trailEntries) ~= nil or (trailSettings.extremeTrail ~= nil
-      and trailSettings.extremeTrail.positions ~= nil
-      and #trailSettings.extremeTrail.positions > patches.VANILLA_COUNT.extremeTrail)
-    if needTables then
+    local extremePositions = trailSettings.extremeTrail and trailSettings.extremeTrail.positions
+    local expandsExtreme = extremePositions ~= nil and #extremePositions > patches.VANILLA_COUNT.extremeTrail
+    if next(trailEntries) ~= nil or expandsExtreme then
       local applied, tables = patches.apply("Custom trail mission tables", function()
         local site, first, extreme, warchest = patches.extract("8D ? I(? ? ? ?) 75 08 8D ? I(? ? ? ?) EB 0B 83 F9 01 75 06 8D ? I(? ? ? ?) 53")
         if site == nil or first == nil or extreme == nil or warchest == nil then return false end
@@ -405,6 +404,14 @@ return {
       local settings = trailSettings[trail.name]
       missionCounts[trail.name] = patches.VANILLA_COUNT[trail.name]
       if settings ~= nil then
+        patches.apply(trail.type .. " trail artwork", visuals.applyVisuals, trail.name, settings.visuals)
+        -- A source path is recorded only when its mission rows were loaded.
+        if (sourcePaths[trail.name] ~= nil and trailEntries[trail.name] == nil)
+            or (trail.name == "extremeTrail" and expandsExtreme and missionTables[trail.name] == nil) then
+          trailSettings[trail.name], settings = nil, nil
+        end
+      end
+      if settings ~= nil then
         if settings.positions ~= nil then
           local applied, missionTable = patches.apply(trail.type .. " trail mission layout",
             patches.setMissionLayout, trail.name, settings.positions, missionTables[trail.name])
@@ -422,7 +429,6 @@ return {
           end
         end
         startYears[trail.name] = settings.startingYear
-        patches.apply(trail.type .. " trail artwork", visuals.applyVisuals, trail.name, settings.visuals)
         if settings.id ~= nil then
           patches.apply(trail.type .. " trail progress", function()
             if memory.bindProgress(trail.name) == nil then return false end
