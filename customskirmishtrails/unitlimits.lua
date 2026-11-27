@@ -321,15 +321,21 @@ function unitlimits.apply(trails, scenarioSession, playedMission)
       any = any or entry.unit_limit_policy ~= nil
     end
   end
-  if not any or bindings == nil or installed.skirmish then
+  if not any or installed.skirmish then
+    return
+  end
+  if bindings == nil then
+    log(ERROR, "Custom troop limits in trail missions are off.")
     return
   end
   if not unchanged(bindings) then
+    log(ERROR, "Custom troop limits in trail missions are off.")
     log(WARNING, "the troop limit code was changed by another patch; unit_limit is switched off")
     return
   end
   local ok, err = pcall(installStore, bindings)
   if not ok then
+    log(ERROR, "Custom troop limits in trail missions are off.")
     log(WARNING, "unit_limit is switched off: " .. tostring(err))
     return
   end

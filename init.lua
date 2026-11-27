@@ -200,9 +200,11 @@ local function installRoute(trail, settings, count)
   local r = route.load(settings.routeFiles or route.read(settings.path, settings.route, count), count,
     stateFile("sides", settings), stateFile("results", settings))
   if r == nil then
+    log(ERROR, trail.type .. " trail progression could not be applied.")
     return nil
   end
   if not progress.installRoute(trail.name, r) then
+    log(ERROR, trail.type .. " trail progression could not be applied.")
     log(WARNING, string.format("%s: the trail route is switched off; the trail plays its "
       .. "missions in their order", settings.path))
     return nil
@@ -253,9 +255,17 @@ local function knownHeaders()
   return headers
 end
 
-local function sourceWarning(trail, path, reason)
-  log(WARNING, string.format("%s trail source %s: %s; the game's own missions are used",
-    trail.type, tostring(path), tostring(reason)))
+local sourceFailures = {}
+
+local function sourceFailure(trail, path, reason)
+  if not sourceFailures[trail.name] then
+    sourceFailures[trail.name] = true
+    log(ERROR, trail.type .. " custom trail missions could not be loaded.")
+  end
+  if reason ~= nil then
+    log(WARNING, string.format("%s trail source %s: %s; the game's own missions are used",
+      trail.type, tostring(path), tostring(reason)))
+  end
 end
 
 local function readTrailSource(config, trail)
@@ -271,18 +281,24 @@ local function readTrailSource(config, trail)
   elseif type(path) == "string" and path:lower():match("%.json$") then
     settingsPath = path
   else
-    sourceWarning(trail, path, "expected a .csv or .json file")
+    sourceFailure(trail, path, "expected a .csv or .json file")
     return
   end
 
   local settings, csvText, jsonRows
   if type(settingsPath) == "string" and settingsPath ~= "" then
     settings = settingsModule.load(settingsPath, trail.name, not legacy)
-    if settings == nil and not legacy then return end
+    if settings == nil and not legacy then
+      sourceFailure(trail)
+      return
+    end
   end
   if settings ~= nil then
     if route.hasFiles(settings.route) and not readRouteFiles(trail, settings) then
-      if not legacy then return end
+      if not legacy then
+        sourceFailure(trail)
+        return
+      end
       settings.route, settings.missions = nil, nil
     end
     local missions = settings.missions
@@ -295,7 +311,7 @@ local function readTrailSource(config, trail)
           csvText = result
           if not legacy then jsonRows = rows end
         else
-          sourceWarning(trail, settingsPath, result)
+          sourceFailure(trail, settingsPath, result)
           if not legacy then return end
           if missions.mode == "json_folder" then return settings end
         end
@@ -308,7 +324,7 @@ local function readTrailSource(config, trail)
   local plannedCount = settings and settings.positions and #settings.positions or patches.VANILLA_COUNT[trail.name]
   local ok, entries, reason = pcall(cst_io.readCSV, sourcePath, plannedCount + 1, csvText, not legacy, jsonRows)
   if not ok or entries == nil then
-    sourceWarning(trail, sourcePath, ok and reason or entries)
+    sourceFailure(trail, sourcePath, ok and reason or entries)
     if legacy then return settings end
     return
   end
@@ -346,7 +362,7 @@ return {
         local options = config[trail.key]
         local path = type(options) == "table" and (configuredPath(options.source)
           or configuredPath(options.settings) or configuredPath(options.csv))
-        sourceWarning(trail, path, settings)
+        sourceFailure(trail, path, settings)
         settings = nil
       end
       trailSettings[trail.name], trailEntries[trail.name], sourcePaths[trail.name] = settings, entries, sourcePath
@@ -364,6 +380,8 @@ return {
           end
           if count == patches.VANILLA_COUNT[trail.name] or patches.setMissionCount(trail.name, count) then
             missionCounts[trail.name] = count
+          else
+            log(ERROR, trail.type .. " trail mission count could not be changed.")
           end
           -- Extreme missions past the game's 20 have no name in the game's texts; a csv
           -- line's mission_name replaces this one
@@ -374,11 +392,14 @@ return {
           for index = 1, math.min(missionCounts[trail.name], #settings.positions) do
             positions[index] = settings.positions[index]
           end
-          patches.setPositions(trail.name, positions)
+          if not patches.setPositions(trail.name, positions) then
+            log(ERROR, trail.type .. " trail mission positions could not be changed.")
+          end
         end
         startYears[trail.name] = settings.startingYear
         local okVisuals, visualsError = pcall(visuals.applyVisuals, trail.name, settings.visuals)
         if not okVisuals then
+          log(ERROR, trail.type .. " trail artwork could not be applied.")
           log(WARNING, string.format("%s trail visuals: %s", trail.type, tostring(visualsError)))
         end
         if settings.id ~= nil then
@@ -386,6 +407,7 @@ return {
         end
         local okRoute, sides = pcall(installRoute, trail, settings, missionCounts[trail.name])
         if not okRoute then
+          log(ERROR, trail.type .. " trail progression could not be applied.")
           log(WARNING, string.format("%s trail route: %s", trail.type, tostring(sides)))
           sides = nil
         end
@@ -451,6 +473,7 @@ return {
             (languageTexts and languageTexts.title) or trailSettingsForTexts.title,
             (languageTexts and languageTexts.summary) or trailSettingsForTexts.summary)
           if not okTexts then
+            log(ERROR, trail.type .. " trail title and summary could not be applied.")
             log(WARNING, "trail title and summary: " .. tostring(textError))
           end
         end
@@ -462,7 +485,7 @@ return {
           end
           local okTrail, trailError = pcall(applyTrail, trail.name, entries, missionTables[trail.name],
             languageTexts, startInstalled, trailSettingsForTexts and trailSettingsForTexts.missionKeys)
-          if not okTrail then sourceWarning(trail, path, trailError) end
+          if not okTrail then sourceFailure(trail, path, trailError) end
         end
       end
 
@@ -502,14 +525,14 @@ return {
     producibility.enable()
     startgold.enable()
     local okIcons, iconsError = pcall(patches.showStartModeIcons)
-    if not okIcons then
+    if not okIcons or iconsError == false then
       log(ERROR, "Custom starting mode pictures are off.")
-      log(WARNING, "start mode pictures: " .. tostring(iconsError))
+      if not okIcons then log(WARNING, "start mode pictures: " .. tostring(iconsError)) end
     end
     local okTeams, teamsError = pcall(patches.separateBriefingTeams)
-    if not okTeams then
+    if not okTeams or teamsError == false then
       log(ERROR, "The team separator in trail briefings is off.")
-      log(WARNING, "the briefing's team separator: " .. tostring(teamsError))
+      if not okTeams then log(WARNING, "the briefing's team separator: " .. tostring(teamsError)) end
     end
 
     detourSwitchToMenu()

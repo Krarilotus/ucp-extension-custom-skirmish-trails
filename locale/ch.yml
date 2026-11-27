@@ -11,6 +11,5 @@ option_3_text: |-
 option_4_header: '严格模式：详细检查征程的 CSV 和 JSON 文件'
 option_4_text: |-
   记录征程文件中的每一处问题。游戏启动时可能会弹出错误提示框。关闭此项时，每个有问题的文件只记录一条警告。
-misc: 其他
 tags.scenarios: 场景
 tags.maps: 地图

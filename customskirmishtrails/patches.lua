@@ -391,6 +391,7 @@ function patches.setStartYears(years)
   local warchest = siteAddress(DATES_WARCHEST_SITE, "the Warchest trail's start year")
   local extreme = siteAddress(DATES_EXTREME_SITE, "the Extreme trail's start year")
   if first == nil or warchest == nil or extreme == nil then
+    log(ERROR, "Custom trail starting years could not be applied.")
     return
   end
   core.writeCodeInteger(first + DATES_FIRST_SITE.immOffset, months.firstEditionTrail)
@@ -522,7 +523,7 @@ function patches.showStartModeIcons()
   local check = siteAddress(START_MODE_CHECK_SITE, "the start mode picture in the briefing")
   local frame = siteAddress(START_MODE_FRAME_SITE, "the start mode picture in the briefing")
   if check == nil or frame == nil then
-    return
+    return false
   end
   local startMode = core.readInteger(check + 2)
   local frames = core.allocate(4 * #START_MODE_FRAMES, true)
@@ -547,7 +548,7 @@ function patches.separateBriefingTeams()
   local teams = siteAddress(BRIEFING_TEAMS_SITE, "the team separator in the briefing")
   local separator = siteAddress(BRIEFING_SEPARATOR_SITE, "the team separator in the briefing")
   if mode == nil or teams == nil or separator == nil then
-    return
+    return false
   end
   patches.guarded({ { address = separator, size = 8 } }, function()
     core.insertCode(separator, 8, {

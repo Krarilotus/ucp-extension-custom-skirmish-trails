@@ -11,6 +11,5 @@ option_3_text: |-
 option_4_header: 'Mode strict : vérifier en détail les fichiers CSV et JSON des campagnes'
 option_4_text: |-
   Consigne chaque problème dans les fichiers de campagne. Peut afficher des boîtes d'erreur au démarrage du jeu. Sans cette option, un seul avertissement est affiché par fichier défectueux.
-misc: Divers
 tags.scenarios: Scénarios
 tags.maps: Cartes

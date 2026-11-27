@@ -117,7 +117,7 @@ The mission data holds one set of texts, the default language. Each further lang
 Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number, or by their node id when the trail's route names its missions by file (`"door05": { ... }`). A text a language file does not have shows the mission data's text; strict mode lists those.
 
 ## Strict mode
-Miscellaneous: logs every problem in the csv, mission, language and trail settings files, every trail setting that falls back to the game's own value, and every text a language file lacks. Without it, one warning per file with problems.
+Set `custom-skirmish-trails.csv.strict_format` in your profile or preset to see detailed startup diagnostics for CSV, mission, language and trail settings files. Leave it off for summary warnings.
 
 ### Skip tokens
 

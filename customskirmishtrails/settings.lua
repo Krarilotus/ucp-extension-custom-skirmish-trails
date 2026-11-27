@@ -23,7 +23,7 @@ local MAX_X, MAX_Y = 800, 600
 local strict = false
 local problems = {}
 
----Strict mode (Miscellaneous): every problem and every entry that falls back to the game's
+---Strict mode: every problem and every entry that falls back to the game's
 ---own value is logged. Otherwise only one line per file that has problems.
 function settings.setStrict(value)
   strict = value == true
@@ -361,7 +361,7 @@ function settings.load(path, trailName, jsonSource)
 
   if not strict and (problems[path] or 0) > 0 then
     log(WARNING, string.format("%d problems in the trail settings file %s; those entries use "
-      .. "the game's own values. Turn on strict mode (Miscellaneous) to see them.", problems[path], path))
+      .. "the game's own values. Turn on strict mode in your profile to see them.", problems[path], path))
   end
   return result
 end

@@ -113,7 +113,7 @@ function texts.load(path)
   end
   if problems > 0 and not strict then
     log(WARNING, string.format("%d problems in the language file %s; turn on strict mode "
-      .. "(Miscellaneous) to see them", problems, path))
+      .. "in your profile to see them", problems, path))
   end
   return result
 end

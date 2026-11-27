@@ -57,6 +57,17 @@ local shownTrail = nil
 local viewHooked = false
 local loaded = {} -- path -> resource, or false when the picture cannot be loaded
 
+local pictureFailures = {}
+
+local function reportPictureFailure(trailName, feature)
+  pictureFailures[trailName] = pictureFailures[trailName] or {}
+  if pictureFailures[trailName][feature] then return end
+  pictureFailures[trailName][feature] = true
+  local label = trailName == "firstEditionTrail" and "First Edition"
+    or trailName == "warchestTrail" and "Warchest" or "Extreme"
+  log(ERROR, string.format("%s trail %s could not be applied.", label, feature))
+end
+
 local function isExtreme()
   local ok, extreme = pcall(function() return data.version.isExtreme() end)
   return ok and extreme == true
@@ -116,6 +127,7 @@ local function showScreenPictures(trailName)
     if not picture.failed and setFrame(picture.gm, picture.frame, picture.path) then
       table.insert(shownPictures, picture)
     else
+      reportPictureFailure(trailName, "screen button artwork")
       picture.failed = true
     end
   end
@@ -123,7 +135,7 @@ end
 
 local function hookTrailScreen()
   if viewHooked then
-    return
+    return true
   end
   local site = patches.siteAddress(VIEW_PREPARE_SITE, "the trail screen's button pictures")
   local open = patches.functionAddress("open")
@@ -136,11 +148,12 @@ local function hookTrailScreen()
     return registers
   end, site, 5)
   viewHooked = true
+  return true
 end
 
 local function registerBackgroundOverride()
   if overrideRegistered then
-    return
+    return true
   end
   local files = modules.files
   if files == nil or files.registerOverrideFunction == nil then
@@ -152,6 +165,7 @@ local function registerBackgroundOverride()
     return name ~= nil and backgrounds[name] or nil
   end)
   overrideRegistered = true
+  return true
 end
 
 ---The .tgx file to show for a trail_background: a .tgx is used as it is, any other picture
@@ -200,11 +214,11 @@ function visuals.applyVisuals(trailName, trailVisuals)
     else
       -- loaded once the game has started (COM is ready then, as for aiSwapper's portraits)
       hooks.registerHookCallback("afterInit", function()
-        if trailVisuals.buttonIdle ~= nil then
-          setFrame(frames.gm, frames.idle, trailVisuals.buttonIdle)
+        if trailVisuals.buttonIdle ~= nil and not setFrame(frames.gm, frames.idle, trailVisuals.buttonIdle) then
+          reportPictureFailure(trailName, "menu button artwork")
         end
-        if trailVisuals.buttonHighlighted ~= nil then
-          setFrame(frames.gm, frames.highlighted, trailVisuals.buttonHighlighted)
+        if trailVisuals.buttonHighlighted ~= nil and not setFrame(frames.gm, frames.highlighted, trailVisuals.buttonHighlighted) then
+          reportPictureFailure(trailName, "menu button artwork")
         end
       end)
     end
@@ -220,7 +234,7 @@ function visuals.applyVisuals(trailName, trailVisuals)
   end
   if #pictures > 0 then
     screenPictures[trailName] = pictures
-    hookTrailScreen()
+    if not hookTrailScreen() then reportPictureFailure(trailName, "screen button artwork") end
   end
   if trailVisuals.background ~= nil then
     -- the user data folder is ready once the game has started
@@ -228,7 +242,9 @@ function visuals.applyVisuals(trailName, trailVisuals)
       local background = backgroundTgx(trailName, trailVisuals.background)
       if background ~= nil then
         backgrounds[BACKGROUND_FILES[trailName]] = background
-        registerBackgroundOverride()
+      end
+      if background == nil or not registerBackgroundOverride() then
+        reportPictureFailure(trailName, "background")
       end
     end)
   end

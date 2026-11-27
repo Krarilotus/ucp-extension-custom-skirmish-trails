@@ -567,6 +567,19 @@ local function start(trailName, index, entry, fileName)
   pending = mission
 end
 
+local reportedLaunchFailures = {}
+
+local function reportLaunchFailure(trailName, index, err)
+  if trailName ~= nil then
+    local mission = trailName .. ":" .. index
+    if not reportedLaunchFailures[mission] then
+      reportedLaunchFailures[mission] = true
+      log(ERROR, string.format("Custom trail mission %d could not start.", index))
+    end
+  end
+  log(WARNING, "starting a scenario mission failed: " .. tostring(err))
+end
+
 ---The Play a Map list's first frame, after its Prepare (which ends a session), launches the
 ---pending mission. Then the list doesn't read the maps, which would empty the chosen map that
 ---Restart and saves need.
@@ -582,7 +595,7 @@ local function installListStart(b)
       core.writeInteger(b.listReparse, 0)
     end)
     if not ok then
-      log(WARNING, "starting a scenario mission failed: " .. tostring(err))
+      reportLaunchFailure(mission.trailName, mission.index, err)
       setSession()
     end
     return registers
@@ -813,7 +826,7 @@ local function installStartHook()
     end
     local ok, handled = pcall(scenario.startIfScenario, trailName, index + 1, entry)
     if not ok then
-      log(WARNING, "starting a scenario mission failed: " .. tostring(handled))
+      reportLaunchFailure(entry ~= nil and trailName or nil, index + 1, handled)
       if bindings ~= nil then setSession() end
       return 0
     end
