@@ -1,16 +1,16 @@
 trail_source_text: Choisissez un CSV de campagne ou un JSON de paramètres.
-option_1_header: Piste Première Édition
+option_1_header: Campagne Première Édition
 option_1_text: |-
-  Personnalise la première piste d'escarmouche.
-option_2_header: Piste Warchest
+  Personnalise la première campagne.
+option_2_header: Campagne Warchest
 option_2_text: |-
-  Personnalise la piste Warchest.
-option_3_header: Piste Extreme
+  Personnalise la campagne Warchest.
+option_3_header: Campagne Extreme
 option_3_text: |-
-  Personnalise la piste Extreme.
-option_4_header: 'Mode strict : vérifier en détail les fichiers CSV et JSON des pistes'
+  Personnalise la campagne Extreme.
+option_4_header: 'Mode strict : vérifier en détail les fichiers CSV et JSON des campagnes'
 option_4_text: |-
-  Consigne chaque problème dans les fichiers de piste. Peut afficher des boîtes d'erreur au démarrage du jeu. Sans cette option, un seul avertissement est affiché par fichier défectueux.
+  Consigne chaque problème dans les fichiers de campagne. Peut afficher des boîtes d'erreur au démarrage du jeu. Sans cette option, un seul avertissement est affiché par fichier défectueux.
 misc: Divers
 tags.scenarios: Scénarios
 tags.maps: Cartes
