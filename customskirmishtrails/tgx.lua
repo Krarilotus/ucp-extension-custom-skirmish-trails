@@ -20,14 +20,14 @@ function tgx.convert(path, name)
   local image, reason = cst_io.readBytes(path)
   if image == nil then error(string.format("cannot read %s: %s", path, tostring(reason))) end
 
-  local bytes, width, height = modules.gmResourceModifier:EncodeImageAsTgx(image)
-  if bytes == nil then error("cannot decode " .. path) end
+  local picture = modules.gmResourceModifier:EncodeImageAsTgx(image)
+  if picture == nil then error("cannot decode " .. path) end
 
   local target = storage.path(name)
   if target == nil then error("the user data folder is not ready") end
-  local written, writeError = storage.write(name, bytes)
+  local written, writeError = storage.write(name, picture.bytes)
   if not written then error(writeError) end
-  return target, width, height
+  return target, picture.width, picture.height
 end
 
 return tgx

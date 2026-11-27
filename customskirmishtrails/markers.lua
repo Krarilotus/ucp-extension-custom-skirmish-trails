@@ -247,10 +247,10 @@ function markers.install(trailName, sheetPath, count, r)
     return
   end
   local modifier = modules.gmResourceModifier
-  local resource, pictures = modifier:LoadGm1ResourceFromData(bytes)
-  local token = pictures and modifier:ReserveGm(native.sheet, resource) or -1
+  local sheet = modifier:LoadGm1ResourceFromData(bytes)
+  local token = sheet and modifier:ReserveGm(native.sheet, sheet.id) or -1
   if token < 0 then
-    if resource >= 0 then modifier:FreeGm1Resource(resource) end
+    if sheet ~= nil then modifier:FreeGm1Resource(sheet.id) end
     log(WARNING, string.format("%s is not a .gm1 sheet; the game's markers stay", sheetPath))
     return
   end
@@ -297,7 +297,7 @@ function markers.install(trailName, sheetPath, count, r)
   end
   native.detoured = true
   local door = {
-    count = count, pictures = pictures, locks = locks, hideWon = tables.hideWon, hideNext = tables.hideNext,
+    count = count, pictures = sheet.pictures, locks = locks, hideWon = tables.hideWon, hideNext = tables.hideNext,
     positions = positions, route = r, reach = reach or nil,
     furthest = core.readInteger(furthest + 2), scores = core.readInteger(scores + 3),
   }
