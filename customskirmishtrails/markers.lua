@@ -68,9 +68,20 @@ local SITES = {
   },
 }
 local FLAG_ARGUMENT_BYTES = { 0x14, 0x10, 0x14, 0x10 }
--- cmp byte [reg + table], 0: the ModRM byte with EBP and ESI as the row, and the table each flag reads
-local FLAG_ROW_MODRM = { 0xBD, 0xBD, 0xBE, 0xBE }
+local FLAG_ROWS = { "ebp", "ebp", "esi", "esi" }
 local FLAG_TABLES = { "hideWon", "hideWon", "hideNext", "hideNext" }
+
+local FLAG_STUB = [[
+  cmp byte [%s + HIDE_TABLE], 0
+  je near DRAW_MARKER
+  ret ARGUMENT_BYTES
+]]
+
+local CLICK_STUB = [[
+  cmp byte [edx + LOCK_TABLE], 0
+  jne near MISS
+  mov dword [SELECTED_MISSION], edx
+]]
 
 local native = nil -- { render, sheet, screen, draw, detoured } once found
 -- trailName -> { gm, count, pictures, locks, hideWon, hideNext, positions, furthest, scores, route, reach, list,
@@ -259,7 +270,8 @@ function markers.install(trailName, sheetPath, count, r)
   local tables = { hideWon = core.allocate(patches.CAPACITY[trailName], true),
     hideNext = core.allocate(patches.CAPACITY[trailName], true) }
   local reach = bound and core.allocate(4, true)
-  local patched = { { address = hit, size = 6 } }
+  local hitSize = 6
+  local patched = { { address = hit, size = hitSize } }
   if bound then
     table.insert(patched, { address = bound, size = 6 })
   end
@@ -277,14 +289,15 @@ function markers.install(trailName, sheetPath, count, r)
       -- cmp byte [row + table], 0 / je draw / ret: the game's marker of a mission's state is drawn
       -- only where the mission has no picture of its own for it
       local target = (flag + 5 + core.readInteger(flag + 1)) & 0xFFFFFFFF
-      local stub = core.allocateCode(16)
-      core.writeCode(stub, { 0x80, FLAG_ROW_MODRM[index], core.itob(tables[FLAG_TABLES[index]]), 0x00, 0x0F, 0x84,
-        core.relTo(target, -4), 0xC2, FLAG_ARGUMENT_BYTES[index], 0x00 })
+      local stub = core.allocateAssembly(FLAG_STUB:format(FLAG_ROWS[index]), {
+        HIDE_TABLE = tables[FLAG_TABLES[index]], DRAW_MARKER = target,
+        ARGUMENT_BYTES = FLAG_ARGUMENT_BYTES[index],
+      })
       core.writeCodeInteger(flag + 1, core.getRelativeAddress(flag, stub, -5))
     end
-    -- cmp byte [edx + locks], 0 / jne miss / mov [selected], edx
-    core.insertCode(hit, 6, { 0x80, 0xBA, core.itob(locks), 0x00, 0x0F, 0x85, core.relTo(miss, -4),
-      0x89, 0x15, core.itob(core.readInteger(hit + 2)) })
+    core.insertCode(hit, hitSize, { core.AssemblyLambda(CLICK_STUB, {
+      LOCK_TABLE = locks, MISS = miss, SELECTED_MISSION = core.readInteger(hit + 2),
+    }) })
     if bound then
       -- mov ebx, [reach]: the last mission that can be clicked, side missions included
       core.writeInteger(reach, core.readInteger(core.readInteger(furthest + 2)))
