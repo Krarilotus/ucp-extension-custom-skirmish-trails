@@ -1,5 +1,4 @@
 -- Mission files are read at startup. Legacy automatic mode may also select CSV rows.
-local winfiles = require("customskirmishtrails.winfiles")
 local conversion = require("customskirmishtrails.conversion")
 
 local sync = {}
@@ -37,12 +36,13 @@ function sync.run(missions, aiMapping, knownHeaders, legacy)
     byNumber[file.number] = { cells = conversion.readMission(file.path, reverse), path = file.path }
   end
 
-  local csvTime = (missions.mode == "automatic" and csv ~= nil) and (winfiles.fileTime(missions.csv) or 0) or nil
+  local csvTime = missions.mode == "automatic" and csv ~= nil
+    and (io.lastWriteTime(missions.csv) or math.mininteger) or nil
   local highest = files[#files].number
   local rows = {}
   for number = 1, csvTime and math.max(#csv.missions, highest) or highest do
     local file = byNumber[number]
-    if file ~= nil and (csvTime == nil or (winfiles.fileTime(file.path) or 0) > csvTime) then
+    if file ~= nil and (csvTime == nil or (io.lastWriteTime(file.path) or math.mininteger) > csvTime) then
       table.insert(rows, file.cells)
     elseif csvTime ~= nil and csv.missions[number] ~= nil then
       table.insert(rows, csv.missions[number])

@@ -15,7 +15,7 @@ local memory = require("customskirmishtrails.memory")
 local patches = require("customskirmishtrails.patches")
 local progress = require("customskirmishtrails.progress")
 local scenario = require("customskirmishtrails.scenario")
-local winfiles = require("customskirmishtrails.winfiles")
+local cst_io = require("customskirmishtrails.io")
 
 local markers = {}
 
@@ -109,17 +109,6 @@ local function picturesOf(trailName, index, entry, count)
     end
   end
   return pictures
-end
-
----The picture count in the header of the .gm1 file `path`, or nil.
-local function sheetPictures(path)
-  local ok, handle = pcall(io.open, path, "rb")
-  if not ok or handle == nil then
-    return nil
-  end
-  local header = handle:read(16)
-  handle:close()
-  return header ~= nil and #header == 16 and string.unpack("<I4", header, 13) or nil
 end
 
 ---Which doors have pictures and which are open (date and map); again at the next midnight.
@@ -252,14 +241,13 @@ function markers.install(trailName, sheetPath, count, r)
     log(WARNING, "unexpected game code for side missions; door pictures are switched off")
     return
   end
-  local resolved, reason = winfiles.scopedPath(sheetPath)
-  if resolved == nil then
-    log(WARNING, tostring(reason))
+  local bytes, reason = cst_io.readBytes(sheetPath)
+  if bytes == nil then
+    log(WARNING, string.format("cannot read the marker sheet %s: %s", sheetPath, tostring(reason)))
     return
   end
   local modifier = modules.gmResourceModifier
-  local resource = modifier:LoadGm1Resource(resolved)
-  local pictures = resource >= 0 and sheetPictures(resolved)
+  local resource, pictures = modifier:LoadGm1ResourceFromData(bytes)
   local token = pictures and modifier:ReserveGm(native.sheet, resource) or -1
   if token < 0 then
     if resource >= 0 then modifier:FreeGm1Resource(resource) end

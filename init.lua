@@ -245,7 +245,8 @@ end
 -- Trail sources ---------------------------------------------------------------------------
 
 local function configuredPath(value)
-  return type(value) == "table" and value.path or nil
+  local path = type(value) == "table" and value.path or nil
+  return type(path) == "string" and settingsModule.resolveRelative("", path) or path
 end
 
 local function knownHeaders()

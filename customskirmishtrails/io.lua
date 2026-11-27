@@ -376,12 +376,12 @@ local ALLOW_NIL = {
   ["tradeable_ironarmor"] = true,
 }
 
-local function getContents(path)
-  local handle, err = io.open(path, "rb")
-  if handle == nil then return nil, err end
-  local contents = handle:read("*all")
+local function readBytes(path)
+  local opened, handle, err = pcall(io.open, path, "rb")
+  if not opened or handle == nil then return nil, opened and err or handle end
+  local contents, readError = handle:read("a")
   handle:close()
-  return contents
+  return contents, readError
 end
 
 local fails = {}
@@ -473,7 +473,7 @@ local function readCSV(path, limit, contents, requireMissions, jsonRows)
   log(2, string.format("readCSV: %s", path))
   local reason
   if contents == nil then
-    contents, reason = getContents(path)
+    contents, reason = readBytes(path)
   end
   if contents == nil then
     return nil, string.format("%s: %s", tostring(path), tostring(reason))
@@ -536,6 +536,7 @@ return {
   setStrictness = function(s) strictness = s end,
   isStrict = function() return strictness ~= "warning" end,
   readCSV = readCSV,
+  readBytes = readBytes,
   HEADERS =  HEADERS,
   HEADERS_EXTRA = HEADERS_EXTRA,
   HEADERS_TYPES = HEADERS_TYPES,

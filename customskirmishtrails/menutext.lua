@@ -7,7 +7,6 @@
 
 local patches = require("customskirmishtrails.patches")
 local visuals = require("customskirmishtrails.visuals")
-local winfiles = require("customskirmishtrails.winfiles")
 
 local menutext = {}
 
@@ -71,11 +70,6 @@ split:
   ret 32
 ]]
 
-local function writeCString(address, text)
-  winfiles.writeMemory(address, text)
-  core.writeByte(address + #text, 0)
-end
-
 local textWidth = nil
 
 ---The width in pixels of `text` (in the game's encoding) in `font`, or nil when the game's text
@@ -89,7 +83,7 @@ function menutext.measure(textManager, text, font)
     return nil
   end
   local buffer = core.allocate(#text + 1, true)
-  writeCString(buffer, text)
+  core.writeString(buffer, text .. "\0")
   local width = textWidth(textManager, buffer, font)
   core.deallocate(buffer)
   return width
@@ -167,8 +161,8 @@ function menutext.apply(trailName, title, summary)
     core.writeCodeInteger(call + 1, core.getRelativeAddress(call, stub, -5))
     stubs[trailName] = lines
   end
-  writeCString(lines.first, first:sub(1, LINE_BUFFER_SIZE - 1))
-  writeCString(lines.second, second:sub(1, LINE_BUFFER_SIZE - 1))
+  core.writeString(lines.first, first:sub(1, LINE_BUFFER_SIZE - 1) .. "\0")
+  core.writeString(lines.second, second:sub(1, LINE_BUFFER_SIZE - 1) .. "\0")
   log(INFO, string.format("the %s summary is shown in two lines", trailName))
 end
 

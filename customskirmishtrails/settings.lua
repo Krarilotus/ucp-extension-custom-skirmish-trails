@@ -3,6 +3,7 @@
 -- missing, empty or invalid falls back to the game's own value, with a warning in ucp3.log.
 
 local patches = require("customskirmishtrails.patches")
+local cst_io = require("customskirmishtrails.io")
 
 local settings = {}
 
@@ -47,12 +48,8 @@ local function info(path, message, ...)
 end
 
 local function readText(path)
-  local ok, handle, err = pcall(io.open, path, "rb")
-  if not ok or handle == nil then
-    return nil, ok and err or handle
-  end
-  local contents = handle:read("*all")
-  handle:close()
+  local contents, err = cst_io.readBytes(path)
+  if contents == nil then return nil, err end
   -- a UTF-8 byte order mark is not JSON
   if contents:sub(1, 3) == "\239\187\191" then
     contents = contents:sub(4)
@@ -66,10 +63,12 @@ function settings.directoryOf(path)
   return path:match("^(.*[/\\])") or ""
 end
 
----`path` taken relative to `baseDirectory`, unless it already starts at the game folder
----("ucp/...") or at a drive.
+---`path` relative to `baseDirectory` unless it names a game path.
 function settings.resolveRelative(baseDirectory, path)
-  if path:match("^%a:[/\\]") or path:match("^[/\\]") or path:lower():match("^ucp[/\\]") then
+  if path:match("^%a:[/\\]") or path:match("^[/\\]") then
+    return io.gameRelativePath(path) or path
+  end
+  if path:lower():match("^ucp[/\\]") then
     return path
   end
   return baseDirectory .. path

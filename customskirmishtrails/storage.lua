@@ -1,4 +1,4 @@
--- The module's own files (progress, route results, graphic caches) in its UCP
+-- The module's own files (progress, route results, converted backgrounds) in its UCP
 -- user data folder: <Crusader user folder>/ucp/userdata/custom-skirmish-trails/. The folder is
 -- ready once the game has started (afterInit).
 

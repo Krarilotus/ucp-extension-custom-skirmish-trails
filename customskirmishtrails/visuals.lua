@@ -5,7 +5,7 @@
 local memory = require("customskirmishtrails.memory")
 local patches = require("customskirmishtrails.patches")
 local tgx = require("customskirmishtrails.tgx")
-local winfiles = require("customskirmishtrails.winfiles")
+local cst_io = require("customskirmishtrails.io")
 
 local visuals = {}
 local backgroundTgx
@@ -75,16 +75,16 @@ end
 
 local function readImage(path)
   local gm = modules.gmResourceModifier
-  if gm == nil or gm.LoadResourceFromImage == nil then
+  if gm == nil or gm.LoadResourceFromImageData == nil then
     log(WARNING, "gmResourceModifier is not active; trail button pictures stay")
     return nil
   end
-  local resolved, reason = winfiles.scopedPath(path)
-  if resolved == nil then
-    log(WARNING, reason)
+  local bytes, reason = cst_io.readBytes(path)
+  if bytes == nil then
+    log(WARNING, string.format("cannot read the picture %s: %s", path, tostring(reason)))
     return nil
   end
-  local ok, resource = pcall(function() return gm:LoadResourceFromImage(resolved) end)
+  local ok, resource = pcall(function() return gm:LoadResourceFromImageData(bytes) end)
   resource = ok and resource ~= nil and resource >= 0 and resource or nil
   if resource == nil then
     log(WARNING, string.format("cannot load the picture %s", path))
@@ -172,14 +172,9 @@ end
 ---(.png, .jpg, .bmp, .gif) is turned into a .tgx in the user data folder first.
 function backgroundTgx(trailName, path)
   local original = "gfx/" .. BACKGROUND_FILES[trailName]
-  local resolved, reason = winfiles.scopedPath(path)
-  if resolved == nil then
-    log(WARNING, string.format("the trail background stays: %s: %s", tostring(path), tostring(reason)))
-    return nil
-  end
-  local result, width, height = resolved, nil, nil
+  local result, width, height = path, nil, nil
   if not path:lower():match("%.tgx$") then
-    local ok, made, madeWidth, madeHeight = pcall(tgx.cached, path,
+    local ok, made, madeWidth, madeHeight = pcall(tgx.convert, path,
       string.format("background-%s.tgx", trailName))
     if not ok or made == nil then
       log(WARNING, string.format("the trail background stays: %s", tostring(made)))
@@ -187,7 +182,7 @@ function backgroundTgx(trailName, path)
     end
     result, width, height = made, madeWidth, madeHeight
   else
-    width, height = tgx.size(resolved)
+    width, height = tgx.size(path)
     if width == nil then
       log(WARNING, string.format("the trail background stays: %s cannot be read as a .tgx file",
         tostring(path)))

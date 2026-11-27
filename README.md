@@ -50,4 +50,4 @@ python tools/convert_trail.py my-trail-settings.json my-trail-converted.csv
 
 Choose `First`, `Warchest` or `Extreme` when converting a CSV. The converter uses the game's mission positions, or positions from an existing settings JSON supplied with `--settings`. Keep the converted settings next to the original when it refers to other files by relative path. CSV stores mission rows in play order. Keep the settings JSON for the route, positions, language files and other trail-wide settings.
 
-Place trail files inside the game folder. Absolute paths into that folder and UCP aliases are accepted. Paths through symlinks or junctions are rejected.
+Place trail files inside the game folder. The framework resolves UCP aliases and absolute paths inside that folder.
