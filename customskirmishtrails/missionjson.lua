@@ -19,13 +19,6 @@
 --     "extra": { "column": "value" }    anything else, so that nothing is lost
 --   }
 --
--- Cells that are whole numbers become JSON numbers. An empty cell is left out. Values the game
--- ignores (the per-player columns of players past num_players) are left out when they hold the
--- column's usual empty value and kept in "extra" otherwise, so that csv -> JSON -> csv gives the
--- same csv back. The csv's unit_limit cell ("formula 2500 40", "by_alive 1=2000 8=250") is read by
--- unitlimits.parse: native is left out, a formula or by_alive becomes its object (by_alive in the
--- order of its lords), any other text stays in "extra".
-
 local missionjson = {}
 
 missionjson.FORMAT = 1
@@ -59,211 +52,6 @@ local function playerColumns(player)
   end
   return columns
 end
-
--- JSON writing, in a fixed order ------------------------------------------------------------
-
-local ESCAPES = { ['"'] = '\\"', ['\\'] = '\\\\', ['\b'] = '\\b', ['\f'] = '\\f', ['\n'] = '\\n', ['\r'] = '\\r', ['\t'] = '\\t' }
-
-function missionjson.jsonString(value)
-  return '"' .. value:gsub('[%c"\\]', function(char)
-    return ESCAPES[char] or string.format("\\u%04x", char:byte())
-  end) .. '"'
-end
-
-local function isPlainInteger(value)
-  if not value:match("^%-?%d+$") or #value > 15 then
-    return false
-  end
-  local number = math.tointeger(tonumber(value))
-  return number ~= nil and tostring(number) == value
-end
-
-local function object()
-  return { order = {}, values = {} }
-end
-
-local function put(o, key, value)
-  table.insert(o.order, key)
-  o.values[key] = value
-end
-
-local function number(o, key, value)
-  put(o, key, { raw = tostring(value) })
-end
-
----A unit_limit cell as JSON: false for native or empty, the object of a formula or by_alive, nil
----for a text unitlimits.parse rejects.
-local function unitLimitJson(text)
-  if text == nil or text == "" then
-    return false
-  end
-  local policy = require("customskirmishtrails.unitlimits").parse(text)
-  if policy == nil then
-    return nil
-  elseif policy.kind == "native" then
-    return false
-  end
-  local limit = object()
-  if policy.kind == "formula" then
-    local formula = object()
-    number(formula, "base", policy.base)
-    number(formula, "offset", policy.offset)
-    put(limit, "formula", formula)
-  else
-    local points = { items = {} }
-    for _, point in ipairs(policy.points) do
-      local item = object()
-      number(item, "lords", point.lords)
-      number(item, "limit", point.limit)
-      table.insert(points.items, item)
-    end
-    put(limit, "by_alive", points)
-  end
-  return limit
-end
-
--- a csv cell as JSON: { raw = "123" } for a number, the string otherwise
-local function cell(value)
-  if isPlainInteger(value) then
-    return { raw = value }
-  end
-  return value
-end
-
-local function encode(value, indent)
-  if type(value) == "string" then
-    return missionjson.jsonString(value)
-  end
-  if value.raw ~= nil then
-    return value.raw
-  end
-  local inner = indent .. "  "
-  if value.items ~= nil then
-    if #value.items == 0 then
-      return "[]"
-    end
-    local parts = {}
-    for _, item in ipairs(value.items) do
-      table.insert(parts, inner .. encode(item, inner))
-    end
-    return "[\n" .. table.concat(parts, ",\n") .. "\n" .. indent .. "]"
-  end
-  if #value.order == 0 then
-    return "{}"
-  end
-  local parts = {}
-  for _, key in ipairs(value.order) do
-    table.insert(parts, inner .. missionjson.jsonString(key) .. ": " .. encode(value.values[key], inner))
-  end
-  return "{\n" .. table.concat(parts, ",\n") .. "\n" .. indent .. "}"
-end
-
--- csv line -> mission JSON --------------------------------------------------------------------
-
----The mission JSON text of one csv line. `header` is the csv's column list, `cells` maps column
----names to cell texts, `aiMapping` (optional) maps AI keys to the names to show.
-function missionjson.fromRow(header, cells, aiMapping)
-  local used = {}
-  local function take(column)
-    used[column] = true
-    return cells[column] or ""
-  end
-
-  local mission = object()
-  put(mission, "format", { raw = tostring(missionjson.FORMAT) })
-  put(mission, "map_name", take("map_name"))
-  put(mission, "mission_name", take("mission_name"))
-  for _, column in ipairs({ "mission_type", "difficulty_scaling", "scenario_briefing" }) do
-    local value = take(column)
-    if value ~= "" then
-      put(mission, column, value)
-    end
-  end
-  local limit = unitLimitJson(cells.unit_limit)
-  if limit ~= nil then
-    take("unit_limit")
-    if limit then
-      put(mission, "unit_limit", limit)
-    end
-  end
-  local lines = { items = {} }
-  for line = 1, TEXT_LINES do
-    table.insert(lines.items, take(string.format("text_description_line_%02d", line)))
-  end
-  put(mission, "text_description", lines)
-
-  local fairness = take("fairness")
-  if fairness ~= "" then
-    put(mission, "advantage", ADVANTAGE[tonumber(fairness) or 0] ~= nil and isPlainInteger(fairness)
-      and ADVANTAGE[tonumber(fairness)] or cell(fairness))
-  end
-  local startLevels = take("start_levels")
-  if startLevels ~= "" then
-    put(mission, "start_mode", START_MODE[tonumber(startLevels) or 0] ~= nil and isPlainInteger(startLevels)
-      and START_MODE[tonumber(startLevels)] or cell(startLevels))
-  end
-
-  local extra = object()
-  local numPlayers = math.tointeger(tonumber(take("num_players"))) or 1
-  if numPlayers < 1 then
-    numPlayers = 1
-  end
-  local players = { items = {} }
-  for player = 1, 8 do
-    local entry = object()
-    for _, spec in ipairs(playerColumns(player)) do
-      local value = take(spec.column)
-      if player <= numPlayers then
-        if spec.key == "ai" then
-          put(entry, "ai", aiMapping ~= nil and aiMapping[value] or value)
-        elseif value ~= "" then
-          put(entry, spec.key, cell(value))
-        end
-      elseif value ~= spec.empty then
-        put(extra, spec.column, value)
-      end
-    end
-    -- player 1 has no AI; its column normally holds 0
-    if player == 1 then
-      local human = take("player1")
-      if human ~= "0" then
-        put(extra, "player1", human)
-      end
-    end
-    if player <= numPlayers then
-      table.insert(players.items, entry)
-    end
-  end
-  put(mission, "players", players)
-
-  for _, group in ipairs(GROUPS) do
-    local values = object()
-    for _, column in ipairs(header) do
-      if not used[column] and column:sub(1, #group.prefix) == group.prefix then
-        used[column] = true
-        local value = cells[column] or ""
-        if value ~= "" then
-          put(values, column:sub(#group.prefix + 1), cell(value))
-        end
-      end
-    end
-    if #values.order > 0 or not group.optional then
-      put(mission, group.key, values)
-    end
-  end
-
-  for _, column in ipairs(header) do
-    if column ~= "" and not used[column] and (cells[column] or "") ~= "" then
-      put(extra, column, cells[column])
-    end
-  end
-  if #extra.order > 0 then
-    put(mission, "extra", extra)
-  end
-  return encode(mission, "") .. "\n"
-end
-
--- mission JSON -> csv line --------------------------------------------------------------------
 
 local function cellOf(value, where)
   local kind = type(value)
@@ -406,7 +194,7 @@ function missionjson.toRow(data, reverseMapping, file)
   local players = data.players
   checkArray(players, 8, file .. ": players")
   cells.num_players = tostring(#players)
-  cells.player1 = "0"
+  local defaults = { player1 = "0" }
   for player = 1, 8 do
     local entry = players[player]
     local where = string.format("%s: players[%d]", file, player)
@@ -417,7 +205,7 @@ function missionjson.toRow(data, reverseMapping, file)
     for _, spec in ipairs(playerColumns(player)) do
       fields[spec.key] = true
       if entry == nil then
-        cells[spec.column] = spec.empty
+        defaults[spec.column] = spec.empty
       else
         local value = entry[spec.key]
         if spec.key == "ai" then
@@ -443,6 +231,11 @@ function missionjson.toRow(data, reverseMapping, file)
   end
   if data.extra ~= nil then
     readColumns(cells, data.extra, "", file .. ": extra", true)
+  end
+  for column, value in pairs(defaults) do
+    if cells[column] == nil then
+      cells[column] = value
+    end
   end
   return cells
 end

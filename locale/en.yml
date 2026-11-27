@@ -1,57 +1,13 @@
+trail_source_text: Choose a trail CSV or settings JSON.
 option_1_header: First Edition Trail
 option_1_text: Customize the first trail.
-option_1_1_header: Trail settings file
-option_1_1_text: The first trail's settings file (.json). Leave empty to keep the game's own.
-option_1_2_header: Csv file (without trail settings file)
-option_1_2_text: The first trail's csv file, for use without a trail settings file. A trail settings file with trail_missions
-  takes its place.
-option_1_3_header: File paths
-option_1_3_text: See and clear the files set for the first trail
-option_1_4_header: CSV data
-option_1_4_text: Export the first trail's csv file to one JSON file per mission, or import those JSON files back
-  into the csv file
 option_2_header: Warchest Trail
 option_2_text: Customize the Warchest trail.
-option_2_1_header: Trail settings file
-option_2_1_text: The Warchest trail's settings file (.json). Leave empty to keep the game's own.
-option_2_2_header: Csv file (without trail settings file)
-option_2_2_text: The Warchest trail's csv file, for use without a trail settings file. A trail settings file with
-  trail_missions takes its place.
-option_2_3_header: File paths
-option_2_3_text: See and clear the files set for the Warchest trail
-option_2_4_header: CSV data
-option_2_4_text: Export the Warchest trail's csv file to one JSON file per mission, or import those JSON files back
-  into the csv file
 option_3_header: Extreme Trail
 option_3_text: Customize the Extreme trail.
-option_3_1_header: Trail settings file
-option_3_1_text: The Extreme trail's settings file (.json). Leave empty to keep the game's own.
-option_3_2_header: Csv file (without trail settings file)
-option_3_2_text: The Extreme trail's csv file, for use without a trail settings file. A trail settings file with
-  trail_missions takes its place.
-option_3_3_header: File paths
-option_3_3_text: See and clear the files set for the Extreme trail
-option_3_4_header: CSV data
-option_3_4_text: Export the Extreme trail's csv file to one JSON file per mission, or import those JSON files back
-  into the csv file
 option_4_header: 'Strict mode: check the trail csv and json files in detail'
 option_4_text: Logs every problem in the trail files. May show error message boxes at game start. Without it,
   one warning per file with problems.
-menu_paths_intro: "The files set for this trail. Clear a path to leave that file out, then press \"Save and Close\"."
-menu_paths_settings: "Trail settings file"
-menu_paths_csv: "Csv file"
-menu_paths_none: "No files are set for this trail."
-menu_paths_cleared: "(cleared)"
-menu_paths_clear: "Clear"
-menu_paths_clear_csv: "Clear the csv paths"
-menu_paths_notice: "A trail settings file is set: if it has trail_missions, its csv file is used and the csv paths are only a fallback."
-menu_paths_status: "{count} path(s) will be cleared when you press \"Save and Close\"."
-menu_csv_intro: "Export writes each mission line of this trail's csv file as a JSON file into export/<name>/. Import joins the JSON files in the folder beside the csv file (trail.csv → trail/) into import/<name>.csv. export/ and import/ are in ucp/userdata/custom-skirmish-trails in the game's user folder; ucp3.log names the files."
-menu_csv_steps: "The game does the work: choose a button, press \"Save and Close\", then start the game once."
-menu_csv_export: "Export CSV Data"
-menu_csv_import: "Import CSV Data"
-menu_csv_requested: "{action} requested. Press \"Save and Close\", then start the game once to run it."
-menu_csv_saved: "Saved request: {action} ({time}). It runs once, at the next game start."
 misc: Miscellaneous
 tags.scenarios: Scenarios
 tags.maps: Maps

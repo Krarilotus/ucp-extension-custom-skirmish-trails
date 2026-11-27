@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://github.com/gynt/ucp-extension-custom-skirmish-trails/resources/mission.schema.json",
   "title": "Custom Skirmish Trails: mission file (format 1)",
-  "description": "One mission of a trail, the same data as one line of the trail csv file. Export / Import and trail_missions convert between both.",
+  "description": "One mission of a trail, the same data as one line of the trail csv file. Use tools/convert_trail.py to switch formats.",
   "type": "object",
   "properties": {
     "$schema": {

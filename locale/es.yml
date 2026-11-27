@@ -1,66 +1,15 @@
 option_1_header: Senda de la Primera Edición
 option_1_text: |-
   Personaliza la primera senda de escaramuzas.
-option_1_1_header: Archivo de ajustes de la senda
-option_1_1_text: |-
-  El archivo de ajustes de la primera senda (.json). Déjalo vacío para conservar los del juego.
-option_1_2_header: Archivo CSV (sin archivo de ajustes de la senda)
-option_1_2_text: |-
-  El archivo CSV de la primera senda para usar sin archivo de ajustes de la senda. Un archivo de ajustes de la senda con trail_missions ocupa su lugar.
-option_1_3_header: Rutas de archivos
-option_1_3_text: |-
-  Ver y borrar los archivos asignados a la primera senda
-option_1_4_header: Datos CSV
-option_1_4_text: |-
-  Exportar el archivo CSV de la primera senda a un archivo JSON por misión, o importar esos archivos JSON de vuelta al archivo CSV
 option_2_header: Senda Warchest
 option_2_text: |-
   Personaliza la senda Warchest.
-option_2_1_header: Archivo de ajustes de la senda
-option_2_1_text: |-
-  El archivo de ajustes de la senda Warchest (.json). Déjalo vacío para conservar los del juego.
-option_2_2_header: Archivo CSV (sin archivo de ajustes de la senda)
-option_2_2_text: |-
-  El archivo CSV de la senda Warchest para usar sin archivo de ajustes de la senda. Un archivo de ajustes de la senda con trail_missions ocupa su lugar.
-option_2_3_header: Rutas de archivos
-option_2_3_text: |-
-  Ver y borrar los archivos asignados a la senda Warchest
-option_2_4_header: Datos CSV
-option_2_4_text: |-
-  Exportar el archivo CSV de la senda Warchest a un archivo JSON por misión, o importar esos archivos JSON de vuelta al archivo CSV
 option_3_header: Senda Extreme
 option_3_text: |-
   Personaliza la senda Extreme.
-option_3_1_header: Archivo de ajustes de la senda
-option_3_1_text: |-
-  El archivo de ajustes de la senda Extreme (.json). Déjalo vacío para conservar los del juego.
-option_3_2_header: Archivo CSV (sin archivo de ajustes de la senda)
-option_3_2_text: |-
-  El archivo CSV de la senda Extreme para usar sin archivo de ajustes de la senda. Un archivo de ajustes de la senda con trail_missions ocupa su lugar.
-option_3_3_header: Rutas de archivos
-option_3_3_text: |-
-  Ver y borrar los archivos asignados a la senda Extreme
-option_3_4_header: Datos CSV
-option_3_4_text: |-
-  Exportar el archivo CSV de la senda Extreme a un archivo JSON por misión, o importar esos archivos JSON de vuelta al archivo CSV
 option_4_header: 'Modo estricto: comprobar en detalle los archivos CSV y JSON de las sendas'
 option_4_text: |-
   Registra cada problema en los archivos de la senda. Puede mostrar cuadros de error al iniciar el juego. Sin él, aparece una sola advertencia por archivo con problemas.
-menu_paths_intro: "Los archivos asignados a esta senda. Borra una ruta para no usar ese archivo y pulsa «Guardar y cerrar»."
-menu_paths_settings: "Archivo de ajustes de la senda"
-menu_paths_csv: "Archivo CSV"
-menu_paths_none: "Esta senda no tiene archivos asignados."
-menu_paths_cleared: "(borrada)"
-menu_paths_clear: "Borrar"
-menu_paths_clear_csv: "Borrar las rutas CSV"
-menu_paths_notice: "Hay un archivo de ajustes de la senda: si tiene trail_missions, se usa su archivo CSV y las rutas CSV solo sirven de respaldo."
-menu_paths_status: "{count} ruta(s) se borrarán al pulsar «Guardar y cerrar»."
-menu_csv_intro: "Exportar escribe cada línea de misión del archivo CSV de esta senda como archivo JSON en export/<name>/. Importar une los archivos JSON de la carpeta junto al archivo CSV (trail.csv → trail/) en import/<name>.csv. export/ e import/ están en ucp/userdata/custom-skirmish-trails dentro de la carpeta de usuario del juego; ucp3.log indica los archivos."
-menu_csv_steps: "El juego hace el trabajo: elige un botón, pulsa «Guardar y cerrar» y luego inicia el juego una vez."
-menu_csv_export: "Exportar datos CSV"
-menu_csv_import: "Importar datos CSV"
-menu_csv_requested: "{action}: solicitado. Pulsa «Guardar y cerrar» y luego inicia el juego una vez para ejecutarlo."
-menu_csv_saved: "Solicitud guardada: {action} ({time}). Se ejecuta una vez, en el próximo inicio del juego."
 misc: Varios
 tags.scenarios: Escenarios
 tags.maps: Mapas

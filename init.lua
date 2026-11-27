@@ -13,8 +13,6 @@ local visuals = require("customskirmishtrails.visuals")
 local menutext = require("customskirmishtrails.menutext")
 local textsModule = require("customskirmishtrails.texts")
 local sync = require("customskirmishtrails.sync")
-local conversion = require("customskirmishtrails.conversion")
-local storage = require("customskirmishtrails.storage")
 local progress = require("customskirmishtrails.progress")
 local scenario = require("customskirmishtrails.scenario")
 local unitlimits = require("customskirmishtrails.unitlimits")
@@ -32,8 +30,6 @@ local TRAILS = {
   { name = "warchestTrail", key = "warchest", type = "Warchest" },
   { name = "extremeTrail", key = "extremetrail", type = "Extreme" },
 }
-
-local REQUESTS_FILE = "requests.json"
 
 -- per trail: mission number -> map name given by a plugin (setMissionMap)
 local MAP_OVERRIDES = {}
@@ -100,9 +96,7 @@ local function insertPostSkirmishSetupDetour()
   end, core.AOBScan("A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? A3 ? ? ? ? 89 44 24 10 "), 5)
 end
 
-local function applyTrail(trailName, path, missions, limit, languageTexts, startInstalled, keys, csvText)
-  local result, err = cst_io.readCSV(path, limit + 1, csvText) -- one for the header
-  if result == nil then error(err) end
+local function applyTrail(trailName, result, missions, languageTexts, startInstalled, keys)
   -- the game language's texts over the default texts of the csv
   textsModule.apply(languageTexts, result, keys)
   local rowOf = {}
@@ -221,7 +215,7 @@ end
 local function readRouteFiles(trail, settings)
   local parsed = route.read(settings.path, settings.route, nil)
   local problem = parsed == nil and ""
-    or settings.missions == nil and "a route of mission files needs trail_missions.base_name to name its csv"
+    or settings.missions == nil and "a route of mission files needs trail_missions.base_name"
     or parsed.count > patches.CAPACITY[trail.name]
       and string.format("the route has %d missions; this trail can have at most %d", parsed.count,
         patches.CAPACITY[trail.name])
@@ -230,8 +224,7 @@ local function readRouteFiles(trail, settings)
       log(WARNING, string.format("%s: %s; the trail's missions are not loaded",
         settings.path, problem))
     end
-    settings.route, settings.missions = nil, nil
-    return
+    return false
   end
   if settings.positions ~= nil then
     log(WARNING, string.format("%s: a route of mission files has the positions; "
@@ -244,61 +237,13 @@ local function readRouteFiles(trail, settings)
   end
   settings.missions.files, settings.missions.mode = files, "json_folder"
   settings.positions, settings.missionKeys, settings.routeFiles = parsed.positions, parsed.keys, parsed
+  return true
 end
 
--- Settings -------------------------------------------------------------------------------
+-- Trail sources ---------------------------------------------------------------------------
 
-local function nonEmpty(value)
-  return type(value) == "string" and value ~= ""
-end
-
-local function trailConfig(config, trail)
-  return type(config[trail.key]) == "table" and config[trail.key] or {}
-end
-
----The csv file of a trail: the trail settings file's trail_missions when it has them, the
----csv file set in the GUI otherwise.
-local function trailCsv(config, trail, settings)
-  if settings ~= nil and settings.missions ~= nil then
-    return settings.missions.csv
-  end
-  local csv = trailConfig(config, trail).csv
-  return type(csv) == "table" and nonEmpty(csv.path) and csv.path or nil
-end
-
-local function loadTrailSettings(config, trail)
-  local settingsConfig = trailConfig(config, trail).settings
-  local path = type(settingsConfig) == "table" and settingsConfig.path or nil
-  if not nonEmpty(path) then
-    return nil
-  end
-  local ok, result = pcall(settingsModule.load, path, trail.name)
-  if not ok then
-    log(WARNING, string.format("%s: %s", path, tostring(result)))
-    return nil
-  end
-  if result ~= nil then
-    log(INFO, string.format("%s trail settings from %s", trail.type, path))
-  end
-  return result
-end
-
--- Export / Import requests from the GUI ------------------------------------------------------
-
-local function readRequests()
-  local text = storage.read(REQUESTS_FILE)
-  if text == nil then
-    return {}
-  end
-  local ok, data = pcall(function() return json:decode(text) end)
-  return (ok and type(data) == "table") and data or {}
-end
-
-local function writeRequests(requests)
-  local ok, err = storage.write(REQUESTS_FILE, json:encode(requests))
-  if not ok then
-    log(WARNING, "cannot write " .. REQUESTS_FILE .. ": " .. tostring(err))
-  end
+local function configuredPath(value)
+  return type(value) == "table" and value.path or nil
 end
 
 local function knownHeaders()
@@ -308,57 +253,65 @@ local function knownHeaders()
   return headers
 end
 
----Runs an Export or Import CSV Data request the GUI saved, once per request.
-local function runConversions(config, trailSettings, missionRows)
-  local requests = nil
-  for _, trail in ipairs(TRAILS) do
-    local request = trailConfig(config, trail).conversion
-    if type(request) == "table" and (request.action == "export" or request.action == "import")
-      and nonEmpty(request.request) then
-      requests = requests or readRequests()
-      local previous = requests[trail.key]
-      if type(previous) ~= "table" or previous.request ~= request.request then
-        local settings = trailSettings[trail.name]
-        local mapping = (settings ~= nil and settings.hasAiMapping) and settings.aiMapping or nil
-        local csvPath = trailCsv(config, trail, settings)
-        local files = { csvPath }
-        local results = {}
-        if csvPath == nil then
-          files = {}
-          table.insert(results, "no csv file is set for this trail")
+local function sourceWarning(trail, path, reason)
+  log(WARNING, string.format("%s trail source %s: %s; the game's own missions are used",
+    trail.type, tostring(path), tostring(reason)))
+end
+
+local function readTrailSource(config, trail)
+  local options = type(config[trail.key]) == "table" and config[trail.key] or {}
+  local path = configuredPath(options.source)
+  local legacy = path == nil or path == ""
+  local settingsPath, csvPath
+  if legacy then
+    -- Accept old profile keys for one release.
+    settingsPath, csvPath = configuredPath(options.settings), configuredPath(options.csv)
+  elseif type(path) == "string" and path:lower():match("%.csv$") then
+    csvPath = path
+  elseif type(path) == "string" and path:lower():match("%.json$") then
+    settingsPath = path
+  else
+    sourceWarning(trail, path, "expected a .csv or .json file")
+    return
+  end
+
+  local settings, csvText
+  if type(settingsPath) == "string" and settingsPath ~= "" then
+    settings = settingsModule.load(settingsPath, trail.name, not legacy)
+    if settings == nil and not legacy then return end
+  end
+  if settings ~= nil then
+    if route.hasFiles(settings.route) and not readRouteFiles(trail, settings) then
+      if not legacy then return end
+      settings.route, settings.missions = nil, nil
+    end
+    local missions = settings.missions
+    if missions ~= nil then
+      csvPath = missions.csv
+      if missions.mode ~= "csv" then
+        local ok, result = pcall(sync.run, missions, settings.hasAiMapping and settings.aiMapping or nil,
+          knownHeaders(), legacy)
+        if ok then
+          csvText = result
+        else
+          sourceWarning(trail, settingsPath, result)
+          if not legacy then return end
+          if missions.mode == "json_folder" then return settings end
         end
-        for _, file in ipairs(files) do
-          local ok, done, message
-          if request.action == "export" then
-            ok, done, message = pcall(conversion.export, file, mapping)
-          else
-            ok, done, message = pcall(conversion.import, file, mapping, knownHeaders())
-          end
-          if not ok then
-            message = string.format("%s: %s", file, tostring(done))
-          end
-          log((ok and done) and INFO or WARNING, tostring(message))
-          table.insert(results, tostring(message))
-        end
-        if request.action == "export" and settings ~= nil and settings.textFiles ~= nil
-          and missionRows[trail.name] ~= nil then
-          local ok, written, message = pcall(sync.writeTemplate, missionRows[trail.name], settings)
-          message = ok and message or ("the translation template is not written: " .. tostring(written))
-          log((ok and written) and INFO or WARNING, message)
-          table.insert(results, message)
-        end
-        requests[trail.key] = {
-          action = request.action,
-          request = request.request,
-          time = os.date("%Y-%m-%d %H:%M:%S"),
-          results = results,
-        }
       end
     end
   end
-  if requests ~= nil then
-    writeRequests(requests)
+
+  local sourcePath = legacy and (csvText and settingsPath or csvPath) or path
+  if type(sourcePath) ~= "string" or sourcePath == "" then return settings end
+  local plannedCount = settings and settings.positions and #settings.positions or patches.VANILLA_COUNT[trail.name]
+  local ok, entries, reason = pcall(cst_io.readCSV, sourcePath, plannedCount + 1, csvText, not legacy)
+  if not ok or entries == nil then
+    sourceWarning(trail, sourcePath, ok and reason or entries)
+    if legacy then return settings end
+    return
   end
+  return settings, entries, sourcePath
 end
 
 return {
@@ -382,16 +335,21 @@ return {
 
     -- trail settings files: mission count and positions, start years, texts, visuals, progress
     local trailSettings = {}
+    local trailEntries, sourcePaths = {}, {}
     local routes = {}
     local missionCounts = {}
     local startYears = {}
     for _, trail in ipairs(TRAILS) do
-      local settings = loadTrailSettings(config, trail)
-      trailSettings[trail.name] = settings
-      missionCounts[trail.name] = patches.VANILLA_COUNT[trail.name]
-      if settings ~= nil and route.hasFiles(settings.route) then
-        readRouteFiles(trail, settings)
+      local okSource, settings, entries, sourcePath = pcall(readTrailSource, config, trail)
+      if not okSource then
+        local options = config[trail.key]
+        local path = type(options) == "table" and (configuredPath(options.source)
+          or configuredPath(options.settings) or configuredPath(options.csv))
+        sourceWarning(trail, path, settings)
+        settings = nil
       end
+      trailSettings[trail.name], trailEntries[trail.name], sourcePaths[trail.name] = settings, entries, sourcePath
+      missionCounts[trail.name] = patches.VANILLA_COUNT[trail.name]
 
       if settings ~= nil then
         if settings.positions ~= nil then
@@ -467,32 +425,6 @@ return {
       end
       patches.setChickenBudgets(chickenBudgets)
 
-      -- trail_missions: the missions data_mode loads
-      local csvTexts = {}
-      local missionRows = {}
-      for _, trail in ipairs(TRAILS) do
-        local settings = trailSettings[trail.name]
-        if settings ~= nil and settings.missions ~= nil then
-          local okSync, text, rows = pcall(sync.run, settings.missions,
-            settings.hasAiMapping and settings.aiMapping or nil, knownHeaders())
-          if not okSync then
-            log(WARNING, string.format("%s trail missions: %s", trail.type, tostring(text)))
-            if settings.missions.mode == "json_folder" then
-              csvTexts[trail.name] = false
-            end
-          else
-            csvTexts[trail.name] = text
-            missionRows[trail.name] = rows
-          end
-        end
-      end
-
-      -- Export / Import CSV Data requested in the GUI
-      local ok, err = pcall(runConversions, config, trailSettings, missionRows)
-      if not ok then
-        log(WARNING, "Export / Import CSV Data: " .. tostring(err))
-      end
-
       local language = data.version.getGameLanguage() or ""
 
       for _, trail in ipairs(TRAILS) do
@@ -518,19 +450,15 @@ return {
             log(WARNING, "trail title and summary: " .. tostring(textError))
           end
         end
-        local path = trailCsv(config, trail, trailSettings[trail.name])
-        if csvTexts[trail.name] == false then
-          log(WARNING, string.format("the %s trail keeps the game's own missions, "
-            .. "because its mission files cannot be loaded", trail.type))
-        elseif nonEmpty(path) then
+        local entries, path = trailEntries[trail.name], sourcePaths[trail.name]
+        if entries ~= nil then
           log(INFO, string.format("%s trail (%s): %s", trail.type, language, path))
-          local okTrail, trailError = pcall(applyTrail, trail.name, path, missionTables[trail.name],
-            missionCounts[trail.name], languageTexts, startInstalled,
-            trailSettings[trail.name] and trailSettings[trail.name].missionKeys, csvTexts[trail.name])
-          if not okTrail then
-            log(WARNING, string.format("the trail csv file %s cannot be used, so the %s "
-              .. "trail keeps the game's own missions: %s", path, trail.type, tostring(trailError)))
+          for index = #entries, missionCounts[trail.name] + 1, -1 do
+            entries[index] = nil
           end
+          local okTrail, trailError = pcall(applyTrail, trail.name, entries, missionTables[trail.name],
+            languageTexts, startInstalled, trailSettingsForTexts and trailSettingsForTexts.missionKeys)
+          if not okTrail then sourceWarning(trail, path, trailError) end
         end
       end
 

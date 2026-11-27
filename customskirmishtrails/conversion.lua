@@ -1,29 +1,17 @@
--- Trail csv files and mission JSON files (format 1, see missionjson.lua):
---
---   <base>.csv
---   <base>/<name>_mission_01.json, <name>_mission_02.json, ...
---
--- Export writes one JSON file per csv line, Import puts the JSON files back together into a csv.
--- Both read the trail's files and write into the module's user data folder (export/, import/).
--- Export followed by Import gives the same csv back. The trail settings file's
--- ai_character_mapping, when given, turns the AI keys of the csv into the names used in the JSON.
+-- CSV helpers and mission file loading.
 
-local storage = require("customskirmishtrails.storage")
 local settingsModule = require("customskirmishtrails.settings")
 local missionjson = require("customskirmishtrails.missionjson")
 
 local conversion = {}
 
-conversion.jsonString = missionjson.jsonString
-
 -- CSV ------------------------------------------------------------------------------------
 
----Parses csv text into rows of raw strings. Returns rows and the line ending it used.
-function conversion.parseCsv(text)
+---Parses the legacy CSV into rows of raw strings.
+local function parseCsv(text)
   if text:sub(1, 3) == "\239\187\191" then
     text = text:sub(4)
   end
-  local newline = text:find("\r\n", 1, true) and "\r\n" or "\n"
   local rows, row, field = {}, {}, {}
   local position, length = 1, #text
   local quoted, fieldStarted = false, false
@@ -75,7 +63,7 @@ function conversion.parseCsv(text)
       table.insert(result, r)
     end
   end
-  return result, newline
+  return result
 end
 
 local function csvField(value)
@@ -85,7 +73,7 @@ local function csvField(value)
   return value
 end
 
-function conversion.formatCsv(rows, newline)
+local function formatCsv(rows, newline)
   local lines = {}
   for _, row in ipairs(rows) do
     local fields = {}
@@ -97,13 +85,13 @@ function conversion.formatCsv(rows, newline)
   return table.concat(lines, newline) .. newline
 end
 
----A trail csv file as { text, header, missions = { column -> cell }, newline }, or nil and an error.
+---A legacy trail CSV as { header, missions = { column -> cell } }, or nil and an error.
 function conversion.readTable(path)
   local text, err = settingsModule.readText(path)
   if text == nil then
     return nil, string.format("cannot read %s (%s)", path, tostring(err))
   end
-  local rows, newline = conversion.parseCsv(text)
+  local rows = parseCsv(text)
   if #rows < 1 then
     return nil, path .. " is empty"
   end
@@ -117,12 +105,12 @@ function conversion.readTable(path)
     end
     table.insert(missions, cells)
   end
-  return { text = text, header = header, missions = missions, newline = newline }
+  return { header = header, missions = missions }
 end
 
 ---The csv columns for missions put together from JSON files: the csv's own header when there is
----one, the known columns otherwise; columns only the JSON files have go at the end.
-function conversion.columnOrder(existingHeader, missions, knownHeaders)
+---one, then the known columns, then any remaining columns.
+function conversion.columnOrder(existingHeader, missions, knownHeaders, legacy)
   local order, seen = {}, {}
   local function add(key)
     if key ~= "" and not seen[key] then
@@ -138,11 +126,11 @@ function conversion.columnOrder(existingHeader, missions, knownHeaders)
   local present = {}
   for _, mission in ipairs(missions) do
     for key, value in pairs(mission) do
-      present[key] = present[key] or value ~= ""
+      present[key] = present[key] or not legacy or value ~= ""
     end
   end
   for _, key in ipairs(knownHeaders or {}) do
-    if existingHeader == nil or present[key] then
+    if (legacy and existingHeader == nil) or present[key] then
       add(key)
     end
   end
@@ -186,21 +174,10 @@ function conversion.csvText(header, missions, newline)
     end
     table.insert(rows, row)
   end
-  return conversion.formatCsv(rows, newline or "\r\n")
+  return formatCsv(rows, newline or "\r\n")
 end
 
 -- mission files ----------------------------------------------------------------------------
-
----The folder and file name base of a csv file: "a/b/trail.csv" -> "a/b/trail", "trail".
-function conversion.folderOf(csvPath)
-  local base = csvPath:gsub("%.[cC][sS][vV]$", "")
-  local name = base:match("([^/\\]+)$") or base
-  return base, name
-end
-
-function conversion.missionFileName(name, number)
-  return string.format("%s_mission_%02d.json", name, number)
-end
 
 ---The mission files in `folder`: a list of { number, name } sorted by number.
 function conversion.listMissionFiles(folder, name)
@@ -240,50 +217,6 @@ function conversion.readMission(path, reverse)
     error(string.format("%s is not valid JSON: %s", path, tostring(data)))
   end
   return missionjson.toRow(data, reverse, path)
-end
-
--- Export and Import (the GUI's CSV data panel) ---------------------------------------------
-
----Writes one JSON file per mission line of the csv file `csvPath` into export/<name>/.
-function conversion.export(csvPath, aiMapping)
-  local csv, err = conversion.readTable(csvPath)
-  if csv == nil then
-    return false, err
-  end
-  local _, name = conversion.folderOf(csvPath)
-  local folder = "export/" .. name
-  for index, cells in ipairs(csv.missions) do
-    local file = folder .. "/" .. conversion.missionFileName(name, index)
-    local done, writeError = storage.write(file, missionjson.fromRow(csv.header, cells, aiMapping))
-    if not done then
-      return false, writeError
-    end
-  end
-  return true, string.format("exported %d missions of %s to %s", #csv.missions, csvPath, storage.path(folder))
-end
-
----Puts the mission JSON files next to `csvPath` back together into import/<name>.csv.
-function conversion.import(csvPath, aiMapping, knownHeaders)
-  local folder, name = conversion.folderOf(csvPath)
-  local files = conversion.listMissionFiles(folder, name)
-  if #files == 0 then
-    return false, string.format("no %s files in %s",
-      (conversion.missionFileName(name, 1):gsub("01", "NN")), folder)
-  end
-  local reverse = conversion.reverseMapping(aiMapping)
-  local missions = {}
-  for _, file in ipairs(files) do
-    table.insert(missions, conversion.readMission(folder .. "/" .. file.name, reverse))
-  end
-  local existing = conversion.readTable(csvPath)
-  local header = conversion.columnOrder(existing and existing.header or nil, missions, knownHeaders)
-  local text = conversion.csvText(header, missions, existing and existing.newline or "\r\n")
-  local output = "import/" .. name .. ".csv"
-  local done, writeError = storage.write(output, text)
-  if not done then
-    return false, writeError
-  end
-  return true, string.format("imported %d missions from %s into %s", #missions, folder, storage.path(output))
 end
 
 return conversion

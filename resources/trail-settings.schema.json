@@ -212,15 +212,15 @@
       }
     },
     "trail_missions": {
-      "description": "Synchronizes a mission JSON folder and its matching CSV at game start; omission leaves mission selection to the UCP GUI.",
+      "description": "Names the source of a trail's mission data.",
       "type": "object",
       "properties": {
         "base_name": {
-          "description": "Required path to both the mission folder and the CSV, written without the .csv suffix.",
+          "description": "Mission folder path, written without the .csv suffix. A route can name its mission files directly.",
           "type": "string"
         },
         "data_mode": {
-          "description": "What the game loads. json_folder: the mission files. csv (the default): the CSV. automatic: per mission the newer one, with CSV winning ties. Neither is written.",
+          "description": "A JSON trail source reads mission files (json_folder). Legacy profiles also support csv and automatic.",
           "type": "string",
           "enum": [
             "csv",

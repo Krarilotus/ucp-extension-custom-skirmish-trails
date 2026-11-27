@@ -1,6 +1,6 @@
 # Custom Skirmish Trails
 
-This extension enables custom skirmish trails, specified in .csv files.
+Play custom skirmish trails from a CSV or a trail settings JSON.
 
 ## Possibilities
 You can download the first trail [here](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-First-Edition-Trail.csv), the warchest [here](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Warchest-Trail.csv) and the extreme trail [here](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Extreme-Trail.csv).

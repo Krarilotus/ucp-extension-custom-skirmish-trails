@@ -1,66 +1,15 @@
 option_1_header: İlk Sürüm Seferi (First Edition Trail)
 option_1_text: |-
   İlk çarpışma seferini özelleştirin.
-option_1_1_header: Sefer ayar dosyası
-option_1_1_text: |-
-  İlk seferin ayar dosyası (.json). Oyunun kendi değerlerini korumak için boş bırakın.
-option_1_2_header: CSV dosyası (sefer ayar dosyası olmadan)
-option_1_2_text: |-
-  Sefer ayar dosyası olmadan kullanım için ilk seferin CSV dosyası. trail_missions içeren bir sefer ayar dosyası bunun yerini alır.
-option_1_3_header: Dosya yolları
-option_1_3_text: |-
-  İlk sefer için tanımlanan dosyaları görüntüleyin ve temizleyin
-option_1_4_header: CSV verileri
-option_1_4_text: |-
-  İlk seferin CSV dosyasını görev başına bir JSON dosyasına dışa aktarın veya bu JSON dosyalarını tekrar CSV dosyasına içe aktarın
 option_2_header: Warchest Seferi
 option_2_text: |-
   Warchest seferini özelleştirin.
-option_2_1_header: Sefer ayar dosyası
-option_2_1_text: |-
-  Warchest seferinin ayar dosyası (.json). Oyunun kendi değerlerini korumak için boş bırakın.
-option_2_2_header: CSV dosyası (sefer ayar dosyası olmadan)
-option_2_2_text: |-
-  Sefer ayar dosyası olmadan kullanım için Warchest seferinin CSV dosyası. trail_missions içeren bir sefer ayar dosyası bunun yerini alır.
-option_2_3_header: Dosya yolları
-option_2_3_text: |-
-  Warchest seferi için tanımlanan dosyaları görüntüleyin ve temizleyin
-option_2_4_header: CSV verileri
-option_2_4_text: |-
-  Warchest seferinin CSV dosyasını görev başına bir JSON dosyasına dışa aktarın veya bu JSON dosyalarını tekrar CSV dosyasına içe aktarın
 option_3_header: Extreme Seferi
 option_3_text: |-
   Extreme seferini özelleştirin.
-option_3_1_header: Sefer ayar dosyası
-option_3_1_text: |-
-  Extreme seferinin ayar dosyası (.json). Oyunun kendi değerlerini korumak için boş bırakın.
-option_3_2_header: CSV dosyası (sefer ayar dosyası olmadan)
-option_3_2_text: |-
-  Sefer ayar dosyası olmadan kullanım için Extreme seferinin CSV dosyası. trail_missions içeren bir sefer ayar dosyası bunun yerini alır.
-option_3_3_header: Dosya yolları
-option_3_3_text: |-
-  Extreme seferi için tanımlanan dosyaları görüntüleyin ve temizleyin
-option_3_4_header: CSV verileri
-option_3_4_text: |-
-  Extreme seferinin CSV dosyasını görev başına bir JSON dosyasına dışa aktarın veya bu JSON dosyalarını tekrar CSV dosyasına içe aktarın
 option_4_header: 'Katı mod: sefer CSV ve JSON dosyalarını ayrıntılı denetle'
 option_4_text: |-
   Sefer dosyalarındaki her sorunu günlüğe kaydeder. Oyun başlangıcında hata pencereleri gösterebilir. Kapalıyken sorunlu dosya başına bir uyarı gösterilir.
-menu_paths_intro: "Bu sefer için tanımlanan dosyalar. Bir dosyayı dışarıda bırakmak için yolunu temizleyin, ardından \"Kaydet ve Kapat\"a basın."
-menu_paths_settings: "Sefer ayar dosyası"
-menu_paths_csv: "CSV dosyası"
-menu_paths_none: "Bu sefer için tanımlanmış dosya yok."
-menu_paths_cleared: "(temizlendi)"
-menu_paths_clear: "Temizle"
-menu_paths_clear_csv: "CSV yollarını temizle"
-menu_paths_notice: "Bir sefer ayar dosyası tanımlı: trail_missions içeriyorsa onun CSV dosyası kullanılır ve CSV yolları yalnızca yedektir."
-menu_paths_status: "\"Kaydet ve Kapat\"a bastığınızda {count} yol temizlenecek."
-menu_csv_intro: "Dışa aktarma, bu seferin CSV dosyasındaki her görev satırını export/<name>/ içine ayrı bir JSON dosyası olarak yazar. İçe aktarma, CSV dosyasının yanındaki klasördeki (trail.csv → trail/) JSON dosyalarını import/<name>.csv dosyasında birleştirir. export/ ve import/, oyunun kullanıcı klasöründeki ucp/userdata/custom-skirmish-trails içindedir; ucp3.log dosyaların adlarını verir."
-menu_csv_steps: "İşi oyun yapar: bir düğme seçin, \"Kaydet ve Kapat\"a basın, ardından oyunu bir kez başlatın."
-menu_csv_export: "CSV verilerini dışa aktar"
-menu_csv_import: "CSV verilerini içe aktar"
-menu_csv_requested: "{action} istendi. \"Kaydet ve Kapat\"a basın, ardından çalıştırmak için oyunu bir kez başlatın."
-menu_csv_saved: "Kaydedilen istek: {action} ({time}). Oyunun bir sonraki başlatılışında bir kez çalışır."
 misc: Diğer
 tags.scenarios: Senaryolar
 tags.maps: Haritalar

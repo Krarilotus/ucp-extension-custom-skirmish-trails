@@ -1,66 +1,15 @@
 option_1_header: Első hadjárat (First Edition)
 option_1_text: |-
   Az első csetepaté-hadjárat testreszabása.
-option_1_1_header: Hadjárat beállításfájl
-option_1_1_text: |-
-  Az első hadjárat beállításfájlja (.json). Hagyd üresen a játék alapértelmezett értékeinek megtartásához.
-option_1_2_header: CSV-fájl (hadjárat beállításfájl nélkül)
-option_1_2_text: |-
-  Az első hadjárat CSV-fájlja, ha nincs hadjárat beállításfájl. A trail_missions bejegyzést tartalmazó beállításfájl ennek a helyébe lép.
-option_1_3_header: Fájlútvonalak
-option_1_3_text: |-
-  Az első hadjárathoz beállított fájlok megtekintése és törlése
-option_1_4_header: CSV-adatok
-option_1_4_text: |-
-  Az első hadjárat CSV-fájljának exportálása küldetésenként egy JSON-fájlba, vagy ezen JSON-fájlok visszaimportálása a CSV-fájlba
 option_2_header: Warchest hadjárat
 option_2_text: |-
   A Warchest hadjárat testreszabása.
-option_2_1_header: Hadjárat beállításfájl
-option_2_1_text: |-
-  A Warchest hadjárat beállításfájlja (.json). Hagyd üresen a játék alapértelmezett értékeinek megtartásához.
-option_2_2_header: CSV-fájl (hadjárat beállításfájl nélkül)
-option_2_2_text: |-
-  A Warchest hadjárat CSV-fájlja, ha nincs hadjárat beállításfájl. A trail_missions bejegyzést tartalmazó beállításfájl ennek a helyébe lép.
-option_2_3_header: Fájlútvonalak
-option_2_3_text: |-
-  A Warchest hadjárathoz beállított fájlok megtekintése és törlése
-option_2_4_header: CSV-adatok
-option_2_4_text: |-
-  A Warchest hadjárat CSV-fájljának exportálása küldetésenként egy JSON-fájlba, vagy ezen JSON-fájlok visszaimportálása a CSV-fájlba
 option_3_header: Extreme hadjárat
 option_3_text: |-
   Az Extreme hadjárat testreszabása.
-option_3_1_header: Hadjárat beállításfájl
-option_3_1_text: |-
-  Az Extreme hadjárat beállításfájlja (.json). Hagyd üresen a játék alapértelmezett értékeinek megtartásához.
-option_3_2_header: CSV-fájl (hadjárat beállításfájl nélkül)
-option_3_2_text: |-
-  Az Extreme hadjárat CSV-fájlja, ha nincs hadjárat beállításfájl. A trail_missions bejegyzést tartalmazó beállításfájl ennek a helyébe lép.
-option_3_3_header: Fájlútvonalak
-option_3_3_text: |-
-  Az Extreme hadjárathoz beállított fájlok megtekintése és törlése
-option_3_4_header: CSV-adatok
-option_3_4_text: |-
-  Az Extreme hadjárat CSV-fájljának exportálása küldetésenként egy JSON-fájlba, vagy ezen JSON-fájlok visszaimportálása a CSV-fájlba
 option_4_header: 'Szigorú mód: a hadjárat CSV- és JSON-fájljainak részletes ellenőrzése'
 option_4_text: |-
   Naplóz minden hibát a hadjárat fájljaiban. A játék indításakor hibaablakokat jeleníthet meg. Enélkül fájlonként csak egy figyelmeztetés jelenik meg.
-menu_paths_intro: "Az ehhez a hadjárathoz beállított fájlok. Egy útvonal törlésével az a fájl kimarad; ezután nyomd meg a „Mentés és bezárás” gombot."
-menu_paths_settings: "Hadjárat beállításfájl"
-menu_paths_csv: "CSV-fájl"
-menu_paths_none: "Ehhez a hadjárathoz nincs fájl beállítva."
-menu_paths_cleared: "(törölve)"
-menu_paths_clear: "Törlés"
-menu_paths_clear_csv: "CSV-útvonalak törlése"
-menu_paths_notice: "Hadjárat beállításfájl van beállítva: ha tartalmaz trail_missions-t, annak CSV-fájlja lesz használva, a CSV-útvonalak csak tartalékok."
-menu_paths_status: "{count} útvonal törlődik a „Mentés és bezárás” megnyomásakor."
-menu_csv_intro: "Az exportálás e hadjárat CSV-fájljának minden küldetéssorát külön JSON-fájlba írja az export/<name>/ mappába. Az importálás a CSV-fájl melletti mappa (trail.csv → trail/) JSON-fájljait az import/<name>.csv fájlba fűzi össze. Az export/ és az import/ a játék felhasználói mappájában lévő ucp/userdata/custom-skirmish-trails mappában van; az ucp3.log megnevezi a fájlokat."
-menu_csv_steps: "A munkát a játék végzi: válassz egy gombot, nyomd meg a „Mentés és bezárás” gombot, majd indítsd el egyszer a játékot."
-menu_csv_export: "CSV-adatok exportálása"
-menu_csv_import: "CSV-adatok importálása"
-menu_csv_requested: "{action} kérve. Nyomd meg a „Mentés és bezárás” gombot, majd a végrehajtáshoz indítsd el egyszer a játékot."
-menu_csv_saved: "Mentett kérés: {action} ({time}). Egyszer fut le, a játék következő indításakor."
 misc: Egyéb
 tags.scenarios: Forgatókönyvek
 tags.maps: Térképek

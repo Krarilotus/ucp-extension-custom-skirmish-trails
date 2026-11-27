@@ -214,7 +214,7 @@ end
 
 ---Reads the trail settings file at `path`, meant for `trailName`. Returns nil when the file
 ---cannot be used at all.
-function settings.load(path, trailName)
+function settings.load(path, trailName, jsonSource)
   local contents, err = readText(path)
   if contents == nil then
     fail(path, "cannot read the trail settings file (%s)", tostring(err))
@@ -236,6 +236,16 @@ function settings.load(path, trailName)
       fail(path, "this file is for the %s trail but is set for another trail; it is not used", data.trail_type)
       return nil
     end
+  end
+
+  if jsonSource then
+    local missions = data.trail_missions
+    if type(missions) ~= "table" or not nonEmptyString(missions.base_name)
+      or (missions.data_mode ~= nil and missions.data_mode ~= "json_folder") then
+      fail(path, 'a JSON trail source needs trail_missions.base_name and json_folder mission data')
+      return nil
+    end
+    missions.data_mode = "json_folder"
   end
 
   local directory = settings.directoryOf(path)
@@ -333,13 +343,13 @@ function settings.load(path, trailName)
     info(path, "trail_mission_positions is not set; the trail keeps the game's mission count and button positions")
   end
   if result.missions == nil then
-    info(path, "trail_missions is not set; the csv file set in the GUI is used")
+    info(path, "trail_missions is not set; the legacy CSV path is used")
   end
   if result.textFiles == nil then
     info(path, "trail_text_files is not set; every game language shows the texts of the mission data")
   end
   if not result.hasAiMapping then
-    info(path, "ai_character_mapping is not set; Export and Import keep the AI keys (SK_RAT, ...)")
+    info(path, "ai_character_mapping is not set; mission files use the AI keys (SK_RAT, ...)")
   else
     local value = type(data.ai_character_mapping) == "table" and data.ai_character_mapping or {}
     for _, key in ipairs(settings.AI_KEYS) do

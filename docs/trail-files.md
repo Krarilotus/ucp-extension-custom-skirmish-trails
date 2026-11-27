@@ -61,15 +61,13 @@ In a mission file `unit_limit` is an object, and left out for `native`:
 "unit_limit": { "by_alive": [ { "lords": 8, "limit": 250 }, { "lords": 1, "limit": 2000 } ] }
 ```
 
-Export writes a csv `by_alive` in the order of its counts, and keeps a text that is none of the three under `extra`.
-
 The limit is never higher than the game's skirmish formula for the living lords (also in scenario missions, where the game has none), for example at most 2360 with one living lord in Crusader. In a scenario mission the living lords are the lords of the map's players that are still alive. Placed and AI units share the game's unit pool, so a limit doesn't guarantee room for the player's troops. The limit is worked out each tick from the mission being played (a skirmish mission: the game's trail state; a scenario mission: the scenario the trail started, see above); outside trail missions the game's own limit is used. A mission with a limit doesn't start when the game code for it is not found. The AI's troops are not limited by it.
 
 ## Files the game writes
 The game writes only into the module's user data folder, `ucp/userdata/custom-skirmish-trails/` in the game's user folder (UCP framework 3.0.8 or later), never into a trail's folder. Each file is written to a temporary file first, which then replaces it, so a failed write keeps the previous file. A character other than letters, digits, `.`, `_`, `~` and `-` in a file name is written as `-`.
 
 ## Trail settings file
-Each trail can have a trail settings file (a .json file, set in the GUI) with everything about the trail. `resources/trail-settings.schema.json` describes it, and `resources/trails/template-*-settings.json` hold the game's own values. Every entry is optional:
+Choose a trail settings JSON as the trail source to use mission JSONs. The settings file needs `trail_missions.base_name`. See `resources/trail-settings.schema.json` for the other fields. The templates in `resources/trails/` show the game's standard positions.
 - `trail_type`: `First`, `Warchest` or `Extreme`.
 - `trail_id`: names the files that keep the trail's progress (`progress-<trail_id>.txt` in the user data folder), passed missions and results (see Trail route), so its progress stays apart from the game's own and from every other `trail_id`. 1 to 64 lowercase letters, digits, `-` or `_`. Without it the progress is the game's own, and the other files take the trail's `trail_type` in lowercase in place of `<trail_id>`: `first`, `warchest` or `extreme` (`sides-extreme.txt` for the Extreme trail). These three can't be a `trail_id`.
 - `trail_missions`: the trail's mission data, see below.
@@ -89,7 +87,7 @@ The csv templates in `resources/trails/` have every csv column, one line per mis
 
 **Write mission files; no csv is needed.** With `"trail_missions": { "base_name": "missions/my_trail", "data_mode": "json_folder" }`, a trail needs only its trail settings file and the mission files `missions/my_trail/my_trail_mission_01.json`, `..._02.json`, ... (numbered without gaps; a route's `mission` is that number). A route of mission files names each file itself instead (see Trail route). The game loads the mission files at every start.
 
-`"trail_missions": { "base_name": "missions/my_trail", "data_mode": "csv" }` names both the csv file (`missions/my_trail.csv`) and a folder of mission files (`missions/my_trail/my_trail_mission_01.json`, ...). A mission file (format 1, `resources/mission.schema.json`) holds the same data as one csv line, laid out for reading and editing:
+A mission file (format 1, `resources/mission.schema.json`) holds the same data as one csv line, laid out for reading and editing:
 - `mission_name` and `text_description` (a list of the 8 lines) at the top;
 - `advantage` (`human_large`, `human_small`, `neutral`, `ai_small`, `ai_large`; the csv's fairness 1-5) and `start_mode` (`normal`, `crusader`, `deathmatch`; the csv's start_levels 1-3). Numbers work too;
 - `players`: one entry per player, so their number is the mission's number of players. `players[0]` is the human player: it may have `lord` and `skip_start_units`, never `ai`. The others always have `ai`, never `lord`. All have `name`, `start_position`, `team`, `aiv_type` and `gold` as needed, and AI players `color`;
@@ -98,12 +96,9 @@ The csv templates in `resources/trails/` have every csv column, one line per mis
 - `unit_limit`: an object, see Troop limits;
 - `extra`: any csv value that has no place above, so that nothing gets lost. A conflicting value in `extra` takes precedence and logs a warning before it can be written to CSV.
 
-`data_mode` says which one the game loads at every start; it changes neither:
-- `csv`: the csv file.
-- `json_folder`: the mission files.
-- `automatic`: per mission, the mission file when it is newer than the csv file, else the csv line. A malformed mission file stops the loading of the mission files.
+A JSON source uses `json_folder` mission data, including when `data_mode` is omitted. For a route of files, each node names its mission file and position. Use `tools/convert_trail.py` to switch formats. See [Author a trail](../README.md#author-a-trail).
 
-To turn one into the other, use Export and Import. Without a trail settings file, the csv file set in the GUI is used as before.
+For one release, an empty source field lets old profiles load their settings and CSV paths as before. The legacy `csv` and `automatic` modes apply only to those profiles.
 
 ## Language files
 The mission data holds one set of texts, the default language. Each further language is one small JSON file with only its texts: `"trail_text_files": "texts/"` points to a folder with one file per game language as UCP names it: `english.json`, `german.json`, `russian.json` and so on (or give an object of languages to files). A language file:
@@ -119,16 +114,10 @@ The mission data holds one set of texts, the default language. Each further lang
 }
 ```
 
-Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number, or by their node id when the trail's route names its missions by file (`"door05": { ... }`). A text a language file does not have shows the mission data's text; strict mode lists those. With `trail_missions` and `trail_text_files`, Export CSV Data also writes `texts-template-<trail_id>.json` into the user data folder (named as the passed nodes' file): all texts of the mission data, as a starting point for translators.
-
-## File paths
-Each trail's "File paths" panel lists the files set for it and clears them (the GUI's own reset only works right after a path was set).
+Validate language files with [the language-file schema](../resources/trail-language.schema.json). Missions are found by their number, or by their node id when the trail's route names its missions by file (`"door05": { ... }`). A text a language file does not have shows the mission data's text; strict mode lists those.
 
 ## Strict mode
 Miscellaneous: logs every problem in the csv, mission, language and trail settings files, every trail setting that falls back to the game's own value, and every text a language file lacks. Without it, one warning per file with problems.
-
-## Export and Import CSV Data
-Each trail's "CSV data" panel in the GUI has an Export and an Import button. Export writes every csv line into a mission file in `export/<name>/` of the user data folder, Import puts the mission files next to the csv back together into `import/<name>.csv` there. The GUI cannot write files itself, so a button records the request and the game carries it out at its next start; ucp3.log and `requests.json` in the user data folder say what was done.
 
 ### Skip tokens
 
@@ -220,8 +209,7 @@ selects the first main mission in the trail's order that can be played.
 **The order.** The game keeps a trail as rows in order and ends it when its last row is won. With
 files, Trails gives every node its row: the main nodes in the order their `requires` allow (by id
 where several could go), then the side nodes, and the end last. The game loads the node files in
-that order (`trail_missions.base_name` names the csv of Import; `data_mode` is not used: the files
-are the mission data). The route gives the positions;
+that order. The route gives the positions;
 `trail_mission_positions` is not used. A mission file holds the mission as in a numbered folder,
 `icon` included.
 

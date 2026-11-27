@@ -376,20 +376,11 @@ local ALLOW_NIL = {
   ["tradeable_ironarmor"] = true,
 }
 
-local function prefixHeaders(contents)
-  return table.concat(HEADERS,",") .. "\r\n" .. contents
-end
-
 local function getContents(path)
-  local handle, err = io.open(path,'rb')
-  if handle == nil then error(debug.traceback(err)) end
+  local handle, err = io.open(path, "rb")
+  if handle == nil then return nil, err end
   local contents = handle:read("*all")
-  log(2, string.format("raw csv contents\n%s", contents))
-  -- if contents:sub(1, ("map_name"):len()) ~= "map_name" then
-  --   log(2, string.format("getContents: prefixing headers"))
-  --    contents = prefixHeaders(contents)
-  -- end
-  handle:close()  
+  handle:close()
   return contents
 end
 
@@ -430,7 +421,7 @@ local function scenarioUnused(name)
     or name:match("^team%d$") or name:match("^aiv_type%d$")
 end
 
-local function validateInput(input, index)
+local function validateInput(input, index, source)
   index = index or "<NA>"
   local isScenario = require("customskirmishtrails.scenario").isScenario(input)
 
@@ -442,7 +433,9 @@ local function validateInput(input, index)
     elseif isScenario and scenarioUnused(name) and tostring(value):match("^%s*$") then
       input[name] = nil
     elseif t == nil then
-      fail(name, index, "nil", type(value), value)
+      if not source then
+        fail(name, index, "nil", type(value), value)
+      end
     else
       local ty = type(value)
       if ty == "string" then
@@ -472,12 +465,8 @@ local function validateInput(input, index)
 
 end
 
-local function pvalidateInput(input, index)
-  return pcall(validateInput, input, index)
-end
-
 ---Reads the trail csv file `path`, or `contents` in its place.
-local function readCSV(path, limit, contents)
+local function readCSV(path, limit, contents, requireMissions)
   log(2, string.format("readCSV: %s", path))
   local reason
   if contents == nil then
@@ -486,7 +475,7 @@ local function readCSV(path, limit, contents)
   if contents == nil then
     return nil, string.format("%s: %s", tostring(path), tostring(reason))
   end
-  local c = csv.openstring(contents, {header = true, })
+  local c = csv.openstring(contents, { header = true, separator = requireMissions and ',' or nil, filename = path })
 
   local entries = {}
   for line in c:lines() do
@@ -494,14 +483,21 @@ local function readCSV(path, limit, contents)
     if limit < 1 then
       break
     end
+    if requireMissions and (type(line.map_name) ~= "string" or line.map_name == "") then
+      return nil, string.format("mission %d has no map_name", #entries + 1)
+    end
     table.insert(entries, line)
+  end
+
+  if requireMissions and #entries == 0 then
+    return nil, "no mission rows"
   end
 
   -- clear fails table
   fails = {}
 
   for index, entry in ipairs(entries) do
-    local valid, err = pvalidateInput(entry, index)
+    local valid, err = pcall(validateInput, entry, index, requireMissions)
     if not valid then
       local msg = string.format("entry #%i contains invalid information: %s", index, err)
       log(WARNING, msg)
@@ -509,7 +505,10 @@ local function readCSV(path, limit, contents)
     end
   end
 
-  if table.length(fails) > 0 then
+  if #fails > 0 then
+    if requireMissions then
+      return nil, string.format("%d problems in the mission data (first: %s)", #fails, fails[1])
+    end
     local ll = WARNING
     if strictness == "warning" then
       ll = WARNING
@@ -529,11 +528,6 @@ local function readCSV(path, limit, contents)
 
   return entries
 end
-
--- local originalContents
--- local handle = io.open("extremeTrail.csv",'rb')
--- originalContents =  prefixHeaders(handle:read("*all"))
--- handle:close()
 
 return {
   setStrictness = function(s) strictness = s end,

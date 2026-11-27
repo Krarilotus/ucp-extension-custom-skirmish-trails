@@ -13,7 +13,6 @@
 -- missions by file. A text the language file does not have keeps the default text from the csv.
 
 local settingsModule = require("customskirmishtrails.settings")
-local conversion = require("customskirmishtrails.conversion")
 
 local texts = {}
 
@@ -151,41 +150,6 @@ function texts.apply(languageTexts, entries, keys)
         languageTexts.path, key))
     end
   end
-end
-
--- Writing language files -------------------------------------------------------------------
-
----The JSON text of a language file with the texts of `entries` (only non-empty texts); `keys` as
----for missionKey.
-function texts.format(entries, title, summary, lockedText, keys)
-  local q = conversion.jsonString
-  local lines = { "{" }
-  if title ~= nil then
-    table.insert(lines, '  "trail_title": ' .. q(title) .. ",")
-  end
-  if summary ~= nil then
-    table.insert(lines, '  "trail_summary": ' .. q(summary) .. ",")
-  end
-  if lockedText ~= nil then
-    table.insert(lines, '  "mission_locked_text": ' .. q(lockedText) .. ",")
-  end
-  table.insert(lines, '  "missions": {')
-  local missions = {}
-  for index, entry in ipairs(entries) do
-    local fields = {}
-    for _, column in ipairs(texts.COLUMNS) do
-      local value = entry[column]
-      if type(value) == "string" and value ~= "" then
-        table.insert(fields, string.format("      %s: %s", q(column), q(value)))
-      end
-    end
-    table.insert(missions, string.format("    %s: {\n%s\n    }", q(texts.missionKey(index, keys)),
-      table.concat(fields, ",\n")))
-  end
-  table.insert(lines, table.concat(missions, ",\n"))
-  table.insert(lines, "  }")
-  table.insert(lines, "}")
-  return table.concat(lines, "\n") .. "\n"
 end
 
 return texts

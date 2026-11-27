@@ -7,60 +7,15 @@ options:
   text: '{{option_1_text}}'
   hasHeader: true
   children:
-  - name: settings_details
-    display: GroupBox
-    hasHeader: true
-    header: '{{option_1_1_header}}'
-    text: '{{option_1_1_text}}'
-    children:
-    - name: settings
-      header: '{{option_1_1_header}}'
-      display: FileInput
-      url: custom-skirmish-trails.firstedition.settings.path
-      contents:
-        generalizeExtensionPaths: true
-        filter: files
-        type: string
-        value: ''
-  - name: csv_details
-    display: GroupBox
-    hasHeader: true
-    header: '{{option_1_2_header}}'
-    text: '{{option_1_2_text}}'
-    children:
-    - name: csv
-      header: '{{option_1_2_header}}'
-      display: FileInput
-      url: custom-skirmish-trails.firstedition.csv.path
-      contents:
-        generalizeExtensionPaths: true
-        filter: files
-        type: string
-        value: ''
-  - name: filepaths
-    header: '{{option_1_3_header}}'
-    text: '{{option_1_3_text}}'
-    hasHeader: true
-    display: CustomMenu
-    url: custom-skirmish-trails.firstedition
+  - name: source
+    text: '{{trail_source_text}}'
+    display: FileInput
+    url: custom-skirmish-trails.firstedition.source.path
     contents:
-      type: custom
-      source:
-        html: file-paths.html
-        css: file-paths.css
-        js: file-paths.js
-  - name: conversion
-    header: '{{option_1_4_header}}'
-    text: '{{option_1_4_text}}'
-    hasHeader: true
-    display: CustomMenu
-    url: custom-skirmish-trails.firstedition.conversion
-    contents:
-      type: custom
-      source:
-        html: csv-data.html
-        css: csv-data.css
-        js: csv-data.js
+      generalizeExtensionPaths: true
+      filter: files
+      type: string
+      value: ''
 - category:
   - '{{misc}}'
   name: warchest
@@ -69,60 +24,15 @@ options:
   text: '{{option_2_text}}'
   hasHeader: true
   children:
-  - name: settings_details
-    display: GroupBox
-    hasHeader: true
-    header: '{{option_2_1_header}}'
-    text: '{{option_2_1_text}}'
-    children:
-    - name: settings
-      header: '{{option_2_1_header}}'
-      display: FileInput
-      url: custom-skirmish-trails.warchest.settings.path
-      contents:
-        generalizeExtensionPaths: true
-        filter: files
-        type: string
-        value: ''
-  - name: csv_details
-    display: GroupBox
-    hasHeader: true
-    header: '{{option_2_2_header}}'
-    text: '{{option_2_2_text}}'
-    children:
-    - name: csv
-      header: '{{option_2_2_header}}'
-      display: FileInput
-      url: custom-skirmish-trails.warchest.csv.path
-      contents:
-        generalizeExtensionPaths: true
-        filter: files
-        type: string
-        value: ''
-  - name: filepaths
-    header: '{{option_2_3_header}}'
-    text: '{{option_2_3_text}}'
-    hasHeader: true
-    display: CustomMenu
-    url: custom-skirmish-trails.warchest
+  - name: source
+    text: '{{trail_source_text}}'
+    display: FileInput
+    url: custom-skirmish-trails.warchest.source.path
     contents:
-      type: custom
-      source:
-        html: file-paths.html
-        css: file-paths.css
-        js: file-paths.js
-  - name: conversion
-    header: '{{option_2_4_header}}'
-    text: '{{option_2_4_text}}'
-    hasHeader: true
-    display: CustomMenu
-    url: custom-skirmish-trails.warchest.conversion
-    contents:
-      type: custom
-      source:
-        html: csv-data.html
-        css: csv-data.css
-        js: csv-data.js
+      generalizeExtensionPaths: true
+      filter: files
+      type: string
+      value: ''
 - category:
   - '{{misc}}'
   name: extremetrail
@@ -131,60 +41,15 @@ options:
   text: '{{option_3_text}}'
   hasHeader: true
   children:
-  - name: settings_details
-    display: GroupBox
-    hasHeader: true
-    header: '{{option_3_1_header}}'
-    text: '{{option_3_1_text}}'
-    children:
-    - name: settings
-      header: '{{option_3_1_header}}'
-      display: FileInput
-      url: custom-skirmish-trails.extremetrail.settings.path
-      contents:
-        generalizeExtensionPaths: true
-        filter: files
-        type: string
-        value: ''
-  - name: csv_details
-    display: GroupBox
-    hasHeader: true
-    header: '{{option_3_2_header}}'
-    text: '{{option_3_2_text}}'
-    children:
-    - name: csv
-      header: '{{option_3_2_header}}'
-      display: FileInput
-      url: custom-skirmish-trails.extremetrail.csv.path
-      contents:
-        generalizeExtensionPaths: true
-        filter: files
-        type: string
-        value: ''
-  - name: filepaths
-    header: '{{option_3_3_header}}'
-    text: '{{option_3_3_text}}'
-    hasHeader: true
-    display: CustomMenu
-    url: custom-skirmish-trails.extremetrail
+  - name: source
+    text: '{{trail_source_text}}'
+    display: FileInput
+    url: custom-skirmish-trails.extremetrail.source.path
     contents:
-      type: custom
-      source:
-        html: file-paths.html
-        css: file-paths.css
-        js: file-paths.js
-  - name: conversion
-    header: '{{option_3_4_header}}'
-    text: '{{option_3_4_text}}'
-    hasHeader: true
-    display: CustomMenu
-    url: custom-skirmish-trails.extremetrail.conversion
-    contents:
-      type: custom
-      source:
-        html: csv-data.html
-        css: csv-data.css
-        js: csv-data.js
+      generalizeExtensionPaths: true
+      filter: files
+      type: string
+      value: ''
 - category:
   - '{{misc}}'
   name: strict_format

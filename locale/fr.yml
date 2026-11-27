@@ -1,66 +1,15 @@
 option_1_header: Piste Première Édition
 option_1_text: |-
   Personnalise la première piste d'escarmouche.
-option_1_1_header: Fichier de paramètres de piste
-option_1_1_text: |-
-  Le fichier de paramètres de la première piste (.json). Laissez vide pour conserver les valeurs du jeu.
-option_1_2_header: Fichier CSV (sans fichier de paramètres de piste)
-option_1_2_text: |-
-  Le fichier CSV de la première piste, pour une utilisation sans fichier de paramètres de piste. Un fichier de paramètres de piste avec trail_missions le remplace.
-option_1_3_header: Chemins de fichiers
-option_1_3_text: |-
-  Afficher et effacer les fichiers définis pour la première piste
-option_1_4_header: Données CSV
-option_1_4_text: |-
-  Exporter le fichier CSV de la première piste en un fichier JSON par mission, ou réimporter ces fichiers JSON dans le fichier CSV
 option_2_header: Piste Warchest
 option_2_text: |-
   Personnalise la piste Warchest.
-option_2_1_header: Fichier de paramètres de piste
-option_2_1_text: |-
-  Le fichier de paramètres de la piste Warchest (.json). Laissez vide pour conserver les valeurs du jeu.
-option_2_2_header: Fichier CSV (sans fichier de paramètres de piste)
-option_2_2_text: |-
-  Le fichier CSV de la piste Warchest, pour une utilisation sans fichier de paramètres de piste. Un fichier de paramètres de piste avec trail_missions le remplace.
-option_2_3_header: Chemins de fichiers
-option_2_3_text: |-
-  Afficher et effacer les fichiers définis pour la piste Warchest
-option_2_4_header: Données CSV
-option_2_4_text: |-
-  Exporter le fichier CSV de la piste Warchest en un fichier JSON par mission, ou réimporter ces fichiers JSON dans le fichier CSV
 option_3_header: Piste Extreme
 option_3_text: |-
   Personnalise la piste Extreme.
-option_3_1_header: Fichier de paramètres de piste
-option_3_1_text: |-
-  Le fichier de paramètres de la piste Extreme (.json). Laissez vide pour conserver les valeurs du jeu.
-option_3_2_header: Fichier CSV (sans fichier de paramètres de piste)
-option_3_2_text: |-
-  Le fichier CSV de la piste Extreme, pour une utilisation sans fichier de paramètres de piste. Un fichier de paramètres de piste avec trail_missions le remplace.
-option_3_3_header: Chemins de fichiers
-option_3_3_text: |-
-  Afficher et effacer les fichiers définis pour la piste Extreme
-option_3_4_header: Données CSV
-option_3_4_text: |-
-  Exporter le fichier CSV de la piste Extreme en un fichier JSON par mission, ou réimporter ces fichiers JSON dans le fichier CSV
 option_4_header: 'Mode strict : vérifier en détail les fichiers CSV et JSON des pistes'
 option_4_text: |-
   Consigne chaque problème dans les fichiers de piste. Peut afficher des boîtes d'erreur au démarrage du jeu. Sans cette option, un seul avertissement est affiché par fichier défectueux.
-menu_paths_intro: "Les fichiers définis pour cette piste. Effacez un chemin pour ne pas utiliser ce fichier, puis appuyez sur « Sauvegarder et Fermer »."
-menu_paths_settings: "Fichier de paramètres de piste"
-menu_paths_csv: "Fichier CSV"
-menu_paths_none: "Aucun fichier n'est défini pour cette piste."
-menu_paths_cleared: "(effacé)"
-menu_paths_clear: "Effacer"
-menu_paths_clear_csv: "Effacer les chemins CSV"
-menu_paths_notice: "Un fichier de paramètres de piste est défini : s'il contient trail_missions, son fichier CSV est utilisé et les chemins CSV ne servent que de repli."
-menu_paths_status: "{count} chemin(s) seront effacés lorsque vous appuierez sur « Sauvegarder et Fermer »."
-menu_csv_intro: "Exporter écrit chaque ligne de mission du fichier CSV de cette piste dans un fichier JSON sous export/<name>/. Importer rassemble les fichiers JSON du dossier voisin du fichier CSV (trail.csv → trail/) dans import/<name>.csv. export/ et import/ sont dans ucp/userdata/custom-skirmish-trails, dans le dossier utilisateur du jeu ; ucp3.log indique les fichiers."
-menu_csv_steps: "Le jeu fait le travail : choisissez un bouton, appuyez sur « Sauvegarder et Fermer », puis lancez le jeu une fois."
-menu_csv_export: "Exporter les données CSV"
-menu_csv_import: "Importer les données CSV"
-menu_csv_requested: "{action} demandé. Appuyez sur « Sauvegarder et Fermer », puis lancez le jeu une fois pour l'exécuter."
-menu_csv_saved: "Demande enregistrée : {action} ({time}). Elle s'exécute une fois, au prochain lancement du jeu."
 misc: Divers
 tags.scenarios: Scénarios
 tags.maps: Cartes
