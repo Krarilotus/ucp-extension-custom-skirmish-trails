@@ -327,8 +327,8 @@ local function readTrailSource(config, trail)
   if type(sourcePath) ~= "string" or sourcePath == "" then return settings end
   local plannedCount = settings and settings.positions and #settings.positions or patches.VANILLA_COUNT[trail.name]
   local ok, entries, reason = pcall(cst_io.readCSV, sourcePath, plannedCount + 1, csvText, not legacy, jsonRows)
-  if not ok or entries == nil then
-    sourceFailure(trail, sourcePath, ok and reason or entries)
+  if not ok or entries == nil or #entries == 0 then
+    sourceFailure(trail, sourcePath, ok and (reason or "no mission rows") or entries)
     if legacy then return settings end
     return
   end
