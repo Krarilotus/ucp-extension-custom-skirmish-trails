@@ -1,15 +1,12 @@
-trail_source_text: Bir sefer CSV veya ayar JSON dosyası seçin.
-option_1_header: İlk Sürüm Seferi (First Edition Trail)
-option_1_text: |-
-  İlk çarpışma seferini özelleştirin.
-option_2_header: Warchest Seferi
-option_2_text: |-
-  Warchest seferini özelleştirin.
-option_3_header: Extreme Seferi
-option_3_text: |-
-  Extreme seferini özelleştirin.
-option_4_header: 'Katı mod: sefer CSV ve JSON dosyalarını ayrıntılı denetle'
-option_4_text: |-
-  Sefer dosyalarındaki her sorunu günlüğe kaydeder. Oyun başlangıcında hata pencereleri gösterebilir. Kapalıyken sorunlu dosya başına bir uyarı gösterilir.
+trail_source_text: Bir sefer JSON veya CSV dosyası seçin. Oyunun kendi seferini korumak için boş bırakın.
+option_1_header: İlk Sürüm sefer dosyası
+option_1_text: İlk Sürüm seferini Çarpışma Seferi’nden açın.
+option_2_header: Warchest sefer dosyası
+option_2_text: Warchest seferini Çarpışma Seferi’nden açın.
+option_3_header: Extreme sefer dosyası
+option_3_text: Extreme seferini Extreme sürümündeki Çarpışma Seferi’nden açın.
+option_4_header: Başlangıçta sefer dosyalarını denetle
+option_4_text: Oyun başlangıcında sefer dosyalarındaki ayrıntılı hataları bildirir.
 tags.scenarios: Senaryolar
 tags.maps: Haritalar
+trail_category: Özel Çarpışma Seferleri

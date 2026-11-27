@@ -1,15 +1,12 @@
-trail_source_text: Выберите CSV-файл кампании или JSON-файл с её настройками.
-option_1_header: Путь крестоносца (First Edition)
-option_1_text: |-
-  Настройте первый путь схваток.
-option_2_header: Путь Warchest
-option_2_text: |-
-  Настройте путь Warchest.
-option_3_header: Путь Extreme
-option_3_text: |-
-  Настройте путь Extreme.
-option_4_header: 'Строгий режим: подробная проверка CSV- и JSON-файлов кампаний'
-option_4_text: |-
-  Записывает в журнал каждую проблему в файлах кампаний. Может показывать окна ошибок при запуске игры. Без этой опции выводится по одному предупреждению на проблемный файл.
+trail_source_text: Выберите JSON- или CSV-файл кампании. Оставьте пустым, чтобы сохранить кампанию игры.
+option_1_header: Файл кампании First Edition
+option_1_text: Откройте кампанию First Edition через «Путь крестоносца».
+option_2_header: Файл кампании Warchest
+option_2_text: Откройте кампанию Warchest через «Путь крестоносца».
+option_3_header: Файл кампании Extreme
+option_3_text: Откройте кампанию Extreme через «Путь крестоносца» в Extreme.
+option_4_header: Проверять файлы кампаний при запуске
+option_4_text: Сообщает подробные ошибки в файлах кампаний при запуске игры.
 tags.scenarios: Сценарии
 tags.maps: Карты
+trail_category: Пользовательские кампании схваток
