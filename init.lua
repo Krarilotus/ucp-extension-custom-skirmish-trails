@@ -311,9 +311,13 @@ local function readTrailSource(config, trail)
           csvText = result
           if not legacy then jsonRows = rows end
         else
-          sourceFailure(trail, settingsPath, result)
-          if not legacy then return end
-          if missions.mode == "json_folder" then return settings end
+          if not legacy or missions.mode == "json_folder" then
+            sourceFailure(trail, settingsPath, result)
+            if legacy then return settings end
+            return
+          end
+          log(WARNING, string.format("%s trail source %s: %s",
+            trail.type, tostring(settingsPath), tostring(result)))
         end
       end
     end

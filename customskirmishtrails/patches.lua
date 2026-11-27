@@ -347,12 +347,11 @@ function patches.growExtremeTable(currentTable, capacity)
   local addresses = {}
   for _, site in ipairs(EXTREME_TABLE_SITES) do
     local address = siteAddress(site, "the Extreme trail's mission table")
-    if address == nil then
-      return currentTable
-    end
-    if core.readInteger(address + 2) ~= currentTable then
+    if address == nil or core.readInteger(address + 2) ~= currentTable then
       log(ERROR, "Extending the Extreme trail past 20 missions is off.")
-      log(WARNING, "the Extreme trail's mission table is not where expected; it keeps 20 missions")
+      if address ~= nil then
+        log(WARNING, "the Extreme trail's mission table is not where expected; it keeps 20 missions")
+      end
       return currentTable
     end
     table.insert(addresses, address)
