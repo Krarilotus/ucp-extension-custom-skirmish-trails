@@ -169,19 +169,18 @@ function patches.plain(aob)
   return (aob:gsub("I%(", ""):gsub("%)", ""))
 end
 
----The address of the match of `pattern`, or nil with a warning (naming `purpose`) when it is missing.
+---The unique code match of `pattern`, or nil with an error naming `purpose`.
 function patches.find(pattern, purpose)
-  local ok, address = pcall(core.AOBScan, pattern)
-  if not ok or address == nil then
-    log(WARNING, string.format("%s is not found; that part is disabled", purpose))
-    return nil
+  local address, reason = core.AOBScanUnique(pattern)
+  if address == nil then
+    log(ERROR, string.format("%s is off. Its game code was %s.", purpose, reason))
   end
   return address
 end
 
-local function locate(name)
+local function locate(name, purpose)
   if functions[name] == nil then
-    functions[name] = patches.find(FUNCTION_AOBS[name], name) or false
+    functions[name] = patches.find(FUNCTION_AOBS[name], purpose) or false
   end
   return functions[name] or nil
 end
@@ -193,7 +192,7 @@ end
 
 ---The address of a patch site, or nil (with a warning) when its bytes are not what we expect.
 local function siteAddress(site, purpose)
-  local base = locate(site.fn)
+  local base = locate(site.fn, purpose)
   if base == nil then
     return nil
   end
@@ -405,7 +404,7 @@ function patches.setStartYears(years)
   core.writeCodeByte(extreme + 5, 0x90)
 
   -- the defaults the game uses when it has no user config yet
-  local defaults = locate("configdefaults")
+  local defaults = locate("configdefaults", "Custom trail start dates in new configurations")
   if defaults ~= nil then
     core.writeCodeInteger(defaults + 6, months.firstEditionTrail)
     core.writeCodeInteger(defaults + 16, months.warchestTrail)
@@ -419,7 +418,7 @@ end
 
 local function nameArrays()
   if state.names == nil then
-    local sync = locate("syncnames")
+    local sync = locate("syncnames", "Custom AI names in trail missions")
     if sync == nil then
       return nil
     end
@@ -466,7 +465,7 @@ local LORD_TYPES = { arab = 1, europ = 0 }
 
 local function lordAddress()
   if state.lordTypes == nil then
-    local getLordType = locate("lordtype")
+    local getLordType = locate("lordtype", "Custom player lord type in trail missions")
     if getLordType == nil then
       state.lordTypes = false
     elseif matches(getLordType + 0x3D, "8B 04 85 ? ? ? ?") then
@@ -580,7 +579,7 @@ function patches.hookPlayerNaming(onNamed)
   if exit == nil or briefingCall == nil then
     return
   end
-  local loop = locate("ainames") + AINAMES_LOOP_OFFSET
+  local loop = locate("ainames", "Player names") + AINAMES_LOOP_OFFSET
   local briefingReturn = briefingCall + 5
 
   local stub = patches.luaStub(function(registers)

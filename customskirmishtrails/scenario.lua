@@ -227,19 +227,14 @@ end
 local function resolve()
   local found = {}
   for name, aob in pairs(SCANS) do
-    local ok, address = pcall(core.AOBScan, aob)
-    if not ok or address == nil then
-      log(WARNING, string.format("could not bind %s; scenario missions are switched off", name))
-      return nil
-    end
+    local address, reason = core.AOBScanUnique(aob)
+    assert(address ~= nil, "could not bind scenario " .. name .. ": " .. tostring(reason))
     found[name] = { address = address }
   end
   for name, aob in pairs(EXTRACTS) do
-    local ok, address, a, b = pcall(utils.AOBExtract, aob)
-    if not ok or address == nil then
-      log(WARNING, string.format("could not bind %s; scenario missions are switched off", name))
-      return nil
-    end
+    local match, reason = core.AOBScanUnique(patches.plain(aob))
+    assert(match ~= nil, "could not bind scenario " .. name .. ": " .. tostring(reason))
+    local address, a, b = utils.AOBExtract(aob, match, match)
     found[name] = { address = address, a, b }
   end
   local branch = patches.siteAddress(WIN_BRANCH_SITE, "the mission finished screen")
@@ -340,9 +335,13 @@ local function bindMapLookup()
   local resolvePattern = "83 EC 24 A1 ? ? ? ? 33 C4 89 44 24 20 53 55 8B 6C 24 34 56 8B 74 24 34"
     .. " 8D 46 FF 83 F8 12 8B D9 57 89 B3 C4 0B 00 00"
   local existsPattern = "8B 44 24 04 6A 00 68 00 80 00 00 50 E8 ? ? ? ? 83 C4 0C 83 F8 FF 75 05 33 C0 C2 04 00 50"
-  local found, manager = utils.AOBExtract(managerPattern)
-  local resolveAddress = core.AOBScan(resolvePattern)
-  local existsAddress = core.AOBScan(existsPattern)
+  local managerAddress, managerReason = core.AOBScanUnique(patches.plain(managerPattern))
+  assert(managerAddress ~= nil, "resource manager: " .. tostring(managerReason))
+  local resolveAddress, resolveReason = core.AOBScanUnique(resolvePattern)
+  assert(resolveAddress ~= nil, "map filename resolver: " .. tostring(resolveReason))
+  local existsAddress, existsReason = core.AOBScanUnique(existsPattern)
+  assert(existsAddress ~= nil, "map file existence check: " .. tostring(existsReason))
+  local _, manager = utils.AOBExtract(managerPattern, managerAddress, managerAddress)
   local resolveMap = core.exposeCode(resolveAddress, 3, 1)
   local fileExists = core.exposeCode(existsAddress, 2, 1)
   -- the existence check's "call _open": the game's open, which the Files module redirects and
@@ -699,8 +698,8 @@ end
 ---file into the chosen map that Restart, saves, the troop limit and the end screen need. While a
 ---session holds, they leave the chosen map as it was.
 local function installHeaderKeep(b)
-  local address = core.AOBScan(HEADER)
-  assert(address ~= nil, "the map header reader is not found")
+  local address, reason = core.AOBScanUnique(HEADER)
+  assert(address ~= nil, "map header reader: " .. tostring(reason))
   local original
   patches.guarded({ { address = address, size = HEADER_SIZE } }, function()
     original = core.hookCode(function(this, flag)
@@ -811,7 +810,7 @@ end
 ---The trail's Start (SetupSkirmishMode, cdecl, the selected mission's index): scenario missions
 ---start as above, every other mission runs the game's skirmish setup.
 local function installStartHook()
-  local setup = patches.functionAddress("setup")
+  local setup = patches.functionAddress("setup", "Scenario trail Start control")
   if setup == nil or not patches.matches(setup, "8B 44 24 04 8B 0D ? ? ? ?") then
     return false
   end
@@ -857,8 +856,9 @@ function scenario.enable(missionsOf)
   if lookupOk then
     mapLookup = lookup
   else
-    log(ERROR, "Custom trail map lookup is off. The map lookup code could not be bound.")
+    log(ERROR, "Custom trail map lookup and scenario missions are off. The map lookup code could not be bound.")
     log(WARNING, "custom map lookup is unavailable: " .. tostring(lookup))
+    return false, true
   end
   local ok, result = pcall(resolve)
   if not ok or result == nil then

@@ -138,7 +138,7 @@ local function hookTrailScreen()
     return true
   end
   local site = patches.siteAddress(VIEW_PREPARE_SITE, "the trail screen's button pictures")
-  local open = patches.functionAddress("open")
+  local open = patches.functionAddress("open", "Trail screen button pictures")
   if site == nil or open == nil then
     return
   end
