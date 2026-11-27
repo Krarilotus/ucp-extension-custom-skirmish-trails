@@ -1,4 +1,4 @@
-"""Convert a trail CSV and Trails format-1 mission files."""
+"""Convert between trail CSV and mission JSON files."""
 import argparse
 import csv
 import json
@@ -18,6 +18,9 @@ COLORS = ("orange", "yellow", "blue", "black", "purple", "lightblue", "green")
 TEXT_COLUMNS = tuple(f"text_description_line_{line:02d}" for line in range(1, 9))
 TRAILS = {"First": "First-Edition", "Warchest": "Warchest", "Extreme": "Extreme"}
 SCHEMA = "https://github.com/gynt/ucp-extension-custom-skirmish-trails/resources/{}.schema.json"
+# Canonical key order from customskirmishtrails/settings.lua (readAiMapping).
+AI_KEYS = ("SK_RAT", "SK_SNAKE", "SK_PIG", "SK_WOLF", "SK_SALADIN", "SK_CALIPH", "SK_SULTAN", "SK_RICHARD",
+           "SK_FREDERICK", "SK_PHILLIP", "SK_WAZIR", "SK_EMIR", "SK_NIZAR", "SK_SHERIFF", "SK_MARSHAL", "SK_ABBOT")
 
 
 def player_columns(player):
@@ -132,8 +135,22 @@ def cell(value):
 
 
 def csv_row(mission, aliases):
+    if not isinstance(mission, dict):
+        raise ValueError("expected a mission object")
+    map_name = mission.get("map_name")
+    if (mission.get("format") is None and mission.get("players") is None
+            and type(map_name) in (str, int, float)
+            and all(mission.get(key) is not None for key in ("fairness", "start_levels", "num_players"))):
+        row = {}
+        for column, value in mission.items():
+            if isinstance(value, (dict, list)):
+                raise ValueError(f"flat mission column {column!r} must have a scalar value")
+            if value is not None:
+                text = cell(value)
+                row[column] = aliases.get(text, text) if re.fullmatch(r"player[1-8]", column) else text
+        return row
     if mission.get("format") != 1 or not mission.get("map_name"):
-        raise ValueError("expected a format-1 mission with a map_name")
+        raise ValueError("expected flat mission columns or a format-1 mission with a map_name")
     row = {key: cell(mission[key]) for key in DIRECT if key in mission}
     for key, column, names in (("advantage", "fairness", ADVANTAGE), ("start_mode", "start_levels", START_MODE)):
         if key in mission:
@@ -254,10 +271,27 @@ def json_to_csv(source, destination):
     if any("file" in node for node in route.values()):
         files = [source.parent / name for name in route_files(route)]
     else:
-        base = source.parent / settings["trail_missions"]["base_name"]
-        files = sorted(base.glob(f"{base.name}_mission_*.json"),
-                       key=lambda path: int(path.stem.rsplit("_", 1)[1]))
-    aliases = {alias: key for key, alias in settings.get("ai_character_mapping", {}).items() if alias}
+        # Match customskirmishtrails/conversion.lua (listMissionFiles) and sync.lua.
+        name = re.sub(r"(?i)\.csv$", "", settings["trail_missions"]["base_name"]).rstrip("/\\")
+        folder = source.parent / name.replace("\\", "/")
+        pattern = re.compile(rf"{re.escape(folder.name)}_mission_([0-9]+)\.json", re.IGNORECASE | re.ASCII)
+        numbered = []
+        for path in folder.iterdir():
+            match = pattern.fullmatch(path.name)
+            if match and path.is_file():
+                numbered.append((int(match[1]), path))
+        files = []
+        for index, (number, path) in enumerate(sorted(numbered), 1):
+            if number != index:
+                raise ValueError(f"expected mission file {index} in {folder}")
+            files.append(path)
+    aliases = {}
+    mapping = settings.get("ai_character_mapping")
+    if isinstance(mapping, dict):
+        for key in AI_KEYS:
+            alias = mapping.get(key)
+            if isinstance(alias, str) and alias and alias not in aliases and (alias == key or alias not in AI_KEYS):
+                aliases[alias] = key
     rows = []
     for path in files:
         try:
