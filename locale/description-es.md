@@ -1,6 +1,6 @@
 # Custom Skirmish Trails
 
-Esta extensión permite crear sendas de escaramuza personalizadas, definidas en archivos `.csv`.
+Juega sendas de escaramuza personalizadas desde un CSV o un JSON de ajustes de la senda.
 
 ## Posibilidades
 Puedes descargar la primera senda [aquí](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-First-Edition-Trail.csv), la senda Warchest [aquí](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Warchest-Trail.csv) y la senda Extreme [aquí](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Extreme-Trail.csv).

@@ -1,6 +1,6 @@
 # Custom Skirmish Trails
 
-این افزونه امکان ساخت مسیرهای سفارشی نبرد آزاد (Skirmish Trails) را که در فایل‌های `.csv` تعریف شده‌اند فراهم می‌کند.
+مسیرهای سفارشی نبرد آزاد را از یک فایل CSV یا JSON تنظیمات مسیر بازی کنید.
 
 ## امکانات
 می‌توانید مسیر اول را از [اینجا](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-First-Edition-Trail.csv)، مسیر Warchest را از [اینجا](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Warchest-Trail.csv) و مسیر Extreme را از [اینجا](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Extreme-Trail.csv) دریافت کنید.

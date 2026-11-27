@@ -1,6 +1,6 @@
 # Custom Skirmish Trails
 
-Bu eklenti, `.csv` dosyalarında tanımlanan özel çarpışma seferlerini (skirmish trails) etkinleştirir.
+Bir CSV veya sefer ayarları JSON dosyasından özel çarpışma seferleri oynayın.
 
 ## Olanaklar
 İlk seferi [buradan](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-First-Edition-Trail.csv), Warchest seferini [buradan](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Warchest-Trail.csv) ve Extreme seferini [buradan](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Extreme-Trail.csv) indirebilirsiniz.

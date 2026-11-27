@@ -1,6 +1,6 @@
 # Custom Skirmish Trails
 
-Diese Erweiterung ermöglicht eigene Kreuzzugsmärsche, die in `.csv`-Dateien definiert werden.
+Spiele eigene Kreuzzugsmärsche aus einer CSV- oder einer Marsch-Einstellungs-JSON-Datei.
 
 ## Möglichkeiten
 Du kannst den ersten Marsch [hier](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-First-Edition-Trail.csv), den Warchest-Marsch [hier](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Warchest-Trail.csv) und den Extreme-Marsch [hier](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Extreme-Trail.csv) herunterladen.

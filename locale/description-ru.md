@@ -1,6 +1,6 @@
 # Custom Skirmish Trails
 
-Это расширение позволяет создавать пользовательские пути схваток, заданные в файлах `.csv`.
+Играйте в пользовательские пути схваток из CSV-файла или JSON-файла настроек пути.
 
 ## Возможности
 Вы можете скачать первый путь [здесь](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-First-Edition-Trail.csv), путь Warchest [здесь](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Warchest-Trail.csv) и путь Extreme [здесь](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Extreme-Trail.csv).

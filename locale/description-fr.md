@@ -1,6 +1,6 @@
 # Custom Skirmish Trails
 
-Cette extension permet de créer des pistes d'escarmouche personnalisées, définies dans des fichiers `.csv`.
+Jouez à des pistes d'escarmouche personnalisées à partir d'un CSV ou d'un JSON de paramètres de piste.
 
 ## Possibilités
 Vous pouvez télécharger la première piste [ici](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-First-Edition-Trail.csv), la piste Warchest [ici](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Warchest-Trail.csv) et la piste Extreme [ici](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Extreme-Trail.csv).

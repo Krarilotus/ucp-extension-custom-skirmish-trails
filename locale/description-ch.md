@@ -1,6 +1,6 @@
 # Custom Skirmish Trails
 
-本扩展允许通过 `.csv` 文件定义自定义的遭遇战征程（Skirmish Trails）。
+使用 CSV 或征程设置 JSON 文件游玩自定义遭遇战征程。
 
 ## 可定制内容
 你可以直接下载官方模板：[初版征程](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-First-Edition-Trail.csv)、[Warchest 征程](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Warchest-Trail.csv) 以及 [Extreme 征程](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Extreme-Trail.csv)。

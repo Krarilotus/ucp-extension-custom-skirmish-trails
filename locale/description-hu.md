@@ -1,6 +1,6 @@
 # Custom Skirmish Trails
 
-Ez a bővítmény lehetővé teszi egyéni csetepaté-hadjáratok készítését `.csv` fájlokban.
+Játssz egyéni csetepaté-hadjáratokat CSV-fájlból vagy hadjárat-beállítási JSON-fájlból.
 
 ## Lehetőségek
 Az első hadjárat letölthető [innen](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-First-Edition-Trail.csv), a Warchest [innen](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Warchest-Trail.csv), az Extreme hadjárat pedig [innen](https://raw.githubusercontent.com/gynt/ucp-extension-custom-skirmish-trails/refs/heads/main/resources/trails/template-Extreme-Trail.csv).
