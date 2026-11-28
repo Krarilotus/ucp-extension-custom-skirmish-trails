@@ -223,12 +223,12 @@ function scenario.availability(entry)
 end
 
 local function resolve()
-  local header, reason = core.AOBScanUnique(HEADER)
-  assert(header ~= nil, "map header reader: " .. tostring(reason))
+  local header = patches.find(HEADER)
+  assert(header ~= nil, "map header reader: not found")
   local found = {}
   for name, aob in pairs(SCANS) do
-    local address, reason = core.AOBScanUnique(aob)
-    assert(address ~= nil, "could not bind scenario " .. name .. ": " .. tostring(reason))
+    local address = patches.find(aob)
+    assert(address ~= nil, "could not bind scenario " .. name .. ": not found")
     found[name] = { address = address }
   end
   for name, aob in pairs(EXTRACTS) do
@@ -335,12 +335,12 @@ local function bindMapLookup()
   local resolvePattern = "83 EC 24 A1 ? ? ? ? 33 C4 89 44 24 20 53 55 8B 6C 24 34 56 8B 74 24 34"
     .. " 8D 46 FF 83 F8 12 8B D9 57 89 B3 C4 0B 00 00"
   local existsPattern = "8B 44 24 04 6A 00 68 00 80 00 00 50 E8 ? ? ? ? 83 C4 0C 83 F8 FF 75 05 33 C0 C2 04 00 50"
-  local managerAddress, managerReason = core.AOBScanUnique(patches.plain(managerPattern))
-  assert(managerAddress ~= nil, "resource manager: " .. tostring(managerReason))
-  local resolveAddress, resolveReason = core.AOBScanUnique(resolvePattern)
-  assert(resolveAddress ~= nil, "map filename resolver: " .. tostring(resolveReason))
-  local existsAddress, existsReason = core.AOBScanUnique(existsPattern)
-  assert(existsAddress ~= nil, "map file existence check: " .. tostring(existsReason))
+  local managerAddress = patches.find(patches.plain(managerPattern))
+  assert(managerAddress ~= nil, "resource manager: not found")
+  local resolveAddress = patches.find(resolvePattern)
+  assert(resolveAddress ~= nil, "map filename resolver: not found")
+  local existsAddress = patches.find(existsPattern)
+  assert(existsAddress ~= nil, "map file existence check: not found")
   local _, manager = utils.AOBExtract(managerPattern, managerAddress, managerAddress)
   local resolveMap = core.exposeCode(resolveAddress, 3, 1)
   local fileExists = core.exposeCode(existsAddress, 2, 1)

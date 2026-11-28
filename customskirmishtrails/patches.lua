@@ -170,15 +170,16 @@ end
 
 local matchesByPattern = {}
 
----The unique executable-code match, or nil if it could not be verified.
+---The address of `pattern`, or nil if it is not found.
 function patches.find(pattern)
   if matchesByPattern[pattern] == nil then
-    matchesByPattern[pattern] = core.AOBScanUnique(pattern) or false
+    local ok, address = pcall(core.AOBScan, pattern)
+    matchesByPattern[pattern] = ok and address
   end
   return matchesByPattern[pattern] or nil
 end
 
----Capture only at the verified match.
+---Capture only at the found match.
 function patches.extract(pattern)
   local address = patches.find(patches.plain(pattern))
   if address ~= nil then
